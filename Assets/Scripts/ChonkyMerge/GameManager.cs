@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace ChonkyMerge
 {
@@ -40,6 +41,7 @@ namespace ChonkyMerge
             Destroy(b.gameObject);
 
             Score += GameConfig.ScoreForTier(a.Tier);
+            Sfx.Pop();
 
             if (nextTier < GameConfig.TierCount)
             {
@@ -100,14 +102,20 @@ namespace ChonkyMerge
                 : "Tilt your phone to steer      Tap to drop";
             GUI.Label(new Rect(0, Screen.height - 44, Screen.width, 30), hint, _mid);
 
+            // Small menu button, top-right.
+            if (!IsGameOver && GUI.Button(new Rect(Screen.width - 92, 16, 76, 44), "Menu"))
+            { Sfx.Click(); SceneManager.LoadScene("MainMenu"); }
+
             if (IsGameOver)
             {
-                var box = new Rect(Screen.width / 2f - 150, Screen.height / 2f - 90, 300, 180);
+                var box = new Rect(Screen.width / 2f - 160, Screen.height / 2f - 110, 320, 230);
                 GUI.Box(box, GUIContent.none);
                 GUI.Label(new Rect(box.x, box.y + 18, box.width, 40), "Jar Full!", _big);
-                GUI.Label(new Rect(box.x, box.y + 66, box.width, 30), $"Score  {Score}", _mid);
-                if (GUI.Button(new Rect(box.x + 70, box.y + 110, 160, 46), "Play again"))
-                    Restart();
+                GUI.Label(new Rect(box.x, box.y + 64, box.width, 30), $"Score  {Score}", _mid);
+                if (GUI.Button(new Rect(box.x + 80, box.y + 108, 160, 48), "Play again"))
+                { Sfx.Click(); Restart(); }
+                if (GUI.Button(new Rect(box.x + 80, box.y + 166, 160, 44), "Menu"))
+                { Sfx.Click(); SceneManager.LoadScene("MainMenu"); }
             }
         }
 
