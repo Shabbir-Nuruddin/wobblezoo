@@ -10,7 +10,7 @@ context clear.
 2. ✅ **"Par" relabelled** — HUD reads **"3★ in N moves · M so far"**; win panel shows **"3★ ≤ N   2★ ≤ N+2"**.
 3. ✅ **Star/move system** — 3★ ≤ par, 2★ ≤ par+2, else 1★. Every level's par is now the **BFS-verified optimal**, so 3★ is always reachable (validated by `scratchpad/solve_levels.py`). Best stars saved per level (`zoo_stars_<i>`).
 4. ✅ **Discoverability, reworked per Shabbir** — no upfront hint (keeps the puzzle). A **"Need a hint?" button appears only after the player struggles** (moves ≥ par+3, min 5, OR 30s on the level). Tapping shows a per-level nudge card; the push-intro level explains "Corgi pushes — swipe it into the capybara!".
-5. ✅ **Big lively buttons** — all puzzle buttons rebuilt chunky and warm (procedural rounded texture + bevel + press state + bold brown text) to match the landing page's cozy feel. `ui_button.png` was **never generated** (see "Assets still needed"); once it exists we can swap the procedural texture for the real art.
+5. ✅ **Big lively buttons** — all puzzle buttons now use the real cozy pill art **`ui_button.png`** (+ a darker `ui_button_down.png` pressed state), stretched to each button with bold brown text. Falls back to a procedural button if the art is missing.
 6. **Structural (partial):**
    - ✅ **Rotate backgrounds** per 3-level pack (meadow → treehouse → clouds → library → snowcabin).
    - ✅ **More levels**: 6 → **16**, abilities introduced slowly, multi-animal by L7, up to 3 animals by L13.
@@ -19,13 +19,14 @@ context clear.
    - ⏳ **Level-select map** — deferred: needs `node_open.png` (never generated). `map_bg.png` + `node_locked.png` are ready in `_ArtSource/pending/`.
    - ⏳ **Collection screen** — deferred: `collection_bg.png`, `card_frame.png`, `card_locked.png` are ready in `_ArtSource/pending/`.
 
-## Assets still needed (please generate → drop in `Assets/Resources/Art/raw`)
-- **`ui_button.png`** — the one asset from the original pack that never came through. Prompt: *"A single blank cozy rounded game button, soft tactile pill shape, warm peach/cream color matching a cute cozy kids game, soft top highlight and gentle darker bottom bevel, empty (no text), fully transparent background (PNG alpha), soft flat 3D style, wide 3:1."*
-- **`node_open.png`** — unlocked level marker for the map. Prompt: *"A cute unlocked level-select marker, a soft round glowing cream pillow/bubble with a tiny star, warm and inviting, no lock, no text, fully transparent background (PNG alpha), 1:1 square."*
-- Tip: ask for a **transparent PNG** explicitly — the UI/tile/star/panel images came on dark or glow backgrounds and had to be keyed out; a clean alpha saves that step and looks crisper.
+## Assets status
+- ✅ **`ui_button.png`** — received & wired.
+- ✅ **`node_open.png`** — generated procedurally (cream pillow + gold star), parked in `_ArtSource/pending/`. Swap for an AI version anytime; the map screen isn't built yet so there's no rush.
+- **Audio (received, NOT yet wired):** Kenney interface SFX + music-jingles zips and 4 mp3 tracks are parked in `_ArtSource/audio_pending/`. Plan: use a soft Kenney **interface** click for taps + a gentle confirmation chime for wins (replace the procedural blips in `Sfx.cs`, keep a fallback). The Kenney **music-jingles** are 8-bit chiptune — wrong vibe for cozy; skip for BGM. The 4 mp3s ("Cretaceous Dawn" etc.) are unverified mood — confirm with Shabbir or pick a calm lo-fi loop before wiring BGM.
+- **Font (requested):** **Fredoka SemiBold** from Google Fonts → drop the `.ttf` into `Assets/Resources/Fonts/` and wire it into every GUIStyle (replaces default Arial for a cozy chunky look).
 
 ## Raw art handling
-Originals + reference images now live in **`_ArtSource/`** (git-ignored, kept locally). The 3 JPGs there (Angry Birds "Red", Garfield, a stock kitten) are copyrighted references — **not shipped**. Processing scripts: `scratchpad/process_art.py`, `fix_art.py`.
+Originals + reference images live in **`_ArtSource/`** (git-ignored, kept locally). The 3 JPGs there (Angry Birds "Red", Garfield, a stock kitten) are copyrighted references — **not shipped**. Processing scripts in `scratchpad/`: `process_art.py`, `fix_art.py`, `cut_button.py`, `node_open.py`, and `solve_levels.py` (level validator).
 
 ## Asset prompt pack (generate in ChatGPT, save into Assets/Resources/Art/raw with the given names)
 Backgrounds are portrait 9:16, no characters, no text, soft cozy illustrated bedtime style.

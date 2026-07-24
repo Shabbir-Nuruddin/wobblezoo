@@ -104,6 +104,7 @@ namespace SleepyZoo
         // UI
         private GUIStyle _title, _hud, _sub, _btn, _btnMenu, _win, _hintText, _panelBody, _panelSub;
         private Texture2D _btnTex, _btnTexDown, _panelTex, _starTex, _dimTex;
+        private int _btnBorder;   // 9-slice inset; 0 = stretch the real pill art
 
         private void Start(){ SetupCamera(); LoadLevel(PlayerPrefs.GetInt("zoo_level",0)); }
 
@@ -514,7 +515,11 @@ namespace SleepyZoo
             _panelBody.normal.textColor=brown;
             _panelSub.normal.textColor=new Color(0.45f,0.30f,0.18f);
 
-            _btnTex=MakeButtonTex(false); _btnTexDown=MakeButtonTex(true);
+            // Prefer the real cozy pill art; fall back to the procedural button.
+            var pill=Resources.Load<Texture2D>("Art/ui_button");
+            var pillDown=Resources.Load<Texture2D>("Art/ui_button_down");
+            if(pill!=null){ _btnTex=pill; _btnTexDown=pillDown!=null?pillDown:pill; _btnBorder=0; }
+            else { _btnTex=MakeButtonTex(false); _btnTexDown=MakeButtonTex(true); _btnBorder=28; }
             _dimTex=Texture2D.whiteTexture;
             _panelTex=Resources.Load<Texture2D>("Art/ui_panel");
             _starTex=Resources.Load<Texture2D>("Art/star_full");
@@ -527,7 +532,7 @@ namespace SleepyZoo
         {
             var s=new GUIStyle(GUI.skin.button){
                 fontSize=fontSize, fontStyle=FontStyle.Bold, alignment=TextAnchor.MiddleCenter,
-                border=new RectOffset(28,28,28,28), padding=new RectOffset(10,10,6,10)
+                border=new RectOffset(_btnBorder,_btnBorder,_btnBorder,_btnBorder), padding=new RectOffset(12,12,6,10)
             };
             var brown=new Color(0.36f,0.21f,0.10f);
             s.normal.textColor=s.hover.textColor=s.active.textColor=brown;
