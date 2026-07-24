@@ -14,8 +14,6 @@ namespace ChonkyMerge.EditorTools
     {
         private const string MenuPath = "Assets/Scenes/MainMenu.unity";
         private const string PuzzlePath = "Assets/Scenes/Puzzle.unity";
-        private const string TowerPath = "Assets/Scenes/Tower.unity";
-        private const string GamePath = "Assets/Scenes/Prototype.unity";
         private const string IconPath = "Assets/Resources/Art/AppIcon.png";
 
         [MenuItem("Chonky/Build Puzzle + Configure App")]
@@ -38,8 +36,6 @@ namespace ChonkyMerge.EditorTools
             {
                 new EditorBuildSettingsScene(MenuPath, true),
                 new EditorBuildSettingsScene(PuzzlePath, true),
-                new EditorBuildSettingsScene(TowerPath, true),
-                new EditorBuildSettingsScene(GamePath, true),
             };
 
             PlayerSettings.productName = "Wobble Zoo";

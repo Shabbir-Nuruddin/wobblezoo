@@ -48,6 +48,7 @@ namespace SleepyZoo
         private Vector3[] _target;
         private readonly Dictionary<Vector2Int,int> _occ = new();
         private readonly Stack<Vector2Int[]> _undo = new();
+        private Sprite _sCell,_sBed,_sBg; private Transform _bgTf;
 
         private int _selected=-1, _swipeEnt=-1, _moves, _stars;
         private Vector2 _swipeStart;
@@ -74,6 +75,10 @@ namespace SleepyZoo
             _lv=Levels[_levelIndex];
             foreach (var w in _lv.walls) _walls.Add(w);
 
+            _sCell=Resources.Load<Sprite>("Art/tile");
+            _sBed=Resources.Load<Sprite>("Art/tile_bed");
+            _sBg=Resources.Load<Sprite>("Art/PuzzleBG");
+
             int n=_lv.ents.Length;
             _pos=new Vector2Int[n]; _bed=new Vector2Int[n]; _move=new Move[n]; _tier=new int[n];
             _view=new Transform[n]; _target=new Vector3[n];
@@ -93,37 +98,42 @@ namespace SleepyZoo
         // ---- visuals ----
         private void SpawnBackground()
         {
-            var go=new GameObject("BG"); go.transform.SetParent(transform); go.transform.position=new Vector3(0,0,1);
-            var sr=go.AddComponent<SpriteRenderer>(); sr.sprite=BgSprite(); sr.sortingOrder=-20;
-            go.transform.localScale=new Vector3(60,60,1);
+            var go=new GameObject("BG"); go.transform.SetParent(transform);
+            var sr=go.AddComponent<SpriteRenderer>(); sr.sprite=_sBg!=null?_sBg:BgSprite(); sr.sortingOrder=-20;
+            _bgTf=go.transform;
         }
 
         private void BuildBoard()
         {
+            Sprite cellSprite=_sCell!=null?_sCell:RoundedTile();
             for (int y=0;y<_lv.h;y++)
             for (int x=0;x<_lv.w;x++)
             {
                 var cell=new Vector2Int(x,y);
                 bool wall=_walls.Contains(cell);
-                var t=Tile(CellToWorld(cell),0, wall?new Color(0.14f,0.12f,0.22f):new Color(0.34f,0.31f,0.48f));
-                t.localScale=new Vector3(0.94f,0.94f,1f);
+                Color col=_sCell!=null
+                    ? (wall?new Color(0.42f,0.38f,0.50f):Color.white)
+                    : (wall?new Color(0.14f,0.12f,0.22f):new Color(0.34f,0.31f,0.48f));
+                Tile(CellToWorld(cell),0,col,cellSprite,0.98f);
             }
         }
 
-        private Transform Tile(Vector3 pos,int order,Color col)
+        private Transform Tile(Vector3 pos,int order,Color col,Sprite sprite,float worldSize)
         {
             var go=new GameObject("Tile"); go.transform.SetParent(transform); go.transform.position=pos;
-            var sr=go.AddComponent<SpriteRenderer>(); sr.sprite=RoundedTile(); sr.color=col; sr.sortingOrder=order;
+            var sr=go.AddComponent<SpriteRenderer>(); sr.sprite=sprite; sr.color=col; sr.sortingOrder=order;
+            float s=worldSize/sprite.bounds.size.x; go.transform.localScale=new Vector3(s,s,1f);
             return go.transform;
         }
 
         private void SpawnBed(int i)
         {
-            var pad=Tile(CellToWorld(_bed[i]),1,new Color(0.46f,0.43f,0.62f)); pad.localScale=new Vector3(0.80f,0.80f,1f);
+            Sprite bedSprite=_sBed!=null?_sBed:RoundedTile();
+            Tile(CellToWorld(_bed[i]),1,_sBed!=null?Color.white:new Color(0.46f,0.43f,0.62f),bedSprite,0.92f);
             var s=AnimalSprites.Get(_tier[i]);
-            var go=new GameObject("Bed"); go.transform.SetParent(transform); go.transform.position=CellToWorld(_bed[i]);
-            var sr=go.AddComponent<SpriteRenderer>(); sr.sortingOrder=2;
-            if(s!=null){ sr.sprite=s; sr.color=new Color(1,1,1,0.30f); float sc=0.64f/s.bounds.size.x; go.transform.localScale=new Vector3(sc,sc,1f);}
+            var go=new GameObject("Bed"); go.transform.SetParent(transform); go.transform.position=CellToWorld(_bed[i])+new Vector3(0,0,-0.05f);
+            var sr=go.AddComponent<SpriteRenderer>(); sr.sortingOrder=3;
+            if(s!=null){ sr.sprite=s; sr.color=new Color(1,1,1,0.34f); float sc=0.52f/s.bounds.size.x; go.transform.localScale=new Vector3(sc,sc,1f);}
         }
 
         private void SpawnAnimal(int i)
@@ -146,6 +156,16 @@ namespace SleepyZoo
         {
             float aspect=Mathf.Max(0.3f,(float)Screen.width/Screen.height), margin=1.2f;
             _cam.orthographicSize=Mathf.Max(_lv.h*0.5f+margin,(_lv.w*0.5f+margin)/aspect);
+
+            if(_bgTf!=null)
+            {
+                var sp=_bgTf.GetComponent<SpriteRenderer>().sprite;
+                float camH=_cam.orthographicSize*2f, camW=camH*aspect;
+                float cover=Mathf.Max(camW/sp.bounds.size.x, camH/sp.bounds.size.y)*1.02f;
+                var cp=_cam.transform.position;
+                _bgTf.position=new Vector3(cp.x,cp.y,2f);
+                _bgTf.localScale=new Vector3(cover,cover,1f);
+            }
         }
 
         // ---- input ----

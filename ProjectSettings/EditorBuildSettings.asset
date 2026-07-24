@@ -11,10 +11,4 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Puzzle.unity
     guid: 815d7b86f42d7194692cc8c53cf39cba
-  - enabled: 1
-    path: Assets/Scenes/Tower.unity
-    guid: b8eaf794f1e09a94b8c2d4a4524f3557
-  - enabled: 1
-    path: Assets/Scenes/Prototype.unity
-    guid: fd7a406ac9239c541b1e3c5ed4dd904f
   m_configObjects: {}
