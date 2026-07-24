@@ -29,6 +29,20 @@ namespace ChonkyMerge
             new Color(0.98f, 0.55f, 0.62f), // legendary rose
         };
 
+        // Resource paths (under a Resources folder) for the real animal art, per tier.
+        // Missing files fall back to the placeholder circle automatically.
+        public static readonly string[] AnimalRes =
+        {
+            "Art/animals/tier1_hamster",
+            "Art/animals/tier2_bunny",
+            "Art/animals/tier3_kitten",
+            "Art/animals/tier4_puppy",
+            "Art/animals/tier5_persian",
+            "Art/animals/tier6_corgi",
+            "Art/animals/tier7_samoyed",
+            "Art/animals/tier8_capybara",
+        };
+
         // Only spawn from the smaller tiers as "droppable" pieces.
         public const int MaxSpawnTier = 3;
 

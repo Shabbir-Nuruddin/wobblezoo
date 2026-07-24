@@ -30,10 +30,26 @@ namespace ChonkyMerge
             Tier = Mathf.Clamp(tier, 0, GameConfig.TierCount - 1);
             float d = GameConfig.Radius[Tier] * 2f;
 
-            _sr.sprite = SpriteFactory.Circle();
-            _sr.color = GameConfig.Tint[Tier];
-            transform.localScale = new Vector3(d, d, 1f);
-            _col.radius = 0.5f; // sprite is 1 unit; scale handles real size
+            var animal = AnimalSprites.Get(Tier);
+            if (animal != null)
+            {
+                // Real animal art: scale so the body roughly fills the tier diameter,
+                // and keep the physics circle at the true tier radius.
+                _sr.sprite = animal;
+                _sr.color = Color.white;
+                float sw = animal.bounds.size.x;
+                float sc = (d / sw) * 1.12f;
+                transform.localScale = new Vector3(sc, sc, 1f);
+                _col.radius = (d * 0.5f) / sc;
+            }
+            else
+            {
+                // Placeholder circle, tinted per tier.
+                _sr.sprite = SpriteFactory.Circle();
+                _sr.color = GameConfig.Tint[Tier];
+                transform.localScale = new Vector3(d, d, 1f);
+                _col.radius = 0.5f;
+            }
 
             _rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
             _rb.interpolation = RigidbodyInterpolation2D.Interpolate;
