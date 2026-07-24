@@ -22,9 +22,14 @@ namespace ChonkyMerge.EditorTools
 
             System.IO.Directory.CreateDirectory("Builds");
 
+            // Build exactly the scenes enabled in Build Settings (Menu -> Tower -> jar).
+            var scenes = System.Array.ConvertAll(
+                System.Array.FindAll(EditorBuildSettings.scenes, s => s.enabled),
+                s => s.path);
+
             var opts = new BuildPlayerOptions
             {
-                scenes = new[] { "Assets/Scenes/MainMenu.unity", "Assets/Scenes/Prototype.unity" },
+                scenes = scenes,
                 locationPathName = "Builds/WobbleZoo.apk",
                 target = BuildTarget.Android,
                 targetGroup = BuildTargetGroup.Android,
@@ -34,7 +39,7 @@ namespace ChonkyMerge.EditorTools
             var report = BuildPipeline.BuildPlayer(opts);
             var s = report.summary;
             Debug.Log($"APK build result: {s.result}, size: {s.totalSize} bytes, errors: {s.totalErrors}");
-            if (s.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
+            if (s.result != UnityEditor.Build.Reporting.BuildResult.Succeeded && Application.isBatchMode)
                 EditorApplication.Exit(1);
         }
     }
