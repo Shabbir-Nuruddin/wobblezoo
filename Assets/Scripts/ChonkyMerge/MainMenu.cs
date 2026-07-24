@@ -191,7 +191,7 @@ namespace ChonkyMerge
         {
             switch (id)
             {
-                case ButtonId.Play: SceneManager.LoadScene("Tower"); break;
+                case ButtonId.Play: SceneManager.LoadScene("Puzzle"); break;
                 case ButtonId.HighScore: _panel = Panel.HighScore; break;
                 case ButtonId.Settings: _panel = Panel.Settings; break;
                 case ButtonId.Share:
