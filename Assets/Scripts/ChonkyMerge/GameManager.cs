@@ -20,12 +20,36 @@ namespace ChonkyMerge
         private TiltGravity _tilt;
         private GUIStyle _big, _mid, _small;
 
+        private float _overflowTimer;
+
         private void Awake()
         {
             Instance = this;
             _spawner = GetComponent<CritterSpawner>();
             _tilt = GetComponent<TiltGravity>();
             Best = PlayerPrefs.GetInt("chonky_best", 0);
+            Critter.TowerMode = false;
+            MergeService.Handler = Merge;
+        }
+
+        private void Update()
+        {
+            if (IsGameOver) return;
+
+            // Overflow: if a settled critter sits above the danger line, the jar is full.
+            bool overflowing = false;
+            foreach (var c in FindObjectsByType<Critter>(FindObjectsSortMode.None))
+            {
+                if (!c.Dropped || c.Consumed || !c.HasLanded) continue;
+                if (c.transform.position.y + GameConfig.Radius[c.Tier] > DangerY &&
+                    c.Body.linearVelocity.sqrMagnitude < 0.35f)
+                {
+                    overflowing = true;
+                    break;
+                }
+            }
+            _overflowTimer = overflowing ? _overflowTimer + Time.deltaTime : 0f;
+            if (_overflowTimer > 2f) GameOver();
         }
 
         public void Merge(Critter a, Critter b)

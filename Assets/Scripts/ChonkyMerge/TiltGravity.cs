@@ -10,13 +10,14 @@ namespace ChonkyMerge
     /// </summary>
     public class TiltGravity : MonoBehaviour
     {
-        [SerializeField] private float maxTiltDegrees = 55f;
-        [SerializeField] private float gravityStrength = 26f;
-        [SerializeField] private float smoothing = 9f;
+        [SerializeField] private float maxTiltDegrees = 38f;
+        [SerializeField] private float gravityStrength = 24f;
+        [SerializeField] private float smoothing = 10f;
 
         private float _tilt; // smoothed, -1 (left) .. +1 (right)
 
         public float CurrentTiltDegrees => _tilt * maxTiltDegrees;
+        public float Tilt => _tilt; // normalized -1..1, used to aim the tower drop
 
         private void FixedUpdate()
         {
