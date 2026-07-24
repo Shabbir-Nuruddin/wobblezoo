@@ -9,6 +9,12 @@
 [Mm]emoryCaptures/
 [Rr]ecordings/
 
+# IL2CPP / Android build temp
+.utmp/
+.gradle/
+*.apk
+*.aab
+
 # Asset meta data (only ignore when the folder itself is ignored)
 !/[Aa]ssets/**/*.meta
 
