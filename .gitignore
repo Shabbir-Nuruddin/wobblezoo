@@ -42,3 +42,6 @@ ExportedObj/
 # OS
 .DS_Store
 Thumbs.db
+
+# Raw art source (originals + reference images) — kept locally, not in the repo
+_ArtSource/

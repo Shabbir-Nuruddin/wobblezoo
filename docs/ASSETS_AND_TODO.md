@@ -5,13 +5,27 @@ Each animal moves by its own rule (cat steps, hamster rolls, bunny hops, corgi p
 is a pushable block). Get all animals onto their beds. This file is the source of truth after a
 context clear.
 
-## Fixes to make in code (next session)
-1. **Win popup** — replace the ugly semi-transparent black box with `ui_panel.png` (cozy rounded panel), larger and centered.
-2. **"Par" is confusing** — relabel. Par = the move target for 3 stars. Show it as **"3★ in 6 moves"** (not "Par 6"), and on the win panel show the star thresholds.
-3. **Star/move system** — keep: 3★ if moves ≤ par, 2★ if ≤ par+2, else 1★. Tune each level's par. (No hard fail limit — star-based is friendlier.)
-4. **Discoverability (L4 push)** — add a **first-time ability hint** shown only on the level where an ability is introduced, e.g. L4: "Corgi pushes — swipe it into the capybara!". Keep later levels hint-free so figuring it out stays the puzzle.
-5. **Buttons too small / don't match landing page** — rebuild all puzzle buttons (Menu, Undo, Reset, Next) BIG and styled with `ui_button.png` + larger font, matching the landing page's chunky buttons.
-6. **Structural features to build**: level-select **map**, **animal collection** screen (repurpose the menu's empty "High Score" button), **more levels** (expand 6 → ~20+, introduce each ability slowly, multi-animal puzzles by level 6–7), **rotate backgrounds** per level-pack so it never feels repetitive, add **new animals + new abilities**.
+## Fixes — DONE (build passes, APK: `Builds/WobbleZoo.apk`)
+1. ✅ **Win popup** — now a cozy `ui_panel.png` card over a soft dim, centered, with glossy `star_full` stars, move count, and the star thresholds.
+2. ✅ **"Par" relabelled** — HUD reads **"3★ in N moves · M so far"**; win panel shows **"3★ ≤ N   2★ ≤ N+2"**.
+3. ✅ **Star/move system** — 3★ ≤ par, 2★ ≤ par+2, else 1★. Every level's par is now the **BFS-verified optimal**, so 3★ is always reachable (validated by `scratchpad/solve_levels.py`). Best stars saved per level (`zoo_stars_<i>`).
+4. ✅ **Discoverability, reworked per Shabbir** — no upfront hint (keeps the puzzle). A **"Need a hint?" button appears only after the player struggles** (moves ≥ par+3, min 5, OR 30s on the level). Tapping shows a per-level nudge card; the push-intro level explains "Corgi pushes — swipe it into the capybara!".
+5. ✅ **Big lively buttons** — all puzzle buttons rebuilt chunky and warm (procedural rounded texture + bevel + press state + bold brown text) to match the landing page's cozy feel. `ui_button.png` was **never generated** (see "Assets still needed"); once it exists we can swap the procedural texture for the real art.
+6. **Structural (partial):**
+   - ✅ **Rotate backgrounds** per 3-level pack (meadow → treehouse → clouds → library → snowcabin).
+   - ✅ **More levels**: 6 → **16**, abilities introduced slowly, multi-animal by L7, up to 3 animals by L13.
+   - ✅ **New animals wired in**: fox, panda, hedgehog, owl, deer, duckling (tiers 9–14) used across the new levels.
+   - ✅ **`tile_wall`** log-block art now sits on blocked cells.
+   - ⏳ **Level-select map** — deferred: needs `node_open.png` (never generated). `map_bg.png` + `node_locked.png` are ready in `_ArtSource/pending/`.
+   - ⏳ **Collection screen** — deferred: `collection_bg.png`, `card_frame.png`, `card_locked.png` are ready in `_ArtSource/pending/`.
+
+## Assets still needed (please generate → drop in `Assets/Resources/Art/raw`)
+- **`ui_button.png`** — the one asset from the original pack that never came through. Prompt: *"A single blank cozy rounded game button, soft tactile pill shape, warm peach/cream color matching a cute cozy kids game, soft top highlight and gentle darker bottom bevel, empty (no text), fully transparent background (PNG alpha), soft flat 3D style, wide 3:1."*
+- **`node_open.png`** — unlocked level marker for the map. Prompt: *"A cute unlocked level-select marker, a soft round glowing cream pillow/bubble with a tiny star, warm and inviting, no lock, no text, fully transparent background (PNG alpha), 1:1 square."*
+- Tip: ask for a **transparent PNG** explicitly — the UI/tile/star/panel images came on dark or glow backgrounds and had to be keyed out; a clean alpha saves that step and looks crisper.
+
+## Raw art handling
+Originals + reference images now live in **`_ArtSource/`** (git-ignored, kept locally). The 3 JPGs there (Angry Birds "Red", Garfield, a stock kitten) are copyrighted references — **not shipped**. Processing scripts: `scratchpad/process_art.py`, `fix_art.py`.
 
 ## Asset prompt pack (generate in ChatGPT, save into Assets/Resources/Art/raw with the given names)
 Backgrounds are portrait 9:16, no characters, no text, soft cozy illustrated bedtime style.
