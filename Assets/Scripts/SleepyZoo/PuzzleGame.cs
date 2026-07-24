@@ -1,271 +1,289 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using ChonkyMerge; // reuse AnimalSprites + SpriteFactory
+using ChonkyMerge; // AnimalSprites, Sfx
 
 namespace SleepyZoo
 {
     /// <summary>
-    /// Cozy connect-the-animals puzzle. Drag a trail from each cute animal to its
-    /// matching twin; trails can't cross; connect every pair to solve the level.
-    /// Pure grid logic — deterministic and physics-free, so it stays robust.
+    /// Animals-as-mechanic puzzle. Swipe an animal and it moves by ITS OWN rule —
+    /// cat steps one cell, hamster rolls until it hits something, bunny hops over the
+    /// next cell. Get every animal onto its matching bed. Pure turn-based grid logic:
+    /// deterministic, no physics, fully undo-able.
     /// </summary>
     public class PuzzleGame : MonoBehaviour
     {
-        // ---- level data ----
-        private struct Pair { public int tier, ax, ay, bx, by; public Pair(int t,int ax,int ay,int bx,int by){tier=t;this.ax=ax;this.ay=ay;this.bx=bx;this.by=by;} }
-        private class Level { public int w, h; public Pair[] pairs; public Level(int w,int h,Pair[] p){this.w=w;this.h=h;pairs=p;} }
+        private enum Move { Step, Roll, Hop }
+        private struct EntDef { public int tier; public Move move; public int x, y, bx, by;
+            public EntDef(int t, Move m, int x, int y, int bx, int by){tier=t;move=m;this.x=x;this.y=y;this.bx=bx;this.by=by;} }
+        private class Lv { public int w, h; public Vector2Int[] walls; public EntDef[] ents;
+            public Lv(int w,int h,Vector2Int[] walls,EntDef[] e){this.w=w;this.h=h;this.walls=walls;this.ents=e;} }
 
-        private static readonly Level[] Levels =
+        // tiers: 0 hamster,1 bunny,2 kitten(cat),3 puppy,4 persian,5 corgi,6 samoyed,7 capybara
+        private static readonly Lv[] Levels =
         {
-            // L1 – gentle intro: three straight rows.
-            new Level(5,5, new[]{ new Pair(0,0,0,4,0), new Pair(2,0,2,4,2), new Pair(1,0,4,4,4) }),
-            // L2 – columns, different animals.
-            new Level(5,5, new[]{ new Pair(3,0,0,0,4), new Pair(5,2,0,2,4), new Pair(7,4,0,4,4) }),
-            // L3 – needs a bend.
-            new Level(5,5, new[]{ new Pair(4,0,0,4,0), new Pair(6,0,4,4,4), new Pair(2,2,1,2,3) }),
-        };
-
-        private static readonly Color[] Palette =
-        {
-            new Color(0.95f,0.55f,0.45f), new Color(0.55f,0.70f,0.95f),
-            new Color(0.60f,0.82f,0.55f), new Color(0.90f,0.70f,0.40f),
-            new Color(0.80f,0.55f,0.85f), new Color(0.45f,0.80f,0.82f),
-            new Color(0.95f,0.72f,0.80f), new Color(0.75f,0.75f,0.80f),
+            // L1 — meet the CAT: steps one cell. Navigate around a wall.
+            new Lv(3,3, new[]{ new Vector2Int(1,1) },
+                new[]{ new EntDef(2, Move.Step, 0,0, 2,2) }),
+            // L2 — meet the HAMSTER: rolls till it hits a wall. Position matters.
+            new Lv(5,5, new[]{ new Vector2Int(3,2) },
+                new[]{ new EntDef(0, Move.Roll, 0,2, 2,2) }),
+            // L3 — meet the BUNNY: hops over the next cell (a wall here).
+            new Lv(5,5, new[]{ new Vector2Int(1,0) },
+                new[]{ new EntDef(1, Move.Hop, 0,0, 2,0) }),
+            // L4 — combine: park the cat as a wall so the hamster's roll stops on its bed.
+            new Lv(5,5, new Vector2Int[0],
+                new[]{ new EntDef(0, Move.Roll, 0,0, 2,0),
+                       new EntDef(2, Move.Step, 3,4, 3,0) }),
         };
 
         // ---- runtime ----
         private int _levelIndex;
-        private Level _lv;
+        private Lv _lv;
         private Camera _cam;
-        private float _cell = 1f, _ox, _oy;
+        private readonly HashSet<Vector2Int> _walls = new();
+        private Vector2Int[] _pos, _bed;
+        private Move[] _move;
+        private int[] _tier;
+        private Transform[] _view;
+        private Vector3[] _target;
+        private readonly Dictionary<Vector2Int,int> _occ = new();
+        private readonly Stack<Vector2Int[]> _undo = new();
 
-        private readonly Dictionary<int, List<Vector2Int>> _paths = new();
-        private readonly Dictionary<Vector2Int, int> _owner = new();   // path-cell owner
-        private readonly Dictionary<Vector2Int, int> _endpoint = new(); // endpoint-cell -> colorId
-        private readonly Dictionary<int, (Vector2Int a, Vector2Int b)> _ends = new();
-
-        private int _drawing = -1;
-        private readonly List<GameObject> _pathVisuals = new();
+        private int _selected = -1, _swipeEnt = -1, _moves;
+        private Vector2 _swipeStart;
         private bool _solved;
-        private GUIStyle _big, _mid, _small;
+        private GUIStyle _big, _mid;
 
-        private void Start()
-        {
-            SetupCamera();
-            LoadLevel(0);
-        }
+        private void Start(){ SetupCamera(); LoadLevel(0); }
 
         private void SetupCamera()
         {
             _cam = Camera.main;
-            if (_cam == null) { var go=new GameObject("Main Camera"); go.tag="MainCamera"; _cam=go.AddComponent<Camera>(); }
+            if (_cam == null){ var go=new GameObject("Main Camera"); go.tag="MainCamera"; _cam=go.AddComponent<Camera>(); }
             _cam.orthographic = true;
             _cam.transform.position = new Vector3(0,0,-10);
             _cam.clearFlags = CameraClearFlags.SolidColor;
-            _cam.backgroundColor = new Color(0.20f,0.18f,0.30f); // cozy night
+            _cam.backgroundColor = new Color(0.20f,0.18f,0.30f);
         }
 
         private void LoadLevel(int index)
         {
             foreach (Transform c in transform) Destroy(c.gameObject);
-            _pathVisuals.Clear(); _paths.Clear(); _owner.Clear(); _endpoint.Clear(); _ends.Clear();
-            _drawing = -1; _solved = false;
+            _walls.Clear(); _occ.Clear(); _undo.Clear();
+            _selected=-1; _swipeEnt=-1; _moves=0; _solved=false;
 
-            _levelIndex = Mathf.Clamp(index, 0, Levels.Length - 1);
+            _levelIndex = Mathf.Clamp(index,0,Levels.Length-1);
             _lv = Levels[_levelIndex];
+            foreach (var w in _lv.walls) _walls.Add(w);
 
-            _ox = -(_lv.w - 1) * _cell * 0.5f;
-            _oy = -(_lv.h - 1) * _cell * 0.5f;
-            _cam.orthographicSize = Mathf.Max(_lv.w * 0.62f, _lv.h * 0.5f + 1.6f);
+            int n=_lv.ents.Length;
+            _pos=new Vector2Int[n]; _bed=new Vector2Int[n]; _move=new Move[n]; _tier=new int[n];
+            _view=new Transform[n]; _target=new Vector3[n];
 
             BuildBoard();
-
-            for (int i = 0; i < _lv.pairs.Length; i++)
+            for (int i=0;i<n;i++)
             {
-                var p = _lv.pairs[i];
-                var a = new Vector2Int(p.ax, p.ay);
-                var b = new Vector2Int(p.bx, p.by);
-                _ends[i] = (a, b);
-                _endpoint[a] = i; _endpoint[b] = i;
-                _paths[i] = new List<Vector2Int>();
-                SpawnEndpoint(a, i, p.tier);
-                SpawnEndpoint(b, i, p.tier);
+                var e=_lv.ents[i];
+                _pos[i]=new Vector2Int(e.x,e.y); _bed[i]=new Vector2Int(e.bx,e.by);
+                _move[i]=e.move; _tier[i]=e.tier;
+                _occ[_pos[i]]=i;
+                SpawnBed(i); SpawnAnimal(i);
             }
+            FrameCamera();
         }
 
+        // ---- board / sprites ----
         private void BuildBoard()
         {
-            for (int y = 0; y < _lv.h; y++)
-            for (int x = 0; x < _lv.w; x++)
+            for (int y=0;y<_lv.h;y++)
+            for (int x=0;x<_lv.w;x++)
             {
-                var go = Tile($"Cell_{x}_{y}", new Vector2Int(x,y), 0, new Color(0.28f,0.26f,0.40f));
-                go.transform.localScale = new Vector3(_cell*0.94f, _cell*0.94f, 1f);
+                var cell=new Vector2Int(x,y);
+                bool wall=_walls.Contains(cell);
+                var t=Tile(CellToWorld(cell),0, wall? new Color(0.13f,0.12f,0.20f):new Color(0.30f,0.28f,0.42f));
+                t.localScale=new Vector3(0.94f,0.94f,1f);
             }
         }
 
-        private GameObject Tile(string name, Vector2Int cell, int order, Color color)
+        private Transform Tile(Vector3 pos,int order,Color col)
         {
-            var go = new GameObject(name);
-            go.transform.SetParent(transform);
-            go.transform.position = CellToWorld(cell);
-            var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = SpriteFactory.Circle();  // soft rounded blob = cozy rounded cell
-            sr.color = color; sr.sortingOrder = order;
-            go.transform.localScale = new Vector3(_cell, _cell, 1f);
-            return go;
+            var go=new GameObject("Tile"); go.transform.SetParent(transform); go.transform.position=pos;
+            var sr=go.AddComponent<SpriteRenderer>(); sr.sprite=RoundedTile(); sr.color=col; sr.sortingOrder=order;
+            return go.transform;
         }
 
-        private void SpawnEndpoint(Vector2Int cell, int colorId, int tier)
+        private void SpawnBed(int i)
         {
-            // colored pad
-            var pad = Tile($"Pad_{colorId}", cell, 2, Palette[colorId % Palette.Length]);
-            pad.transform.localScale = new Vector3(_cell*0.86f, _cell*0.86f, 1f);
-            // animal on top
-            var animal = AnimalSprites.Get(tier);
-            var go = new GameObject($"Animal_{colorId}");
-            go.transform.SetParent(transform);
-            go.transform.position = CellToWorld(cell) + new Vector3(0,0,-0.1f);
-            var sr = go.AddComponent<SpriteRenderer>();
-            sr.sortingOrder = 3;
-            if (animal != null) { sr.sprite = animal; float s=(_cell*0.78f)/animal.bounds.size.x; go.transform.localScale=new Vector3(s,s,1f); }
-            else { sr.sprite = SpriteFactory.Circle(); sr.color = Palette[colorId%Palette.Length]; go.transform.localScale=new Vector3(_cell*0.5f,_cell*0.5f,1f); }
+            var pad=Tile(CellToWorld(_bed[i]),1,new Color(0.40f,0.38f,0.55f)); pad.localScale=new Vector3(0.80f,0.80f,1f);
+            var s=AnimalSprites.Get(_tier[i]);
+            var go=new GameObject("Bed"); go.transform.SetParent(transform); go.transform.position=CellToWorld(_bed[i]);
+            var sr=go.AddComponent<SpriteRenderer>(); sr.sortingOrder=2;
+            if(s!=null){ sr.sprite=s; sr.color=new Color(1,1,1,0.28f); float sc=0.66f/s.bounds.size.x; go.transform.localScale=new Vector3(sc,sc,1f);}
         }
 
-        private Vector3 CellToWorld(Vector2Int c) => new Vector3(_ox + c.x*_cell, _oy + c.y*_cell, 0);
+        private void SpawnAnimal(int i)
+        {
+            var s=AnimalSprites.Get(_tier[i]);
+            var go=new GameObject("Animal"); go.transform.SetParent(transform); go.transform.position=CellToWorld(_pos[i]);
+            var sr=go.AddComponent<SpriteRenderer>(); sr.sortingOrder=5;
+            if(s!=null){ sr.sprite=s; float sc=0.82f/s.bounds.size.x; go.transform.localScale=new Vector3(sc,sc,1f);}
+            else { sr.sprite=RoundedTile(); go.transform.localScale=new Vector3(0.7f,0.7f,1f);}
+            _view[i]=go.transform; _target[i]=CellToWorld(_pos[i]);
+        }
 
+        private Vector3 CellToWorld(Vector2Int c)=>new Vector3(c.x-(_lv.w-1)*0.5f, c.y-(_lv.h-1)*0.5f, 0);
         private bool WorldToCell(Vector3 w, out Vector2Int cell)
         {
-            int x = Mathf.RoundToInt((w.x - _ox)/_cell);
-            int y = Mathf.RoundToInt((w.y - _oy)/_cell);
-            cell = new Vector2Int(x,y);
-            return x>=0 && x<_lv.w && y>=0 && y<_lv.h;
+            int x=Mathf.RoundToInt(w.x+(_lv.w-1)*0.5f);
+            int y=Mathf.RoundToInt(w.y+(_lv.h-1)*0.5f);
+            cell=new Vector2Int(x,y);
+            return x>=0&&x<_lv.w&&y>=0&&y<_lv.h;
         }
 
+        private void FrameCamera()
+        {
+            float aspect=Mathf.Max(0.3f,(float)Screen.width/Screen.height);
+            float margin=1.1f;
+            float sizeH=_lv.h*0.5f+margin;
+            float sizeW=(_lv.w*0.5f+margin)/aspect;
+            _cam.orthographicSize=Mathf.Max(sizeH,sizeW);
+        }
+
+        // ---- input ----
         private void Update()
         {
+            FrameCamera();
+            for (int i=0;i<_view.Length;i++)
+            {
+                float sc = (i==_selected?1.1f:1f);
+                var s=AnimalSprites.Get(_tier[i]); float baseSc = s!=null? 0.82f/s.bounds.size.x : 0.7f;
+                _view[i].position=Vector3.Lerp(_view[i].position,_target[i],Time.deltaTime*16f);
+                _view[i].localScale=Vector3.Lerp(_view[i].localScale,new Vector3(baseSc*sc,baseSc*sc,1f),Time.deltaTime*12f);
+            }
             if (_solved) return;
 
-            if (Input.GetMouseButtonDown(0)) BeginDraw();
-            else if (Input.GetMouseButton(0) && _drawing >= 0) ContinueDraw();
-            else if (Input.GetMouseButtonUp(0) && _drawing >= 0) { _drawing = -1; CheckWin(); }
-        }
-
-        private Vector3 PointerWorld() => _cam.ScreenToWorldPoint(Input.mousePosition);
-
-        private void BeginDraw()
-        {
-            if (!WorldToCell(PointerWorld(), out var cell)) return;
-            if (!_endpoint.TryGetValue(cell, out int c)) return; // must start on an animal
-            _drawing = c;
-            ClearPath(c);
-            _paths[c].Add(cell);
-            RedrawPaths();
-        }
-
-        private void ContinueDraw()
-        {
-            if (!WorldToCell(PointerWorld(), out var cell)) return;
-            int c = _drawing;
-            var path = _paths[c];
-            if (path.Count == 0) return;
-            var tip = path[path.Count - 1];
-            if (cell == tip) return;
-            if ((cell - tip).sqrMagnitude != 1) return; // must be 4-adjacent
-
-            // backtrack
-            if (path.Count >= 2 && cell == path[path.Count - 2]) { RemoveOwner(tip); path.RemoveAt(path.Count-1); RedrawPaths(); return; }
-            if (path.Count == 1 && cell == _ends[c].a) return;
-
-            // reached matching endpoint?
-            bool isOwnFarEnd = cell == OtherEnd(c, path[0]);
-            if (!isOwnFarEnd)
+            if (Input.GetMouseButtonDown(0))
             {
-                if (_endpoint.ContainsKey(cell)) return;        // another color's endpoint (or own start) — block
-                if (_owner.TryGetValue(cell, out int o)) return; // occupied
-                if (path.Contains(cell)) return;                 // no self loop
+                _swipeStart=Input.mousePosition;
+                _swipeEnt = WorldToCell(_cam.ScreenToWorldPoint(Input.mousePosition),out var c) && _occ.TryGetValue(c,out int e)? e : -1;
             }
-            else if (path.Contains(cell)) return;
-
-            path.Add(cell);
-            if (!_endpoint.ContainsKey(cell)) _owner[cell] = c;
-            RedrawPaths();
-        }
-
-        private Vector2Int OtherEnd(int c, Vector2Int start) => start == _ends[c].a ? _ends[c].b : _ends[c].a;
-
-        private void ClearPath(int c)
-        {
-            foreach (var cell in _paths[c]) if (!_endpoint.ContainsKey(cell)) _owner.Remove(cell);
-            _paths[c].Clear();
-        }
-        private void RemoveOwner(Vector2Int cell){ if(!_endpoint.ContainsKey(cell)) _owner.Remove(cell); }
-
-        private void RedrawPaths()
-        {
-            foreach (var v in _pathVisuals) Destroy(v);
-            _pathVisuals.Clear();
-            foreach (var kv in _paths)
+            else if (Input.GetMouseButtonUp(0))
             {
-                int c = kv.Key; var col = Palette[c % Palette.Length];
-                foreach (var cell in kv.Value)
-                {
-                    var go = new GameObject($"Path_{c}");
-                    go.transform.SetParent(transform);
-                    go.transform.position = CellToWorld(cell) + new Vector3(0,0,0.05f);
-                    var sr = go.AddComponent<SpriteRenderer>();
-                    sr.sprite = SpriteFactory.Circle(); sr.color = col; sr.sortingOrder = 1;
-                    go.transform.localScale = new Vector3(_cell*0.55f, _cell*0.55f, 1f);
-                    _pathVisuals.Add(go);
-                }
+                Vector2 d=(Vector2)Input.mousePosition-_swipeStart;
+                if (d.magnitude>30f && _swipeEnt>=0) DoMove(_swipeEnt, Dir(d));
+                else if (_swipeEnt>=0) _selected=_swipeEnt; // tap = select (for arrow keys)
+                _swipeEnt=-1;
             }
+
+            if (_selected>=0)
+            {
+                if (Input.GetKeyDown(KeyCode.RightArrow)) DoMove(_selected,Vector2Int.right);
+                else if (Input.GetKeyDown(KeyCode.LeftArrow)) DoMove(_selected,Vector2Int.left);
+                else if (Input.GetKeyDown(KeyCode.UpArrow)) DoMove(_selected,Vector2Int.up);
+                else if (Input.GetKeyDown(KeyCode.DownArrow)) DoMove(_selected,Vector2Int.down);
+            }
+        }
+
+        private static Vector2Int Dir(Vector2 d)=> Mathf.Abs(d.x)>Mathf.Abs(d.y)
+            ? (d.x>0?Vector2Int.right:Vector2Int.left)
+            : (d.y>0?Vector2Int.up:Vector2Int.down);
+
+        private bool Free(Vector2Int c)=> c.x>=0&&c.x<_lv.w&&c.y>=0&&c.y<_lv.h && !_walls.Contains(c) && !_occ.ContainsKey(c);
+
+        private void DoMove(int i, Vector2Int dir)
+        {
+            Vector2Int from=_pos[i], to=from;
+            switch(_move[i])
+            {
+                case Move.Step: { var n=from+dir; if(Free(n)) to=n; break; }
+                case Move.Roll: { var cur=from; while(Free(cur+dir)) cur+=dir; to=cur; break; }
+                case Move.Hop:  { var land=from+dir*2; if(Free(land)) to=land; break; }
+            }
+            if (to==from) return; // nothing moved — no wasted "turn"
+
+            PushUndo();
+            _occ.Remove(from); _pos[i]=to; _occ[to]=i; _target[i]=CellToWorld(to);
+            _moves++; Sfx.Click();
+            CheckWin();
+        }
+
+        private void PushUndo(){ var snap=new Vector2Int[_pos.Length]; System.Array.Copy(_pos,snap,_pos.Length); _undo.Push(snap); }
+        private void Undo()
+        {
+            if(_undo.Count==0) return;
+            var snap=_undo.Pop(); _occ.Clear();
+            for(int i=0;i<_pos.Length;i++){ _pos[i]=snap[i]; _occ[snap[i]]=i; _target[i]=CellToWorld(snap[i]); }
+            Sfx.Click();
         }
 
         private void CheckWin()
         {
-            foreach (var kv in _paths)
-            {
-                var path = kv.Value;
-                if (path.Count < 2) return;
-                var ends = _ends[kv.Key];
-                var lo = path[0]; var hi = path[path.Count-1];
-                bool connected = (lo==ends.a && hi==ends.b) || (lo==ends.b && hi==ends.a);
-                if (!connected) return;
-            }
-            _solved = true;
-            Sfx.Pop();
+            for(int i=0;i<_pos.Length;i++) if(_pos[i]!=_bed[i]) return;
+            _solved=true; Sfx.Pop();
         }
 
         private void OnGUI()
         {
             EnsureStyles();
-            GUI.Label(new Rect(0, 14, Screen.width, 36), $"Level {_levelIndex + 1}", _big);
-            GUI.Label(new Rect(0, Screen.height-42, Screen.width, 28),
-                "Drag from an animal to its twin — don't cross the trails", _mid);
+            GUI.Label(new Rect(0,12,Screen.width,34), $"Level {_levelIndex+1}", _big);
+            GUI.Label(new Rect(0,Screen.height-40,Screen.width,26), MoveHint(), _mid);
 
-            if (!_solved && GUI.Button(new Rect(20, 16, 88, 40), "Menu"))
-            { Sfx.Click(); SceneManager.LoadScene("MainMenu"); }
-            if (!_solved && GUI.Button(new Rect(Screen.width-108, 16, 88, 40), "Reset"))
-            { Sfx.Click(); LoadLevel(_levelIndex); }
-
-            if (_solved)
+            if(!_solved)
             {
-                var box = new Rect(Screen.width/2f-160, Screen.height/2f-90, 320, 180);
-                GUI.Box(box, GUIContent.none);
-                GUI.Label(new Rect(box.x, box.y+18, box.width, 40), "All tucked in! 💤", _big);
-                bool last = _levelIndex >= Levels.Length - 1;
-                if (GUI.Button(new Rect(box.x+80, box.y+80, 160, 48), last ? "Play again" : "Next level"))
-                { Sfx.Click(); LoadLevel(last ? 0 : _levelIndex + 1); }
+                if(GUI.Button(new Rect(16,14,84,40),"Menu")){ Sfx.Click(); SceneManager.LoadScene("MainMenu"); }
+                if(GUI.Button(new Rect(16,Screen.height-100,120,44),"Undo")) Undo();
+                if(GUI.Button(new Rect(Screen.width-136,Screen.height-100,120,44),"Reset")){ Sfx.Click(); LoadLevel(_levelIndex); }
             }
+            else
+            {
+                var box=new Rect(Screen.width/2f-160,Screen.height/2f-90,320,180);
+                GUI.Box(box,GUIContent.none);
+                GUI.Label(new Rect(box.x,box.y+18,box.width,40),"All tucked in!",_big);
+                GUI.Label(new Rect(box.x,box.y+60,box.width,26),$"{_moves} moves",_mid);
+                bool last=_levelIndex>=Levels.Length-1;
+                if(GUI.Button(new Rect(box.x+80,box.y+104,160,48), last?"Play again":"Next level"))
+                { Sfx.Click(); LoadLevel(last?0:_levelIndex+1); }
+            }
+        }
+
+        private string MoveHint()
+        {
+            if (_selected<0) return "Swipe an animal to move it — get everyone to their bed";
+            return _move[_selected] switch {
+                Move.Step => "Cat: steps one cell",
+                Move.Roll => "Hamster: rolls until it hits something",
+                Move.Hop  => "Bunny: hops over the next cell",
+                _ => "" };
+        }
+
+        // rounded-square tile sprite
+        private static Sprite _round;
+        private static Sprite RoundedTile()
+        {
+            if(_round!=null) return _round;
+            int s=128; float r=26f, half=s*0.5f;
+            var tex=new Texture2D(s,s,TextureFormat.RGBA32,false){wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear};
+            var px=new Color32[s*s];
+            for(int y=0;y<s;y++)for(int x=0;x<s;x++)
+            {
+                float dx=Mathf.Max(Mathf.Abs(x+0.5f-half)-(half-r),0f);
+                float dy=Mathf.Max(Mathf.Abs(y+0.5f-half)-(half-r),0f);
+                float dist=Mathf.Sqrt(dx*dx+dy*dy);
+                float a=Mathf.Clamp01((r-dist)/1.5f);
+                px[y*s+x]=new Color32(255,255,255,(byte)(a*255));
+            }
+            tex.SetPixels32(px); tex.Apply();
+            _round=Sprite.Create(tex,new Rect(0,0,s,s),new Vector2(0.5f,0.5f),s);
+            return _round;
         }
 
         private void EnsureStyles()
         {
-            if (_big != null) return;
-            _big = new GUIStyle(GUI.skin.label){ fontSize=30, fontStyle=FontStyle.Bold, alignment=TextAnchor.UpperCenter };
-            _mid = new GUIStyle(GUI.skin.label){ fontSize=19, alignment=TextAnchor.MiddleCenter };
-            _small = new GUIStyle(GUI.skin.label){ fontSize=16, alignment=TextAnchor.UpperCenter };
-            _big.normal.textColor = _mid.normal.textColor = _small.normal.textColor = Color.white;
+            if(_big!=null) return;
+            _big=new GUIStyle(GUI.skin.label){fontSize=28,fontStyle=FontStyle.Bold,alignment=TextAnchor.UpperCenter};
+            _mid=new GUIStyle(GUI.skin.label){fontSize=18,alignment=TextAnchor.MiddleCenter};
+            _big.normal.textColor=_mid.normal.textColor=Color.white;
         }
     }
 }
