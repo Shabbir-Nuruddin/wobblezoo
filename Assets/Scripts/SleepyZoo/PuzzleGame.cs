@@ -6,17 +6,24 @@ using ChonkyMerge; // AnimalSprites, Sfx, SpriteFactory
 namespace SleepyZoo
 {
     /// <summary>
-    /// Animals-as-mechanic puzzle. Swipe an animal; it moves by ITS rule —
-    /// cat/fox/deer step, hamster/hedgehog/duck roll, bunny/owl hop, corgi/puppy
-    /// push, capybara/panda are pushable sleepy blocks. Get every animal onto its
-    /// bed. Turn-based grid, deterministic, full undo, move-par + stars.
+    /// Animals-as-mechanic puzzle. Every friend has ONE distinct ability, so the
+    /// roster never feels repetitive:
+    ///   Kitten  — STEP: one tile per swipe.
+    ///   Hamster — ROLL: slides until a wall/edge/friend stops it.
+    ///   Bunny   — HOP : leaps exactly two tiles, right over whatever's between.
+    ///   Corgi   — PUSH: steps and shoves the friend directly ahead.
+    ///   Owl     — FLY : glides straight over fences, stops at the edge or a friend.
+    ///   Capybara— SLEEP: never moves itself; only slides when pushed.
+    /// Get every animal onto its bed. Turn-based grid, deterministic, full undo,
+    /// move-par + stars.
     ///
     /// Every level here is BFS-verified solvable and its par = the true optimal
-    /// move count, so 3 stars is always achievable.
+    /// move count (computed by tools/solver), so 3 stars is always achievable.
+    /// The abilities are introduced one at a time, then gently combined.
     /// </summary>
     public class PuzzleGame : MonoBehaviour
     {
-        private enum Move { Step, Roll, Hop, Push, Block }
+        private enum Move { Step, Roll, Hop, Push, Fly, Sleep }
         private struct EntDef { public int tier; public Move move; public int x, y, bx, by;
             public EntDef(int t, Move m, int x, int y, int bx, int by){tier=t;move=m;this.x=x;this.y=y;this.bx=bx;this.by=by;} }
         private class Lv { public int w, h, par; public string hint; public Vector2Int[] walls; public EntDef[] ents;
@@ -25,56 +32,66 @@ namespace SleepyZoo
         private static Vector2Int W2(int x,int y)=>new Vector2Int(x,y);
         // tiers: 0 hamster,1 bunny,2 cat,3 puppy,4 persian,5 corgi,6 samoyed,7 capybara,
         //        8 fox,9 panda,10 hedgehog,11 owl,12 deer,13 duck
+        // Each animal is bound to ONE ability so its behaviour is always predictable.
         private static readonly Lv[] Levels =
         {
-            new Lv(4,4,6,"Swipe the kitten — it steps one tile per swipe.",
-                new[]{ W2(1,0),W2(1,1),W2(1,2) },
+            // ---- Chapter 1: meet each friend, one ability at a time ----
+            new Lv(4,4,6,"Swipe the kitten — she steps one tile at a time.",
+                new[]{ W2(1,1),W2(1,2),W2(2,1) },
                 new[]{ new EntDef(2,Move.Step, 0,0, 3,3) }),
-            new Lv(5,4,7,"Fox steps one tile at a time. Weave around the wall.",
+            new Lv(5,4,4,"Steady steps. Walk the kitten around the fence to her basket.",
                 new[]{ W2(2,1),W2(2,2),W2(2,3) },
-                new[]{ new EntDef(8,Move.Step, 0,0, 4,3) }),
-            new Lv(5,5,2,"Hamster rolls until it bumps a wall or edge. Line it up with the bed.",
+                new[]{ new EntDef(2,Move.Step, 0,0, 4,0) }),
+            new Lv(5,5,2,"The hamster ROLLS until something stops it. Line him up, then let go.",
                 new[]{ W2(3,0),W2(2,3) },
                 new[]{ new EntDef(0,Move.Roll, 0,0, 2,2) }),
-            new Lv(5,5,2,"Roll into a wall to stop exactly where you want.",
-                new[]{ W2(4,2) },
-                new[]{ new EntDef(10,Move.Roll, 0,0, 4,4) }),
-            new Lv(5,5,2,"Bunny hops OVER the next tile and lands two away.",
-                new[]{ W2(1,0),W2(2,1) },
-                new[]{ new EntDef(1,Move.Hop, 0,0, 2,2) }),
-            new Lv(5,5,4,"Owl hops two tiles per swipe — mind the corners.",
-                new Vector2Int[0],
-                new[]{ new EntDef(11,Move.Hop, 0,0, 4,4) }),
-            new Lv(5,5,2,"Corgi pushes! Swipe it into the capybara to nudge it along.",
-                new Vector2Int[0],
-                new[]{ new EntDef(5,Move.Push, 0,0, 2,0), new EntDef(7,Move.Block, 1,0, 3,0) }),
-            new Lv(5,5,5,"Two sleepyheads. Each moves its own way — tuck in both.",
-                new Vector2Int[0],
-                new[]{ new EntDef(0,Move.Roll, 0,0, 2,0), new EntDef(2,Move.Step, 3,4, 3,0) }),
-            new Lv(5,5,6,"Fox steps, owl hops. Give each a clear path to bed.",
+            new Lv(5,5,3,"Roll into a wall to park exactly where you want.",
+                new[]{ W2(4,2),W2(0,4) },
+                new[]{ new EntDef(0,Move.Roll, 0,0, 4,4) }),
+            new Lv(5,5,4,"The bunny HOPS two tiles — she can even leap right over a fence.",
                 new[]{ W2(2,2) },
-                new[]{ new EntDef(8,Move.Step, 0,0, 0,4), new EntDef(11,Move.Hop, 4,0, 4,4) }),
-            new Lv(6,5,2,"Roll around the block — end against the far wall.",
-                new[]{ W2(5,2) },
-                new[]{ new EntDef(13,Move.Roll, 0,0, 5,4) }),
-            new Lv(5,5,10,"Steady deer steps; the duck rolls far. Don't block each other.",
+                new[]{ new EntDef(1,Move.Hop, 0,0, 4,4) }),
+            new Lv(5,5,2,"Hop over the hedge. She always jumps two tiles.",
+                new[]{ W2(2,0),W2(2,1),W2(2,3),W2(2,4) },
+                new[]{ new EntDef(1,Move.Hop, 0,2, 4,2) }),
+            new Lv(5,5,3,"The corgi PUSHES. Nudge the sleepy capybara along to its bed.",
                 new Vector2Int[0],
-                new[]{ new EntDef(12,Move.Step, 0,0, 4,4), new EntDef(13,Move.Roll, 4,0, 0,4) }),
-            new Lv(5,5,2,"Push the panda gently into its spot.",
+                new[]{ new EntDef(5,Move.Push, 0,0, 3,0), new EntDef(7,Move.Sleep, 2,0, 4,0) }),
+            new Lv(5,5,2,"The owl FLIES straight across — right over any fence — to the far side.",
                 new Vector2Int[0],
-                new[]{ new EntDef(3,Move.Push, 0,2, 2,2), new EntDef(9,Move.Block, 1,2, 3,2) }),
-            new Lv(5,5,9,"Three friends, three rules. Solve them one at a time.",
+                new[]{ new EntDef(11,Move.Fly, 0,0, 4,4) }),
+            // ---- Chapter 2: two friends, take turns ----
+            new Lv(5,5,5,"Kitten steps, hamster rolls. Give each a clear lane.",
                 new[]{ W2(2,2) },
-                new[]{ new EntDef(0,Move.Roll, 0,0, 0,4), new EntDef(2,Move.Step, 2,0, 2,4), new EntDef(1,Move.Hop, 4,0, 4,4) }),
-            new Lv(6,6,6,"Rollers need a wall to stop. Steppers go anywhere.",
+                new[]{ new EntDef(2,Move.Step, 0,0, 0,4), new EntDef(0,Move.Roll, 4,0, 4,4) }),
+            new Lv(5,5,6,"One hops, one steps. Solve them one at a time.",
+                new[]{ W2(2,2) },
+                new[]{ new EntDef(1,Move.Hop, 0,0, 4,0), new EntDef(2,Move.Step, 0,4, 4,4) }),
+            new Lv(5,5,3,"Push the capybara home first, then send the owl flying.",
+                new Vector2Int[0],
+                new[]{ new EntDef(5,Move.Push, 0,0, 2,0), new EntDef(7,Move.Sleep, 1,0, 3,0), new EntDef(11,Move.Fly, 0,4, 4,4) }),
+            new Lv(6,5,3,"Rollers need a wall to stop; hoppers leap the gaps.",
+                new[]{ W2(2,2),W2(3,2) },
+                new[]{ new EntDef(0,Move.Roll, 0,0, 5,0), new EntDef(1,Move.Hop, 1,4, 5,4) }),
+            new Lv(5,5,5,"The owl ignores fences; the kitten must walk around them.",
+                new[]{ W2(1,2),W2(3,2) },
+                new[]{ new EntDef(11,Move.Fly, 0,0, 4,0), new EntDef(2,Move.Step, 2,4, 2,0) }),
+            // ---- Chapter 3: three friends, a cozy tangle ----
+            new Lv(5,5,8,"Three friends, three rules. Untangle them one by one.",
+                new[]{ W2(2,2) },
+                new[]{ new EntDef(0,Move.Roll, 0,0, 0,4), new EntDef(2,Move.Step, 2,0, 4,4), new EntDef(1,Move.Hop, 4,0, 4,2) }),
+            new Lv(6,6,9,"Roll, fly, and step. Plan the order before you start.",
                 new[]{ W2(2,2),W2(3,3) },
-                new[]{ new EntDef(10,Move.Roll, 0,0, 5,0), new EntDef(8,Move.Step, 0,5, 5,5) }),
-            new Lv(5,5,6,"Push the capybara, then send the owl hopping home.",
+                new[]{ new EntDef(0,Move.Roll, 0,0, 5,0), new EntDef(11,Move.Fly, 0,5, 5,5), new EntDef(2,Move.Step, 5,3, 0,3) }),
+            new Lv(6,5,7,"A full den. Push, hop, and step everyone into bed.",
                 new Vector2Int[0],
-                new[]{ new EntDef(5,Move.Push, 0,0, 2,0), new EntDef(7,Move.Block, 1,0, 4,0), new EntDef(11,Move.Hop, 0,4, 4,4) }),
-            new Lv(6,6,12,"A cozy maze. Patience — one tile at a time.",
-                new[]{ W2(1,1),W2(4,1),W2(1,4),W2(4,4) },
-                new[]{ new EntDef(2,Move.Step, 0,0, 5,5), new EntDef(0,Move.Roll, 5,0, 0,5) }),
+                new[]{ new EntDef(5,Move.Push, 0,0, 2,0), new EntDef(7,Move.Sleep, 1,0, 3,0), new EntDef(1,Move.Hop, 0,4, 4,4), new EntDef(2,Move.Step, 0,2, 3,2) }),
+            new Lv(5,5,10,"A gentle maze. Patience — a cozy ending is worth it.",
+                new[]{ W2(1,1),W2(3,3) },
+                new[]{ new EntDef(2,Move.Step, 0,0, 4,4), new EntDef(0,Move.Roll, 4,0, 0,4) }),
+            new Lv(6,6,7,"The last stretch. Fly, roll, and hop — good night, everyone.",
+                new[]{ W2(2,3),W2(3,2) },
+                new[]{ new EntDef(11,Move.Fly, 0,0, 5,5), new EntDef(0,Move.Roll, 5,0, 0,0), new EntDef(1,Move.Hop, 1,5, 5,1) }),
         };
 
         // Cozy backgrounds, rotated per 3-level pack so it never feels repetitive.
@@ -105,6 +122,9 @@ namespace SleepyZoo
         private GUIStyle _title, _hud, _sub, _btn, _btnMenu, _win, _hintText, _panelBody, _panelSub;
         private Texture2D _btnTex, _btnTexDown, _panelTex, _starTex, _dimTex;
         private int _btnBorder;   // 9-slice inset; 0 = stretch the real pill art
+
+        /// Number of levels — used by the menu's level picker.
+        public static int LevelCount => Levels.Length;
 
         private void Start(){ SetupCamera(); LoadLevel(PlayerPrefs.GetInt("zoo_level",0)); }
 
@@ -156,8 +176,21 @@ namespace SleepyZoo
             _bgTf=go.transform;
         }
 
+        // Warm, cozy palette so the board sits happily on the night background
+        // instead of clashing with a cold lilac. Tiles read as soft honey cushions.
+        private static readonly Color WarmTile = new Color(1f,0.90f,0.74f);   // honey-cream cushion
+        private static readonly Color WarmWall = new Color(0.86f,0.72f,0.55f);// toasty fence cushion
+
         private void BuildBoard()
         {
+            // soft rounded backing so the grid feels grounded and unified on any scene
+            var back=new GameObject("BoardBack"); back.transform.SetParent(transform);
+            back.transform.position=new Vector3(0,0,0.06f);
+            var bsr=back.AddComponent<SpriteRenderer>(); bsr.sprite=RoundedTile();
+            bsr.color=new Color(0.18f,0.14f,0.22f,0.55f); bsr.sortingOrder=-6;
+            float pad=0.7f, bw=RoundedTile().bounds.size.x;
+            back.transform.localScale=new Vector3((_lv.w+pad)/bw,(_lv.h+pad)/bw,1f);
+
             Sprite cellSprite=_sCell!=null?_sCell:RoundedTile();
             for (int y=0;y<_lv.h;y++)
             for (int x=0;x<_lv.w;x++)
@@ -167,13 +200,13 @@ namespace SleepyZoo
                 if (wall && _sWall!=null)
                 {
                     // cozy cushion under, cute wooden block on top
-                    Tile(CellToWorld(cell),0,new Color(0.30f,0.26f,0.40f),cellSprite,0.98f);
+                    Tile(CellToWorld(cell),0,WarmWall,cellSprite,0.98f);
                     Tile(CellToWorld(cell)+new Vector3(0,0.04f,-0.1f),4,Color.white,_sWall,0.94f);
                 }
                 else
                 {
                     Color col=_sCell!=null
-                        ? (wall?new Color(0.42f,0.38f,0.50f):Color.white)
+                        ? (wall?WarmWall:WarmTile)
                         : (wall?new Color(0.14f,0.12f,0.22f):new Color(0.34f,0.31f,0.48f));
                     Tile(CellToWorld(cell),0,col,cellSprite,0.98f);
                 }
@@ -249,7 +282,7 @@ namespace SleepyZoo
                 if (PointerOverUI(Input.mousePosition)) return;
                 _swipeStart=Input.mousePosition;
                 _swipeEnt=-1;
-                if (WorldToCell(_cam.ScreenToWorldPoint(Input.mousePosition),out var c) && _occ.TryGetValue(c,out int e) && _move[e]!=Move.Block)
+                if (WorldToCell(_cam.ScreenToWorldPoint(Input.mousePosition),out var c) && _occ.TryGetValue(c,out int e) && _move[e]!=Move.Sleep)
                     _swipeEnt=e;
             }
             else if (Input.GetMouseButtonUp(0))
@@ -279,6 +312,8 @@ namespace SleepyZoo
 
         private static Vector2Int Dir(Vector2 d)=>Mathf.Abs(d.x)>Mathf.Abs(d.y)?(d.x>0?Vector2Int.right:Vector2Int.left):(d.y>0?Vector2Int.up:Vector2Int.down);
         private bool Free(Vector2Int c)=>c.x>=0&&c.x<_lv.w&&c.y>=0&&c.y<_lv.h&&!_walls.Contains(c)&&!_occ.ContainsKey(c);
+        // Fly ignores fences entirely: only the board edge or another friend stops the owl.
+        private bool FlyOpen(Vector2Int c)=>c.x>=0&&c.x<_lv.w&&c.y>=0&&c.y<_lv.h&&!_occ.ContainsKey(c);
 
         private void DoMove(int i, Vector2Int dir)
         {
@@ -287,6 +322,7 @@ namespace SleepyZoo
             {
                 case Move.Step: { var n=from+dir; if(Free(n)) to=n; break; }
                 case Move.Roll: { var cur=from; while(Free(cur+dir)) cur+=dir; to=cur; break; }
+                case Move.Fly:  { var cur=from; while(FlyOpen(cur+dir)) cur+=dir; to=cur; break; }
                 case Move.Hop:  { var land=from+dir*2; if(Free(land)) to=land; break; }
                 case Move.Push:
                 {
@@ -352,7 +388,7 @@ namespace SleepyZoo
                 if(CozyButton(rMenu,"Menu",_btnMenu)){ Sfx.Click(); SceneManager.LoadScene("MainMenu"); }
 
                 // bottom row: Undo | Reset (big, lively)
-                float bw=Mathf.Min(210, (Screen.width-60)/2f), bh=86, gap=20;
+                float bw=Mathf.Min(280, (Screen.width-56)/2f), bh=118, gap=22;
                 float by=Screen.height-bot-bh;
                 var rUndo=new Rect(cx-bw-gap/2, by, bw, bh); _uiRects.Add(rUndo);
                 var rReset=new Rect(cx+gap/2, by, bw, bh); _uiRects.Add(rReset);
@@ -405,8 +441,8 @@ namespace SleepyZoo
             GUI.Label(new Rect(box.x,box.y+h*0.60f,w,26), $"3★ ≤ {_lv.par}      2★ ≤ {_lv.par+2}", _panelSub);
 
             bool last=_levelIndex>=Levels.Length-1;
-            float bw=Mathf.Min(300,w*0.62f), bh=84;
-            var rNext=new Rect(cx-bw/2, box.yMax-bh-24, bw, bh); _uiRects.Add(rNext);
+            float bw=Mathf.Min(360,w*0.74f), bh=110;
+            var rNext=new Rect(cx-bw/2, box.yMax-bh-20, bw, bh); _uiRects.Add(rNext);
             if(CozyButton(rNext, last?"Play again":"Next level",_btn))
             { Sfx.Click(); LoadLevel(last?0:_levelIndex+1); }
             var rMenu=new Rect(box.x+18, box.y+14, 116, 56); _uiRects.Add(rMenu);
@@ -527,8 +563,8 @@ namespace SleepyZoo
             _panelTex=Resources.Load<Texture2D>("Art/ui_panel");
             _starTex=Resources.Load<Texture2D>("Art/star_full");
 
-            _btn=CozyStyle(30);
-            _btnMenu=CozyStyle(23);
+            _btn=CozyStyle(36);
+            _btnMenu=CozyStyle(24);
         }
 
         private GUIStyle CozyStyle(int fontSize)

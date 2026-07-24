@@ -12,13 +12,15 @@ namespace ChonkyMerge
     {
         private Camera _cam;
         private float H, W, ContentW;
-        private enum Panel { None, HighScore, Settings }
+        private enum Panel { None, HighScore, Settings, Levels }
         private Panel _panel = Panel.None;
 
         private SpriteRenderer _soundIcon;
         private readonly System.Collections.Generic.List<Transform> _floaters = new();
         private readonly System.Collections.Generic.List<Vector3> _floaterBase = new();
-        private GUIStyle _title, _big, _mid, _btn;
+        private GUIStyle _title, _big, _mid, _btn, _cellNum, _pill;
+        private Texture2D _pillTex, _starTex, _dimTex, _cardTex;
+        private Vector2 _levelScroll;
 
         private void Start()
         {
@@ -214,6 +216,17 @@ namespace ChonkyMerge
             // Best-score pill, always visible under the logo.
             GUI.Label(new Rect(0, Screen.height * 0.30f, Screen.width, 40), $"Best  {Best()}", _mid);
 
+            // "Levels" button (top-left), so the player can revisit any level and see stars.
+            if (_panel == Panel.None)
+            {
+                var sa = Screen.safeArea;
+                float top = Screen.height - (sa.y + sa.height) + 16f;
+                var rLv = new Rect(sa.x + 16, top, 168, 66);
+                if (GUI.Button(rLv, "Levels", _pill)) { Sfx.Click(); _panel = Panel.Levels; }
+            }
+
+            if (_panel == Panel.Levels) { DrawLevelsPanel(); return; }
+
             if (_panel == Panel.None) return;
 
             // dim
@@ -250,6 +263,76 @@ namespace ChonkyMerge
             { Sfx.Click(); _panel = Panel.None; }
         }
 
+        // ---- level picker ----
+        private static int StarsFor(int i) => PlayerPrefs.GetInt("zoo_stars_" + i, 0);
+        private static bool Unlocked(int i) => i == 0 || StarsFor(i - 1) > 0;
+
+        private void DrawLevelsPanel()
+        {
+            GUI.color = new Color(0, 0, 0, 0.62f);
+            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), _dimTex);
+            GUI.color = Color.white;
+
+            float w = Mathf.Min(Screen.width * 0.94f, 760);
+            float h = Mathf.Min(Screen.height * 0.82f, 1180);
+            var box = new Rect((Screen.width - w) / 2, (Screen.height - h) / 2, w, h);
+            GUI.Box(box, GUIContent.none);
+
+            GUI.Label(new Rect(box.x, box.y + 22, box.width, 52), "Choose a level", _big);
+            if (GUI.Button(new Rect(box.xMax - 66, box.y + 14, 50, 50), "X", _pill))
+            { Sfx.Click(); _panel = Panel.None; }
+
+            int count = SleepyZoo.PuzzleGame.LevelCount;
+            int cols = 4;
+            float pad = 24f, gap = 16f;
+            float innerW = w - pad * 2;
+            float cell = (innerW - gap * (cols - 1)) / cols;
+            int rows = Mathf.CeilToInt(count / (float)cols);
+            float rowH = cell + 30f;
+
+            var view = new Rect(box.x + pad, box.y + 92, innerW, h - 120);
+            var content = new Rect(0, 0, innerW - 16, rows * rowH);
+            _levelScroll = GUI.BeginScrollView(view, _levelScroll, content);
+            for (int i = 0; i < count; i++)
+            {
+                int r = i / cols, c = i % cols;
+                var cr = new Rect(c * (cell + gap), r * rowH, cell, cell);
+                bool open = Unlocked(i);
+                int stars = StarsFor(i);
+
+                // card
+                GUI.color = open ? Color.white : new Color(0.6f, 0.6f, 0.62f, 0.5f);
+                if (_cardTex != null) GUI.DrawTexture(cr, _cardTex);
+                else GUI.Box(cr, GUIContent.none);
+                GUI.color = Color.white;
+
+                // number (locked levels are dimmed, not tappable)
+                GUI.Label(new Rect(cr.x, cr.y + cell * 0.12f, cr.width, cell * 0.5f),
+                          (i + 1).ToString(), _cellNum);
+
+                // three star pips
+                if (open)
+                {
+                    float ss = cell * 0.26f, sgap = ss * 0.14f, tot = 3 * ss + 2 * sgap;
+                    float sy = cr.yMax - ss - cell * 0.10f, sx = cr.x + (cell - tot) / 2f;
+                    for (int s = 0; s < 3; s++)
+                    {
+                        GUI.color = s < stars ? Color.white : new Color(0.35f, 0.30f, 0.34f, 0.5f);
+                        if (_starTex != null) GUI.DrawTexture(new Rect(sx + s * (ss + sgap), sy, ss, ss), _starTex);
+                    }
+                    GUI.color = Color.white;
+
+                    if (GUI.Button(cr, GUIContent.none, GUIStyle.none))
+                    {
+                        Sfx.Click();
+                        PlayerPrefs.SetInt("zoo_level", i); PlayerPrefs.Save();
+                        SceneManager.LoadScene("Puzzle");
+                    }
+                }
+            }
+            GUI.EndScrollView();
+        }
+
         private void EnsureStyles()
         {
             if (_title != null) return;
@@ -257,10 +340,23 @@ namespace ChonkyMerge
             _big = new GUIStyle(GUI.skin.label) { fontSize = 34, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             _mid = new GUIStyle(GUI.skin.label) { fontSize = 26, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             _btn = new GUIStyle(GUI.skin.button) { fontSize = 24, fontStyle = FontStyle.Bold };
+            _cellNum = new GUIStyle(GUI.skin.label) { fontSize = 40, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             _title.normal.textColor = _big.normal.textColor = _mid.normal.textColor = Color.white;
 
+            // Cozy pill button reused for the "Levels" tab and close/X.
+            _pillTex = Resources.Load<Texture2D>("Art/ui_button");
+            _pill = new GUIStyle(GUI.skin.button) { fontSize = 26, fontStyle = FontStyle.Bold, border = new RectOffset(0, 0, 0, 0), padding = new RectOffset(6, 6, 4, 8) };
+            var brown = new Color(0.36f, 0.21f, 0.10f);
+            _pill.normal.textColor = _pill.hover.textColor = _pill.active.textColor = brown;
+            if (_pillTex != null) { _pill.normal.background = _pill.hover.background = _pill.active.background = _pillTex; }
+            _cellNum.normal.textColor = brown;
+
+            _starTex = Resources.Load<Texture2D>("Art/star_full");
+            _cardTex = Resources.Load<Texture2D>("Art/tile_bed");   // warm cream card, matches the puzzle
+            _dimTex = Texture2D.whiteTexture;
+
             var font = Resources.Load<Font>("Fonts/Fredoka");   // cozy rounded font, consistent with the puzzle
-            if (font != null) foreach (var st in new[] { _title, _big, _mid, _btn }) st.font = font;
+            if (font != null) foreach (var st in new[] { _title, _big, _mid, _btn, _pill, _cellNum }) st.font = font;
         }
     }
 }
