@@ -498,9 +498,11 @@ namespace SleepyZoo
             return tex;
         }
 
+        private Font _font;
         private void EnsureStyles()
         {
             if(_title!=null) return;
+            _font=Resources.Load<Font>("Fonts/Fredoka");   // cozy rounded font (falls back to default if missing)
             var brown=new Color(0.38f,0.23f,0.12f);
             _title=new GUIStyle(GUI.skin.label){fontSize=34,fontStyle=FontStyle.Bold,alignment=TextAnchor.UpperCenter};
             _hud=new GUIStyle(GUI.skin.label){fontSize=24,fontStyle=FontStyle.Bold,alignment=TextAnchor.MiddleCenter};
@@ -514,6 +516,7 @@ namespace SleepyZoo
             _win.normal.textColor=_hintText.normal.textColor=brown;
             _panelBody.normal.textColor=brown;
             _panelSub.normal.textColor=new Color(0.45f,0.30f,0.18f);
+            if(_font!=null) foreach(var st in new[]{_title,_hud,_sub,_win,_hintText,_panelBody,_panelSub}) st.font=_font;
 
             // Prefer the real cozy pill art; fall back to the procedural button.
             var pill=Resources.Load<Texture2D>("Art/ui_button");
@@ -537,6 +540,7 @@ namespace SleepyZoo
             var brown=new Color(0.36f,0.21f,0.10f);
             s.normal.textColor=s.hover.textColor=s.active.textColor=brown;
             s.normal.background=_btnTex; s.hover.background=_btnTex; s.active.background=_btnTexDown;
+            if(_font!=null) s.font=_font;
             return s;
         }
     }

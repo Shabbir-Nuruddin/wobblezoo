@@ -258,6 +258,9 @@ namespace ChonkyMerge
             _mid = new GUIStyle(GUI.skin.label) { fontSize = 26, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             _btn = new GUIStyle(GUI.skin.button) { fontSize = 24, fontStyle = FontStyle.Bold };
             _title.normal.textColor = _big.normal.textColor = _mid.normal.textColor = Color.white;
+
+            var font = Resources.Load<Font>("Fonts/Fredoka");   // cozy rounded font, consistent with the puzzle
+            if (font != null) foreach (var st in new[] { _title, _big, _mid, _btn }) st.font = font;
         }
     }
 }
