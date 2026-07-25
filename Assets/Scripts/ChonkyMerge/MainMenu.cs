@@ -18,9 +18,10 @@ namespace ChonkyMerge
         private SpriteRenderer _soundIcon;
         private readonly System.Collections.Generic.List<Transform> _floaters = new();
         private readonly System.Collections.Generic.List<Vector3> _floaterBase = new();
-        private GUIStyle _title, _big, _mid, _btn, _cellNum, _pill;
+        private GUIStyle _title, _big, _mid, _btn, _cellNum, _pill, _bigPill;
         private Texture2D _pillTex, _starTex, _dimTex, _cardTex;
         private Vector2 _levelScroll;
+        private float _levelsCenterY, _levelsW, _levelsH;   // world footprint of the big Levels button
 
         private void Start()
         {
@@ -110,7 +111,19 @@ namespace ChonkyMerge
         {
             float y = H * 0.06f;
             y = AddButton("btn_play", ButtonId.Play, y, ContentW * 0.86f) - 0.35f;
-            y = AddButton("btn_score", ButtonId.HighScore, y, ContentW * 0.74f) - 0.30f;
+
+            // Middle slot is now a big "Levels" button. It's drawn in OnGUI (so it can
+            // carry a text label) — here we just reserve its world footprint to match
+            // the other pills. This replaces the old vestigial "High Score" button
+            // (which showed the dead merge-game score) and the tiny top-left tab.
+            float lvW = ContentW * 0.74f;
+            var probe = Resources.Load<Sprite>("Art/btn_score");
+            float sc = lvW / probe.bounds.size.x;
+            _levelsH = probe.bounds.size.y * sc;
+            _levelsW = lvW;
+            _levelsCenterY = y - _levelsH * 0.5f;
+            y = _levelsCenterY - _levelsH * 0.5f - 0.30f;
+
             AddButton("btn_settings", ButtonId.Settings, y, ContentW * 0.74f);
         }
 
@@ -215,16 +228,15 @@ namespace ChonkyMerge
         {
             EnsureStyles();
 
-            // Best-score pill, always visible under the logo.
-            GUI.Label(new Rect(0, Screen.height * 0.30f, Screen.width, 40), $"Best  {Best()}", _mid);
-
-            // "Levels" button (top-left), so the player can revisit any level and see stars.
-            if (_panel == Panel.None)
+            // Big "Levels" button, sitting in the middle slot of the button stack.
+            // Its world footprint was reserved in BuildButtons; convert to screen space
+            // so it lines up perfectly with the Play/Settings pills.
+            if (_panel == Panel.None && _levelsW > 0f)
             {
-                var sa = Screen.safeArea;
-                float top = Screen.height - (sa.y + sa.height) + 16f;
-                var rLv = new Rect(sa.x + 16, top, 168, 66);
-                if (GUI.Button(rLv, "Levels", _pill)) { Sfx.Click(); _panel = Panel.Levels; }
+                Vector3 tl = _cam.WorldToScreenPoint(new Vector3(-_levelsW * 0.5f, _levelsCenterY + _levelsH * 0.5f, 0));
+                Vector3 br = _cam.WorldToScreenPoint(new Vector3(_levelsW * 0.5f, _levelsCenterY - _levelsH * 0.5f, 0));
+                var rLv = new Rect(tl.x, Screen.height - tl.y, br.x - tl.x, (Screen.height - br.y) - (Screen.height - tl.y));
+                if (GUI.Button(rLv, "Levels", _bigPill)) { Sfx.Click(); _panel = Panel.Levels; }
             }
 
             if (_panel == Panel.Levels) { DrawLevelsPanel(); return; }
@@ -351,6 +363,11 @@ namespace ChonkyMerge
             var brown = new Color(0.36f, 0.21f, 0.10f);
             _pill.normal.textColor = _pill.hover.textColor = _pill.active.textColor = brown;
             if (_pillTex != null) { _pill.normal.background = _pill.hover.background = _pill.active.background = _pillTex; }
+
+            // Big cozy pill for the main-stack "Levels" button.
+            _bigPill = new GUIStyle(GUI.skin.button) { fontSize = 46, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, border = new RectOffset(0, 0, 0, 0), padding = new RectOffset(8, 8, 6, 12) };
+            _bigPill.normal.textColor = _bigPill.hover.textColor = _bigPill.active.textColor = brown;
+            if (_pillTex != null) { _bigPill.normal.background = _bigPill.hover.background = _bigPill.active.background = _pillTex; }
             _cellNum.normal.textColor = brown;
 
             _starTex = Resources.Load<Texture2D>("Art/star_full");
@@ -358,7 +375,7 @@ namespace ChonkyMerge
             _dimTex = Texture2D.whiteTexture;
 
             var font = Resources.Load<Font>("Fonts/Fredoka");   // cozy rounded font, consistent with the puzzle
-            if (font != null) foreach (var st in new[] { _title, _big, _mid, _btn, _pill, _cellNum }) st.font = font;
+            if (font != null) foreach (var st in new[] { _title, _big, _mid, _btn, _pill, _bigPill, _cellNum }) st.font = font;
         }
     }
 }

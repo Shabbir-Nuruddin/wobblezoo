@@ -35,42 +35,54 @@ namespace SleepyZoo
         // ---- BFS-verified level ramp (par = true optimal move count) ----
         private static readonly Lv[] Levels =
         {
-            new Lv(4,4,2,"Swipe any direction - every animal slides until it hits something.",
+            new Lv(4,4,2,"Swipe and your animal slides all the way to the wall.",
+                new Vector2Int[0],
+                new[]{ new EntDef(2,1, 3,3) }),
+            new Lv(4,4,3,"A toy block stops the slide. Use it to park where you want.",
                 new[]{ W2(0,3) },
-                new[]{ new EntDef(0,2, 3,0) }),
-            new Lv(4,4,6,"Walls stop a slide. Use them to park exactly where you need.",
-                new[]{ W2(1,2),W2(1,3),W2(2,1) },
-                new[]{ new EntDef(0,1, 3,2) }),
-            new Lv(4,4,5,"Both animals move on every swipe. Line them up together.",
-                new[]{ W2(1,0),W2(3,2) },
-                new[]{ new EntDef(3,1, 1,1), new EntDef(0,3, 0,0) }),
-            new Lv(5,5,9,"Sometimes you must send one the wrong way to free the other.",
-                new[]{ W2(0,1),W2(0,4),W2(1,3) },
-                new[]{ new EntDef(1,1, 4,2), new EntDef(0,2, 4,0) }),
-            new Lv(5,5,10,"Bump an animal into a wall to hold it while you place the next.",
-                new[]{ W2(0,2),W2(0,3),W2(3,1),W2(4,4) },
-                new[]{ new EntDef(1,3, 0,0), new EntDef(1,2, 0,1) }),
-            new Lv(5,5,9,"Three sleepy friends. Think about the order before you swipe.",
-                new[]{ W2(1,0),W2(2,0),W2(2,3) },
-                new[]{ new EntDef(3,0, 4,3), new EntDef(0,3, 0,4), new EntDef(0,0, 4,4) }),
-            new Lv(5,5,11,"One animal can act as a wall for another. Use each other.",
-                new[]{ W2(0,3),W2(2,1),W2(3,0),W2(4,1) },
-                new[]{ new EntDef(1,2, 1,3), new EntDef(4,2, 0,0), new EntDef(3,2, 0,4) }),
-            new Lv(6,6,12,"More room, more skidding. Plan two moves ahead.",
-                new[]{ W2(0,1),W2(3,0),W2(4,0),W2(5,2) },
-                new[]{ new EntDef(1,1, 5,0), new EntDef(1,4, 0,0), new EntDef(2,3, 1,0) }),
-            new Lv(6,6,15,"Tight corners. The first swipe usually sets up the last.",
-                new[]{ W2(0,1),W2(2,0),W2(2,3),W2(3,4),W2(4,1) },
-                new[]{ new EntDef(4,4, 2,4), new EntDef(3,2, 5,0), new EntDef(2,2, 5,2) }),
-            new Lv(6,6,17,"A full den. Group them, then peel them off one by one.",
-                new[]{ W2(2,1),W2(2,2),W2(3,3),W2(4,5) },
-                new[]{ new EntDef(5,5, 3,1), new EntDef(1,3, 1,0), new EntDef(3,0, 0,0), new EntDef(3,2, 0,4) }),
-            new Lv(6,6,17,"Almost bedtime. Every swipe matters now.",
-                new[]{ W2(0,1),W2(2,1),W2(3,0),W2(3,3),W2(5,3) },
-                new[]{ new EntDef(3,2, 5,1), new EntDef(3,1, 5,4), new EntDef(4,5, 5,2), new EntDef(3,5, 5,0) }),
-            new Lv(6,6,14,"Last one. Tuck the whole zoo in - good night.",
-                new[]{ W2(0,2),W2(2,0),W2(3,4),W2(4,1),W2(5,3),W2(5,4) },
-                new[]{ new EntDef(2,2, 1,0), new EntDef(0,4, 4,3), new EntDef(4,4, 3,1), new EntDef(1,1, 2,1) }),
+                new[]{ new EntDef(0,1, 1,3) }),
+            new Lv(4,4,4,"Two blocks make a pocket. Slide in from the right side.",
+                new[]{ W2(1,0),W2(2,2) },
+                new[]{ new EntDef(3,3, 3,1) }),
+            new Lv(4,4,5,"Two friends move on every swipe. Solve them together.",
+                new[]{ W2(2,1) },
+                new[]{ new EntDef(3,2, 0,2), new EntDef(0,0, 0,3) }),
+            new Lv(4,4,6,"Line both up, then send them home in one direction.",
+                new[]{ W2(0,3),W2(1,3) },
+                new[]{ new EntDef(2,0, 3,2), new EntDef(0,0, 3,1) }),
+            new Lv(5,5,5,"More room now. A wrong-way swipe often sets up the right one.",
+                new[]{ W2(1,1),W2(1,4) },
+                new[]{ new EntDef(4,1, 3,0), new EntDef(0,3, 2,0) }),
+            new Lv(5,5,7,"Bump one into a block to hold it while you place the other.",
+                new[]{ W2(2,3),W2(3,0),W2(4,1) },
+                new[]{ new EntDef(2,4, 4,3), new EntDef(0,2, 4,4) }),
+            new Lv(5,5,9,"Think one move ahead before you swipe.",
+                new[]{ W2(1,1),W2(3,3),W2(4,3) },
+                new[]{ new EntDef(2,4, 2,0), new EntDef(2,3, 4,4) }),
+            new Lv(5,5,8,"Three friends. Handle the trickiest one first.",
+                new[]{ W2(2,0),W2(4,1) },
+                new[]{ new EntDef(3,1, 3,4), new EntDef(2,1, 1,4), new EntDef(3,3, 4,0) }),
+            new Lv(5,5,10,"Use one animal as a wall for another.",
+                new[]{ W2(1,2),W2(2,2),W2(4,3) },
+                new[]{ new EntDef(0,2, 4,4), new EntDef(2,0, 3,3), new EntDef(3,4, 4,2) }),
+            new Lv(6,6,10,"Big board, long slides. Group them, then split them off.",
+                new[]{ W2(3,0),W2(3,2),W2(5,3) },
+                new[]{ new EntDef(0,4, 4,5), new EntDef(0,3, 5,5), new EntDef(5,0, 5,4) }),
+            new Lv(6,6,11,"Corners are your friends. Trap an animal in one.",
+                new[]{ W2(1,3),W2(2,0),W2(3,2),W2(4,4) },
+                new[]{ new EntDef(3,1, 5,0), new EntDef(0,2, 5,1), new EntDef(3,0, 4,1) }),
+            new Lv(6,6,14,"Plan the last move first, then work backwards.",
+                new[]{ W2(1,4),W2(3,2),W2(4,1),W2(4,3) },
+                new[]{ new EntDef(5,5, 0,0), new EntDef(3,0, 1,5), new EntDef(2,5, 0,5) }),
+            new Lv(6,6,14,"A full den. Peel them off one at a time.",
+                new[]{ W2(1,4),W2(2,0),W2(4,5) },
+                new[]{ new EntDef(1,3, 4,0), new EntDef(2,2, 3,0), new EntDef(0,0, 0,1), new EntDef(0,4, 1,1) }),
+            new Lv(6,6,14,"Almost there. Every swipe counts now.",
+                new[]{ W2(1,0),W2(2,3),W2(4,0),W2(4,3) },
+                new[]{ new EntDef(4,4, 5,4), new EntDef(1,4, 5,2), new EntDef(3,4, 5,0), new EntDef(4,1, 5,1) }),
+            new Lv(6,6,17,"Last one - tuck the whole zoo in. Good night.",
+                new[]{ W2(1,4),W2(2,1),W2(3,1),W2(4,4),W2(5,3) },
+                new[]{ new EntDef(4,2, 5,5), new EntDef(3,2, 4,0), new EntDef(2,2, 5,0), new EntDef(0,2, 5,4) }),
         };
 
         // ---- warm, flat cozy palette (everything sits in the same family) ----
@@ -99,6 +111,7 @@ namespace SleepyZoo
         private int _moves, _stars;
         private float _levelTime;
         private bool _showHint;
+        private List<Vector2Int> _hintPath;   // optimal remaining swipes, computed when a hint is opened
         private Vector2 _swipeStart;
         private bool _swiping;
         private bool _solved;
@@ -291,15 +304,14 @@ namespace SleepyZoo
         private static Vector2Int Dir(Vector2 d)=>Mathf.Abs(d.x)>Mathf.Abs(d.y)?(d.x>0?Vector2Int.right:Vector2Int.left):(d.y>0?Vector2Int.up:Vector2Int.down);
 
         // Slide EVERY animal at once. Process leading-edge-first so trains settle
-        // deterministically (exactly like the BFS solver that verified each par).
-        private void DoMove(Vector2Int dir)
+        // deterministically. The hint solver reuses the exact same function, so the
+        // moves it suggests are guaranteed to behave identically in play.
+        private Vector2Int[] SlideSim(Vector2Int[] pos, Vector2Int dir)
         {
-            if (_solved) return;
-            int n=_pos.Length;
-            var np=(Vector2Int[])_pos.Clone();
+            int n=pos.Length;
+            var np=(Vector2Int[])pos.Clone();
             var order=new int[n]; for(int i=0;i<n;i++) order[i]=i;
             System.Array.Sort(order,(a,b)=>(np[b].x*dir.x+np[b].y*dir.y).CompareTo(np[a].x*dir.x+np[a].y*dir.y));
-
             var occ=new HashSet<Vector2Int>(np);
             foreach(int i in order)
             {
@@ -313,14 +325,66 @@ namespace SleepyZoo
                 }
                 np[i]=p; occ.Add(p);
             }
+            return np;
+        }
 
-            bool changed=false; for(int i=0;i<n;i++) if(np[i]!=_pos[i]) changed=true;
+        private void DoMove(Vector2Int dir)
+        {
+            if (_solved) return;
+            var np=SlideSim(_pos,dir);
+            bool changed=false; for(int i=0;i<np.Length;i++) if(np[i]!=_pos[i]) changed=true;
             if(!changed) return;
 
             PushUndo();
-            for(int i=0;i<n;i++){ _pos[i]=np[i]; _target[i]=CellToWorld(np[i]); }
+            for(int i=0;i<np.Length;i++){ _pos[i]=np[i]; _target[i]=CellToWorld(np[i]); }
+            _hintPath=null;            // any move invalidates a shown hint path
             _moves++; Sfx.Click(); CheckWin();
         }
+
+        // ---- runtime hint solver: optimal remaining swipes from any position ----
+        private static readonly Vector2Int[] AllDirs =
+            { Vector2Int.right, Vector2Int.left, Vector2Int.up, Vector2Int.down };
+
+        private long StateKey(Vector2Int[] s)
+        {
+            long k=0; for(int i=0;i<s.Length;i++) k=k*64L+(s[i].x*_lv.h+s[i].y); return k;
+        }
+        private bool IsGoal(Vector2Int[] s)
+        {
+            for(int i=0;i<s.Length;i++) if(s[i]!=_bed[i]) return false; return true;
+        }
+
+        // Breadth-first search back to the beds; returns the shortest swipe sequence.
+        private List<Vector2Int> SolveFrom(Vector2Int[] start)
+        {
+            if(IsGoal(start)) return new List<Vector2Int>();
+            var came=new Dictionary<long,(long prev,int dir)>();
+            var q=new Queue<Vector2Int[]>();
+            long sk=StateKey(start); came[sk]=(-1,-1); q.Enqueue(start);
+            long goal=-1;
+            while(q.Count>0)
+            {
+                var cur=q.Dequeue(); long ck=StateKey(cur);
+                for(int di=0; di<4; di++)
+                {
+                    var ns=SlideSim(cur,AllDirs[di]); long nk=StateKey(ns);
+                    if(came.ContainsKey(nk)) continue;
+                    came[nk]=(ck,di);
+                    if(IsGoal(ns)){ goal=nk; q.Clear(); break; }
+                    q.Enqueue(ns);
+                }
+                if(goal>=0) break;
+                if(came.Count>300000) return null;
+            }
+            if(goal<0) return null;
+            var path=new List<Vector2Int>();
+            long k=goal;
+            while(came[k].prev!=-1){ path.Add(AllDirs[came[k].dir]); k=came[k].prev; }
+            path.Reverse(); return path;
+        }
+
+        private static string DirWord(Vector2Int d)=>
+            d==Vector2Int.right?"Right":d==Vector2Int.left?"Left":d==Vector2Int.up?"Up":"Down";
 
         private void PushUndo(){ var s=new Vector2Int[_pos.Length]; System.Array.Copy(_pos,s,_pos.Length); _undo.Push(s); }
         private void Undo()
@@ -378,7 +442,7 @@ namespace SleepyZoo
                     var rHint=new Rect(cx-hw/2, by-hh-18, hw, hh); _uiRects.Add(rHint);
                     float pulse=0.82f+0.18f*Mathf.Sin(Time.unscaledTime*4f);
                     var prev=GUI.color; GUI.color=new Color(1f,1f,1f,pulse);
-                    if(CozyButton(rHint,"Need a hint?",_btn)){ Sfx.Click(); _showHint=true; }
+                    if(CozyButton(rHint,"Need a hint?",_btn)){ Sfx.Click(); _showHint=true; _hintPath=SolveFrom(_pos); }
                     GUI.color=prev;
                 }
 
@@ -392,13 +456,30 @@ namespace SleepyZoo
 
         private void DrawHintCard(float cx)
         {
-            GUI.color=new Color(0,0,0,0.5f); GUI.DrawTexture(new Rect(0,0,Screen.width,Screen.height),_dimTex); GUI.color=Color.white;
-            float w=Mathf.Min(Screen.width*0.84f,560), h=w*0.5f;
+            GUI.color=new Color(0,0,0,0.55f); GUI.DrawTexture(new Rect(0,0,Screen.width,Screen.height),_dimTex); GUI.color=Color.white;
+            float w=Mathf.Min(Screen.width*0.88f,620), h=Mathf.Min(Screen.height*0.66f, w*0.9f);
             var box=new Rect(cx-w/2,(Screen.height-h)/2,w,h);
             if(_panelTex!=null) GUI.DrawTexture(box,_panelTex);
-            GUI.Label(new Rect(box.x+30,box.y+h*0.16f,w-60,40),"Hint",_win);
-            GUI.Label(new Rect(box.x+34,box.y+h*0.34f,w-68,h*0.4f),_lv.hint,_hintText);
-            var rOk=new Rect(cx-90,box.yMax-96,180,72); _uiRects.Add(rOk);
+
+            float pad=w*0.10f;
+            GUI.Label(new Rect(box.x+pad,box.y+h*0.10f,w-2*pad,44),"Hint",_win);
+            // short flavour line up top
+            GUI.Label(new Rect(box.x+pad,box.y+h*0.24f,w-2*pad,h*0.16f),_lv.hint,_hintText);
+
+            // the real help: the exact remaining swipes to finish, from here
+            string body;
+            if(_hintPath==null) body="(This one has you tangled up — try Reset and start fresh.)";
+            else if(_hintPath.Count==0) body="You're basically there — one more nudge!";
+            else
+            {
+                var sb=new System.Text.StringBuilder();
+                sb.Append("Swipe:  ");
+                for(int i=0;i<_hintPath.Count;i++){ if(i>0) sb.Append("  >  "); sb.Append(DirWord(_hintPath[i])); }
+                body=sb.ToString();
+            }
+            GUI.Label(new Rect(box.x+pad,box.y+h*0.42f,w-2*pad,h*0.34f),body,_hintText);
+
+            var rOk=new Rect(cx-100,box.yMax-h*0.16f-14,200,h*0.16f); _uiRects.Add(rOk);
             if(CozyButton(rOk,"Got it",_btn)){ Sfx.Click(); _showHint=false; }
         }
 
