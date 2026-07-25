@@ -45,3 +45,6 @@ Thumbs.db
 
 # Raw art source (originals + reference images) — kept locally, not in the repo
 _ArtSource/
+
+# Large third-party source art packs (free CC0 re-downloadables) — kept locally, not shipped or versioned
+/SourceArt/

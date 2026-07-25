@@ -1,102 +1,88 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using ChonkyMerge; // AnimalSprites, Sfx, SpriteFactory
+using ChonkyMerge; // Sfx
 
 namespace SleepyZoo
 {
     /// <summary>
-    /// Animals-as-mechanic puzzle. Every friend has ONE distinct ability, so the
-    /// roster never feels repetitive:
-    ///   Kitten  — STEP: one tile per swipe.
-    ///   Hamster — ROLL: slides until a wall/edge/friend stops it.
-    ///   Bunny   — HOP : leaps exactly two tiles, right over whatever's between.
-    ///   Corgi   — PUSH: steps and shoves the friend directly ahead.
-    ///   Owl     — FLY : glides straight over fences, stops at the edge or a friend.
-    ///   Capybara— SLEEP: never moves itself; only slides when pushed.
-    /// Get every animal onto its bed. Turn-based grid, deterministic, full undo,
-    /// move-par + stars.
+    /// Bedtime Shuffle — one elegant rule that makes every level a real puzzle.
     ///
-    /// Every level here is BFS-verified solvable and its par = the true optimal
-    /// move count (computed by tools/solver), so 3 stars is always achievable.
-    /// The abilities are introduced one at a time, then gently combined.
+    ///   Swipe any direction and EVERY sleepy animal slides together, each one
+    ///   skidding until it hits the board edge, a toy block (wall), or another
+    ///   animal. Get every animal onto its own bed to win.
+    ///
+    /// Because one swipe moves the whole room at once, the player can't just walk
+    /// each animal home — placing one shoves the others, so real planning is
+    /// required. Every level below is BFS-verified: its par is the true optimal
+    /// number of moves, so 3 stars is always achievable and never trivial.
     /// </summary>
     public class PuzzleGame : MonoBehaviour
     {
-        private enum Move { Step, Roll, Hop, Push, Fly, Sleep }
-        private struct EntDef { public int tier; public Move move; public int x, y, bx, by;
-            public EntDef(int t, Move m, int x, int y, int bx, int by){tier=t;move=m;this.x=x;this.y=y;this.bx=bx;this.by=by;} }
+        // A level entity: where an animal starts (x,y) and which bed it belongs to (bx,by).
+        private struct EntDef { public int x, y, bx, by;
+            public EntDef(int x, int y, int bx, int by){ this.x=x; this.y=y; this.bx=bx; this.by=by; } }
         private class Lv { public int w, h, par; public string hint; public Vector2Int[] walls; public EntDef[] ents;
             public Lv(int w,int h,int par,string hint,Vector2Int[] walls,EntDef[] e){this.w=w;this.h=h;this.par=par;this.hint=hint;this.walls=walls;this.ents=e;} }
 
         private static Vector2Int W2(int x,int y)=>new Vector2Int(x,y);
-        // tiers: 0 hamster,1 bunny,2 cat,3 puppy,4 persian,5 corgi,6 samoyed,7 capybara,
-        //        8 fox,9 panda,10 hedgehog,11 owl,12 deer,13 duck
-        // Each animal is bound to ONE ability so its behaviour is always predictable.
+
+        // Every animal moves by the SAME rule (slide to a stop), so the roster is
+        // purely cosmetic variety. Distinct species make each animal easy to track.
+        private static readonly string[] Pets =
+            { "dog","rabbit","panda","owl","pig","frog","penguin","bear","duck","cow" };
+
+        // ---- BFS-verified level ramp (par = true optimal move count) ----
         private static readonly Lv[] Levels =
         {
-            // ---- Chapter 1: meet each friend, one ability at a time ----
-            new Lv(4,4,6,"Swipe the kitten — she steps one tile at a time.",
-                new[]{ W2(1,1),W2(1,2),W2(2,1) },
-                new[]{ new EntDef(2,Move.Step, 0,0, 3,3) }),
-            new Lv(5,4,4,"Steady steps. Walk the kitten around the fence to her basket.",
-                new[]{ W2(2,1),W2(2,2),W2(2,3) },
-                new[]{ new EntDef(2,Move.Step, 0,0, 4,0) }),
-            new Lv(5,5,2,"The hamster ROLLS until something stops it. Line him up, then let go.",
-                new[]{ W2(3,0),W2(2,3) },
-                new[]{ new EntDef(0,Move.Roll, 0,0, 2,2) }),
-            new Lv(5,5,3,"Roll into a wall to park exactly where you want.",
-                new[]{ W2(4,2),W2(0,4) },
-                new[]{ new EntDef(0,Move.Roll, 0,0, 4,4) }),
-            new Lv(5,5,4,"The bunny HOPS two tiles — she can even leap right over a fence.",
-                new[]{ W2(2,2) },
-                new[]{ new EntDef(1,Move.Hop, 0,0, 4,4) }),
-            new Lv(5,5,2,"Hop over the hedge. She always jumps two tiles.",
-                new[]{ W2(2,0),W2(2,1),W2(2,3),W2(2,4) },
-                new[]{ new EntDef(1,Move.Hop, 0,2, 4,2) }),
-            new Lv(5,5,3,"The corgi PUSHES. Nudge the sleepy capybara along to its bed.",
-                new Vector2Int[0],
-                new[]{ new EntDef(5,Move.Push, 0,0, 3,0), new EntDef(7,Move.Sleep, 2,0, 4,0) }),
-            new Lv(5,5,2,"The owl FLIES straight across — right over any fence — to the far side.",
-                new Vector2Int[0],
-                new[]{ new EntDef(11,Move.Fly, 0,0, 4,4) }),
-            // ---- Chapter 2: two friends, take turns ----
-            new Lv(5,5,5,"Kitten steps, hamster rolls. Give each a clear lane.",
-                new[]{ W2(2,2) },
-                new[]{ new EntDef(2,Move.Step, 0,0, 0,4), new EntDef(0,Move.Roll, 4,0, 4,4) }),
-            new Lv(5,5,6,"One hops, one steps. Solve them one at a time.",
-                new[]{ W2(2,2) },
-                new[]{ new EntDef(1,Move.Hop, 0,0, 4,0), new EntDef(2,Move.Step, 0,4, 4,4) }),
-            new Lv(5,5,3,"Push the capybara home first, then send the owl flying.",
-                new Vector2Int[0],
-                new[]{ new EntDef(5,Move.Push, 0,0, 2,0), new EntDef(7,Move.Sleep, 1,0, 3,0), new EntDef(11,Move.Fly, 0,4, 4,4) }),
-            new Lv(6,5,3,"Rollers need a wall to stop; hoppers leap the gaps.",
-                new[]{ W2(2,2),W2(3,2) },
-                new[]{ new EntDef(0,Move.Roll, 0,0, 5,0), new EntDef(1,Move.Hop, 1,4, 5,4) }),
-            new Lv(5,5,5,"The owl ignores fences; the kitten must walk around them.",
-                new[]{ W2(1,2),W2(3,2) },
-                new[]{ new EntDef(11,Move.Fly, 0,0, 4,0), new EntDef(2,Move.Step, 2,4, 2,0) }),
-            // ---- Chapter 3: three friends, a cozy tangle ----
-            new Lv(5,5,8,"Three friends, three rules. Untangle them one by one.",
-                new[]{ W2(2,2) },
-                new[]{ new EntDef(0,Move.Roll, 0,0, 0,4), new EntDef(2,Move.Step, 2,0, 4,4), new EntDef(1,Move.Hop, 4,0, 4,2) }),
-            new Lv(6,6,9,"Roll, fly, and step. Plan the order before you start.",
-                new[]{ W2(2,2),W2(3,3) },
-                new[]{ new EntDef(0,Move.Roll, 0,0, 5,0), new EntDef(11,Move.Fly, 0,5, 5,5), new EntDef(2,Move.Step, 5,3, 0,3) }),
-            new Lv(6,5,7,"A full den. Push, hop, and step everyone into bed.",
-                new Vector2Int[0],
-                new[]{ new EntDef(5,Move.Push, 0,0, 2,0), new EntDef(7,Move.Sleep, 1,0, 3,0), new EntDef(1,Move.Hop, 0,4, 4,4), new EntDef(2,Move.Step, 0,2, 3,2) }),
-            new Lv(5,5,10,"A gentle maze. Patience — a cozy ending is worth it.",
-                new[]{ W2(1,1),W2(3,3) },
-                new[]{ new EntDef(2,Move.Step, 0,0, 4,4), new EntDef(0,Move.Roll, 4,0, 0,4) }),
-            new Lv(6,6,7,"The last stretch. Fly, roll, and hop — good night, everyone.",
-                new[]{ W2(2,3),W2(3,2) },
-                new[]{ new EntDef(11,Move.Fly, 0,0, 5,5), new EntDef(0,Move.Roll, 5,0, 0,0), new EntDef(1,Move.Hop, 1,5, 5,1) }),
+            new Lv(4,4,2,"Swipe any direction - every animal slides until it hits something.",
+                new[]{ W2(0,3) },
+                new[]{ new EntDef(0,2, 3,0) }),
+            new Lv(4,4,6,"Walls stop a slide. Use them to park exactly where you need.",
+                new[]{ W2(1,2),W2(1,3),W2(2,1) },
+                new[]{ new EntDef(0,1, 3,2) }),
+            new Lv(4,4,5,"Both animals move on every swipe. Line them up together.",
+                new[]{ W2(1,0),W2(3,2) },
+                new[]{ new EntDef(3,1, 1,1), new EntDef(0,3, 0,0) }),
+            new Lv(5,5,9,"Sometimes you must send one the wrong way to free the other.",
+                new[]{ W2(0,1),W2(0,4),W2(1,3) },
+                new[]{ new EntDef(1,1, 4,2), new EntDef(0,2, 4,0) }),
+            new Lv(5,5,10,"Bump an animal into a wall to hold it while you place the next.",
+                new[]{ W2(0,2),W2(0,3),W2(3,1),W2(4,4) },
+                new[]{ new EntDef(1,3, 0,0), new EntDef(1,2, 0,1) }),
+            new Lv(5,5,9,"Three sleepy friends. Think about the order before you swipe.",
+                new[]{ W2(1,0),W2(2,0),W2(2,3) },
+                new[]{ new EntDef(3,0, 4,3), new EntDef(0,3, 0,4), new EntDef(0,0, 4,4) }),
+            new Lv(5,5,11,"One animal can act as a wall for another. Use each other.",
+                new[]{ W2(0,3),W2(2,1),W2(3,0),W2(4,1) },
+                new[]{ new EntDef(1,2, 1,3), new EntDef(4,2, 0,0), new EntDef(3,2, 0,4) }),
+            new Lv(6,6,12,"More room, more skidding. Plan two moves ahead.",
+                new[]{ W2(0,1),W2(3,0),W2(4,0),W2(5,2) },
+                new[]{ new EntDef(1,1, 5,0), new EntDef(1,4, 0,0), new EntDef(2,3, 1,0) }),
+            new Lv(6,6,15,"Tight corners. The first swipe usually sets up the last.",
+                new[]{ W2(0,1),W2(2,0),W2(2,3),W2(3,4),W2(4,1) },
+                new[]{ new EntDef(4,4, 2,4), new EntDef(3,2, 5,0), new EntDef(2,2, 5,2) }),
+            new Lv(6,6,17,"A full den. Group them, then peel them off one by one.",
+                new[]{ W2(2,1),W2(2,2),W2(3,3),W2(4,5) },
+                new[]{ new EntDef(5,5, 3,1), new EntDef(1,3, 1,0), new EntDef(3,0, 0,0), new EntDef(3,2, 0,4) }),
+            new Lv(6,6,17,"Almost bedtime. Every swipe matters now.",
+                new[]{ W2(0,1),W2(2,1),W2(3,0),W2(3,3),W2(5,3) },
+                new[]{ new EntDef(3,2, 5,1), new EntDef(3,1, 5,4), new EntDef(4,5, 5,2), new EntDef(3,5, 5,0) }),
+            new Lv(6,6,14,"Last one. Tuck the whole zoo in - good night.",
+                new[]{ W2(0,2),W2(2,0),W2(3,4),W2(4,1),W2(5,3),W2(5,4) },
+                new[]{ new EntDef(2,2, 1,0), new EntDef(0,4, 4,3), new EntDef(4,4, 3,1), new EntDef(1,1, 2,1) }),
         };
 
-        // Cozy backgrounds, rotated per 3-level pack so it never feels repetitive.
-        private static readonly string[] BgPacks =
-            { "Art/bg_meadow","Art/bg_treehouse","Art/bg_clouds","Art/bg_library","Art/bg_snowcabin" };
+        // ---- warm, flat cozy palette (everything sits in the same family) ----
+        private static readonly Color NightTop   = new Color(0.15f,0.12f,0.23f);
+        private static readonly Color NightBottom = new Color(0.34f,0.24f,0.31f);
+        private static readonly Color BoardCream  = new Color(0.99f,0.93f,0.82f);
+        private static readonly Color TileCream   = new Color(1.00f,0.965f,0.89f);
+        private static readonly Color TileShadow  = new Color(0.90f,0.82f,0.70f);
+        private static readonly Color WallWood    = new Color(0.80f,0.62f,0.44f);
+        private static readonly Color BedNest     = new Color(0.95f,0.87f,0.73f);
+        private static readonly Color BedRing     = new Color(0.86f,0.74f,0.56f);
+        private static readonly Color Brown       = new Color(0.36f,0.22f,0.12f);
 
         // ---- runtime ----
         private int _levelIndex;
@@ -104,26 +90,26 @@ namespace SleepyZoo
         private Camera _cam;
         private readonly HashSet<Vector2Int> _walls = new();
         private Vector2Int[] _pos, _bed;
-        private Move[] _move;
-        private int[] _tier;
+        private string[] _pet;
         private Transform[] _view;
         private Vector3[] _target;
-        private readonly Dictionary<Vector2Int,int> _occ = new();
         private readonly Stack<Vector2Int[]> _undo = new();
-        private Sprite _sCell,_sBed,_sBg,_sWall; private Transform _bgTf;
+        private Transform _bgTf;
 
-        private int _selected=-1, _swipeEnt=-1, _moves, _stars;
+        private int _moves, _stars;
         private float _levelTime;
         private bool _showHint;
         private Vector2 _swipeStart;
+        private bool _swiping;
         private bool _solved;
 
         // UI
-        private GUIStyle _title, _hud, _sub, _btn, _btnMenu, _win, _hintText, _panelBody, _panelSub;
+        private GUIStyle _title, _sub, _btn, _btnMenu, _win, _hintText, _panelBody, _panelSub;
         private Texture2D _btnTex, _btnTexDown, _panelTex, _starTex, _dimTex;
-        private int _btnBorder;   // 9-slice inset; 0 = stretch the real pill art
+        private int _btnBorder;
+        private Font _font;
+        private readonly List<Rect> _uiRects = new();
 
-        /// Number of levels — used by the menu's level picker.
         public static int LevelCount => Levels.Length;
 
         private void Start(){ SetupCamera(); LoadLevel(PlayerPrefs.GetInt("zoo_level",0)); }
@@ -133,27 +119,22 @@ namespace SleepyZoo
             _cam = Camera.main;
             if (_cam==null){ var go=new GameObject("Main Camera"); go.tag="MainCamera"; _cam=go.AddComponent<Camera>(); }
             _cam.orthographic=true; _cam.transform.position=new Vector3(0,0,-10);
-            _cam.clearFlags=CameraClearFlags.SolidColor; _cam.backgroundColor=new Color(0.12f,0.10f,0.20f);
+            _cam.clearFlags=CameraClearFlags.SolidColor; _cam.backgroundColor=NightBottom;
         }
 
         private void LoadLevel(int index)
         {
             foreach (Transform c in transform) Destroy(c.gameObject);
-            _walls.Clear(); _occ.Clear(); _undo.Clear();
-            _selected=-1; _swipeEnt=-1; _moves=0; _solved=false; _stars=0; _levelTime=0f; _showHint=false;
+            _walls.Clear(); _undo.Clear();
+            _moves=0; _solved=false; _stars=0; _levelTime=0f; _showHint=false; _swiping=false;
 
             _levelIndex=Mathf.Clamp(index,0,Levels.Length-1);
             PlayerPrefs.SetInt("zoo_level",_levelIndex); PlayerPrefs.Save();
             _lv=Levels[_levelIndex];
             foreach (var w in _lv.walls) _walls.Add(w);
 
-            _sCell=Resources.Load<Sprite>("Art/tile");
-            _sBed=Resources.Load<Sprite>("Art/tile_bed");
-            _sWall=Resources.Load<Sprite>("Art/tile_wall");
-            _sBg=Resources.Load<Sprite>(BgPacks[(_levelIndex/3)%BgPacks.Length]);
-
             int n=_lv.ents.Length;
-            _pos=new Vector2Int[n]; _bed=new Vector2Int[n]; _move=new Move[n]; _tier=new int[n];
+            _pos=new Vector2Int[n]; _bed=new Vector2Int[n]; _pet=new string[n];
             _view=new Transform[n]; _target=new Vector3[n];
 
             SpawnBackground();
@@ -162,7 +143,7 @@ namespace SleepyZoo
             {
                 var e=_lv.ents[i];
                 _pos[i]=new Vector2Int(e.x,e.y); _bed[i]=new Vector2Int(e.bx,e.by);
-                _move[i]=e.move; _tier[i]=e.tier; _occ[_pos[i]]=i;
+                _pet[i]=Pets[i % Pets.Length];
                 SpawnBed(i); SpawnAnimal(i);
             }
             FrameCamera();
@@ -172,43 +153,34 @@ namespace SleepyZoo
         private void SpawnBackground()
         {
             var go=new GameObject("BG"); go.transform.SetParent(transform);
-            var sr=go.AddComponent<SpriteRenderer>(); sr.sprite=_sBg!=null?_sBg:BgSprite(); sr.sortingOrder=-20;
+            var sr=go.AddComponent<SpriteRenderer>(); sr.sprite=BgGradient(); sr.sortingOrder=-20;
             _bgTf=go.transform;
         }
 
-        // Warm, cozy palette so the board sits happily on the night background
-        // instead of clashing with a cold lilac. Tiles read as soft honey cushions.
-        private static readonly Color WarmTile = new Color(1f,0.90f,0.74f);   // honey-cream cushion
-        private static readonly Color WarmWall = new Color(0.86f,0.72f,0.55f);// toasty fence cushion
-
         private void BuildBoard()
         {
-            // soft rounded backing so the grid feels grounded and unified on any scene
+            // soft raised cream board panel behind the grid
             var back=new GameObject("BoardBack"); back.transform.SetParent(transform);
-            back.transform.position=new Vector3(0,0,0.06f);
+            back.transform.position=new Vector3(0,-0.04f,0.06f);
+            var shadow=Tile(new Vector3(0,-0.12f,0.08f),-8,new Color(0,0,0,0.22f),RoundedTile(),1f);
+            float pad=0.62f, bw=RoundedTile().bounds.size.x;
+            shadow.localScale=new Vector3((_lv.w+pad)/bw,(_lv.h+pad)/bw,1f);
             var bsr=back.AddComponent<SpriteRenderer>(); bsr.sprite=RoundedTile();
-            bsr.color=new Color(0.18f,0.14f,0.22f,0.55f); bsr.sortingOrder=-6;
-            float pad=0.7f, bw=RoundedTile().bounds.size.x;
+            bsr.color=BoardCream; bsr.sortingOrder=-6;
             back.transform.localScale=new Vector3((_lv.w+pad)/bw,(_lv.h+pad)/bw,1f);
 
-            Sprite cellSprite=_sCell!=null?_sCell:RoundedTile();
             for (int y=0;y<_lv.h;y++)
             for (int x=0;x<_lv.w;x++)
             {
                 var cell=new Vector2Int(x,y);
-                bool wall=_walls.Contains(cell);
-                if (wall && _sWall!=null)
+                if (_walls.Contains(cell))
                 {
-                    // cozy cushion under, cute wooden block on top
-                    Tile(CellToWorld(cell),0,WarmWall,cellSprite,0.98f);
-                    Tile(CellToWorld(cell)+new Vector3(0,0.04f,-0.1f),4,Color.white,_sWall,0.94f);
+                    Tile(CellToWorld(cell),0,TileShadow,RoundedTile(),0.92f);
+                    Tile(CellToWorld(cell)+new Vector3(0,0.04f,-0.1f),1,WallWood,RoundedTile(),0.80f);
                 }
                 else
                 {
-                    Color col=_sCell!=null
-                        ? (wall?WarmWall:WarmTile)
-                        : (wall?new Color(0.14f,0.12f,0.22f):new Color(0.34f,0.31f,0.48f));
-                    Tile(CellToWorld(cell),0,col,cellSprite,0.98f);
+                    Tile(CellToWorld(cell),0,TileCream,RoundedTile(),0.92f);
                 }
             }
         }
@@ -223,22 +195,36 @@ namespace SleepyZoo
 
         private void SpawnBed(int i)
         {
-            Sprite bedSprite=_sBed!=null?_sBed:RoundedTile();
-            Tile(CellToWorld(_bed[i]),1,_sBed!=null?Color.white:new Color(0.46f,0.43f,0.62f),bedSprite,0.92f);
-            var s=AnimalSprites.Get(_tier[i]);
-            var go=new GameObject("Bed"); go.transform.SetParent(transform); go.transform.position=CellToWorld(_bed[i])+new Vector3(0,0,-0.05f);
-            var sr=go.AddComponent<SpriteRenderer>(); sr.sortingOrder=3;
-            if(s!=null){ sr.sprite=s; sr.color=new Color(1,1,1,0.34f); float sc=0.52f/s.bounds.size.x; go.transform.localScale=new Vector3(sc,sc,1f);}
+            // a cream nest with a soft ring, then a faded "ghost" of the exact animal
+            // that belongs here — so the player always knows whose bed is whose.
+            Tile(CellToWorld(_bed[i]),1,BedRing,RoundedTile(),0.80f);
+            Tile(CellToWorld(_bed[i])+new Vector3(0,0,-0.02f),2,BedNest,RoundedTile(),0.68f);
+            var s=Pet(_pet[i]);
+            if(s!=null)
+            {
+                var go=new GameObject("BedGhost"); go.transform.SetParent(transform);
+                go.transform.position=CellToWorld(_bed[i])+new Vector3(0,0,-0.05f);
+                var sr=go.AddComponent<SpriteRenderer>(); sr.sprite=s; sr.sortingOrder=3;
+                sr.color=new Color(0.4f,0.35f,0.3f,0.32f);
+                float sc=0.52f/s.bounds.size.x; go.transform.localScale=new Vector3(sc,sc,1f);
+            }
         }
 
         private void SpawnAnimal(int i)
         {
-            var s=AnimalSprites.Get(_tier[i]);
+            var s=Pet(_pet[i]);
             var go=new GameObject("Animal"); go.transform.SetParent(transform); go.transform.position=CellToWorld(_pos[i]);
-            var sr=go.AddComponent<SpriteRenderer>(); sr.sortingOrder=5;
-            if(s!=null){ sr.sprite=s; float sc=0.82f/s.bounds.size.x; go.transform.localScale=new Vector3(sc,sc,1f);}
-            else { sr.sprite=RoundedTile(); go.transform.localScale=new Vector3(0.7f,0.7f,1f);}
+            var sr=go.AddComponent<SpriteRenderer>(); sr.sortingOrder=6;
+            if(s!=null){ sr.sprite=s; float sc=0.86f/s.bounds.size.x; go.transform.localScale=new Vector3(sc,sc,1f);}
+            else { sr.sprite=RoundedTile(); sr.color=new Color(0.9f,0.7f,0.55f); go.transform.localScale=new Vector3(0.7f,0.7f,1f);}
             _view[i]=go.transform; _target[i]=CellToWorld(_pos[i]);
+        }
+
+        private static readonly Dictionary<string,Sprite> _petCache = new();
+        private static Sprite Pet(string name)
+        {
+            if(_petCache.TryGetValue(name,out var s)) return s;
+            s=Resources.Load<Sprite>("Art/pets/"+name); _petCache[name]=s; return s;
         }
 
         private Vector3 CellToWorld(Vector2Int c)=>new Vector3(c.x-(_lv.w-1)*0.5f, c.y-(_lv.h-1)*0.5f, 0);
@@ -247,9 +233,10 @@ namespace SleepyZoo
             int x=Mathf.RoundToInt(w.x+(_lv.w-1)*0.5f), y=Mathf.RoundToInt(w.y+(_lv.h-1)*0.5f);
             cell=new Vector2Int(x,y); return x>=0&&x<_lv.w&&y>=0&&y<_lv.h;
         }
+
         private void FrameCamera()
         {
-            float aspect=Mathf.Max(0.3f,(float)Screen.width/Screen.height), margin=1.6f;
+            float aspect=Mathf.Max(0.3f,(float)Screen.width/Screen.height), margin=1.7f;
             _cam.orthographicSize=Mathf.Max(_lv.h*0.5f+margin,(_lv.w*0.5f+margin)/aspect);
 
             if(_bgTf!=null)
@@ -263,46 +250,37 @@ namespace SleepyZoo
             }
         }
 
-        // ---- input ----
+        // ---- input: swipe ANYWHERE tips the whole room ----
         private void Update()
         {
             FrameCamera();
             for (int i=0;i<_view.Length;i++)
             {
-                float sc=(i==_selected?1.1f:1f);
-                var s=AnimalSprites.Get(_tier[i]); float b=s!=null?0.82f/s.bounds.size.x:0.7f;
+                var s=Pet(_pet[i]); float b=s!=null?0.86f/s.bounds.size.x:0.7f;
                 _view[i].position=Vector3.Lerp(_view[i].position,_target[i],Time.deltaTime*16f);
-                _view[i].localScale=Vector3.Lerp(_view[i].localScale,new Vector3(b*sc,b*sc,1f),Time.deltaTime*12f);
+                _view[i].localScale=Vector3.Lerp(_view[i].localScale,new Vector3(b,b,1f),Time.deltaTime*12f);
             }
             if (_solved) return;
             _levelTime+=Time.deltaTime;
 
             if (Input.GetMouseButtonDown(0))
             {
-                if (PointerOverUI(Input.mousePosition)) return;
+                _swiping = !PointerOverUI(Input.mousePosition);
                 _swipeStart=Input.mousePosition;
-                _swipeEnt=-1;
-                if (WorldToCell(_cam.ScreenToWorldPoint(Input.mousePosition),out var c) && _occ.TryGetValue(c,out int e) && _move[e]!=Move.Sleep)
-                    _swipeEnt=e;
             }
-            else if (Input.GetMouseButtonUp(0))
+            else if (Input.GetMouseButtonUp(0) && _swiping)
             {
+                _swiping=false;
                 Vector2 d=(Vector2)Input.mousePosition-_swipeStart;
-                if (d.magnitude>30f && _swipeEnt>=0) DoMove(_swipeEnt,Dir(d));
-                else if (_swipeEnt>=0) _selected=_swipeEnt;
-                _swipeEnt=-1;
+                if (d.magnitude>28f) DoMove(Dir(d));
             }
-            if (_selected>=0)
-            {
-                if (Input.GetKeyDown(KeyCode.RightArrow)) DoMove(_selected,Vector2Int.right);
-                else if (Input.GetKeyDown(KeyCode.LeftArrow)) DoMove(_selected,Vector2Int.left);
-                else if (Input.GetKeyDown(KeyCode.UpArrow)) DoMove(_selected,Vector2Int.up);
-                else if (Input.GetKeyDown(KeyCode.DownArrow)) DoMove(_selected,Vector2Int.down);
-            }
+
+            if (Input.GetKeyDown(KeyCode.RightArrow)) DoMove(Vector2Int.right);
+            else if (Input.GetKeyDown(KeyCode.LeftArrow)) DoMove(Vector2Int.left);
+            else if (Input.GetKeyDown(KeyCode.UpArrow)) DoMove(Vector2Int.up);
+            else if (Input.GetKeyDown(KeyCode.DownArrow)) DoMove(Vector2Int.down);
         }
 
-        // Ignore board taps that land on the on-screen buttons.
-        private readonly List<Rect> _uiRects = new();
         private bool PointerOverUI(Vector2 mouse)
         {
             Vector2 g=new Vector2(mouse.x, Screen.height-mouse.y); // GUI space
@@ -311,36 +289,36 @@ namespace SleepyZoo
         }
 
         private static Vector2Int Dir(Vector2 d)=>Mathf.Abs(d.x)>Mathf.Abs(d.y)?(d.x>0?Vector2Int.right:Vector2Int.left):(d.y>0?Vector2Int.up:Vector2Int.down);
-        private bool Free(Vector2Int c)=>c.x>=0&&c.x<_lv.w&&c.y>=0&&c.y<_lv.h&&!_walls.Contains(c)&&!_occ.ContainsKey(c);
-        // Fly ignores fences entirely: only the board edge or another friend stops the owl.
-        private bool FlyOpen(Vector2Int c)=>c.x>=0&&c.x<_lv.w&&c.y>=0&&c.y<_lv.h&&!_occ.ContainsKey(c);
 
-        private void DoMove(int i, Vector2Int dir)
+        // Slide EVERY animal at once. Process leading-edge-first so trains settle
+        // deterministically (exactly like the BFS solver that verified each par).
+        private void DoMove(Vector2Int dir)
         {
-            Vector2Int from=_pos[i], to=from; int pushed=-1; Vector2Int pushTo=default;
-            switch(_move[i])
+            if (_solved) return;
+            int n=_pos.Length;
+            var np=(Vector2Int[])_pos.Clone();
+            var order=new int[n]; for(int i=0;i<n;i++) order[i]=i;
+            System.Array.Sort(order,(a,b)=>(np[b].x*dir.x+np[b].y*dir.y).CompareTo(np[a].x*dir.x+np[a].y*dir.y));
+
+            var occ=new HashSet<Vector2Int>(np);
+            foreach(int i in order)
             {
-                case Move.Step: { var n=from+dir; if(Free(n)) to=n; break; }
-                case Move.Roll: { var cur=from; while(Free(cur+dir)) cur+=dir; to=cur; break; }
-                case Move.Fly:  { var cur=from; while(FlyOpen(cur+dir)) cur+=dir; to=cur; break; }
-                case Move.Hop:  { var land=from+dir*2; if(Free(land)) to=land; break; }
-                case Move.Push:
+                occ.Remove(np[i]);
+                var p=np[i];
+                while(true)
                 {
-                    var n=from+dir;
-                    if(Free(n)){ to=n; }                       // nothing ahead — just step
-                    else if(_occ.TryGetValue(n,out int j))     // animal ahead — push if space beyond
-                    {
-                        var beyond=n+dir;
-                        if(Free(beyond)){ pushed=j; pushTo=beyond; to=n; }
-                    }
-                    break;
+                    var q=p+dir;
+                    if(q.x<0||q.x>=_lv.w||q.y<0||q.y>=_lv.h||_walls.Contains(q)||occ.Contains(q)) break;
+                    p=q;
                 }
+                np[i]=p; occ.Add(p);
             }
-            if (to==from && pushed<0) return;
+
+            bool changed=false; for(int i=0;i<n;i++) if(np[i]!=_pos[i]) changed=true;
+            if(!changed) return;
 
             PushUndo();
-            if (pushed>=0){ _occ.Remove(_pos[pushed]); _pos[pushed]=pushTo; _occ[pushTo]=pushed; _target[pushed]=CellToWorld(pushTo); }
-            _occ.Remove(from); _pos[i]=to; _occ[to]=i; _target[i]=CellToWorld(to);
+            for(int i=0;i<n;i++){ _pos[i]=np[i]; _target[i]=CellToWorld(np[i]); }
             _moves++; Sfx.Click(); CheckWin();
         }
 
@@ -348,8 +326,8 @@ namespace SleepyZoo
         private void Undo()
         {
             if(_undo.Count==0) return;
-            var s=_undo.Pop(); _occ.Clear();
-            for(int i=0;i<_pos.Length;i++){ _pos[i]=s[i]; _occ[s[i]]=i; _target[i]=CellToWorld(s[i]); }
+            var s=_undo.Pop();
+            for(int i=0;i<_pos.Length;i++){ _pos[i]=s[i]; _target[i]=CellToWorld(s[i]); }
             if(_moves>0) _moves--; Sfx.Click();
         }
 
@@ -364,7 +342,7 @@ namespace SleepyZoo
             Sfx.Pop();
         }
 
-        private bool HintReady => !_solved && (_moves >= Mathf.Max(_lv.par+3,5) || _levelTime >= 30f);
+        private bool HintReady => !_solved && (_moves >= Mathf.Max(_lv.par+3,6) || _levelTime >= 30f);
 
         // ---- UI ----
         private void OnGUI()
@@ -372,33 +350,31 @@ namespace SleepyZoo
             EnsureStyles();
             _uiRects.Clear();
             var sa=Screen.safeArea;
-            float top=Screen.height-(sa.y+sa.height)+18f;     // top inset
-            float bot=sa.y+18f;                               // bottom inset
+            float top=Screen.height-(sa.y+sa.height)+18f;
+            float bot=sa.y+18f;
             float cx=Screen.width/2f;
-            float u=Mathf.Min(Screen.width,Screen.height);    // scale reference
+            float u=Mathf.Min(Screen.width,Screen.height);
 
-            // ---- top HUD ----
             GUI.Label(new Rect(0,top+2,Screen.width,48), $"Level {_levelIndex+1}", _title);
-            GUI.Label(new Rect(0,top+56,Screen.width,30), $"3★ in {_lv.par} moves   ·   {_moves} so far", _sub);
+            GUI.Label(new Rect(0,top+56,Screen.width,30), $"3 stars in {_lv.par} moves   -   {_moves} so far", _sub);
 
             if(!_solved)
             {
-                // Menu (top-left)
-                var rMenu=new Rect(sa.x+14, top, 132, 64); _uiRects.Add(rMenu);
+                // Menu — clearly-sized, tappable pill (top-left, out of the board)
+                var rMenu=new Rect(sa.x+16, top, 148, 74); _uiRects.Add(rMenu);
                 if(CozyButton(rMenu,"Menu",_btnMenu)){ Sfx.Click(); SceneManager.LoadScene("MainMenu"); }
 
-                // bottom row: Undo | Reset (big, lively)
-                float bw=Mathf.Min(280, (Screen.width-56)/2f), bh=118, gap=22;
+                // big, obvious Undo | Reset
+                float bw=Mathf.Min(300, (Screen.width-64)/2f), bh=120, gap=24;
                 float by=Screen.height-bot-bh;
                 var rUndo=new Rect(cx-bw-gap/2, by, bw, bh); _uiRects.Add(rUndo);
                 var rReset=new Rect(cx+gap/2, by, bw, bh); _uiRects.Add(rReset);
                 if(CozyButton(rUndo,"Undo",_btn)) Undo();
                 if(CozyButton(rReset,"Reset",_btn)){ Sfx.Click(); LoadLevel(_levelIndex); }
 
-                // Hint button — only after the player has clearly been trying a while.
                 if(HintReady && !_showHint)
                 {
-                    float hw=Mathf.Min(260,Screen.width*0.6f), hh=64;
+                    float hw=Mathf.Min(280,Screen.width*0.62f), hh=68;
                     var rHint=new Rect(cx-hw/2, by-hh-18, hw, hh); _uiRects.Add(rHint);
                     float pulse=0.82f+0.18f*Mathf.Sin(Time.unscaledTime*4f);
                     var prev=GUI.color; GUI.color=new Color(1f,1f,1f,pulse);
@@ -406,18 +382,16 @@ namespace SleepyZoo
                     GUI.color=prev;
                 }
 
-                // onboarding, level 1 only, before the first move (not a spoiler — L1 is trivial)
                 if(_levelIndex==0 && _moves==0)
-                    GUI.Label(new Rect(0,Screen.height-bot-210,Screen.width,28),"Swipe an animal to move it",_sub);
+                    GUI.Label(new Rect(0,Screen.height-bot-210,Screen.width,28),"Swipe anywhere to tip the room",_sub);
 
-                if(_showHint) DrawHintCard(cx, u);
+                if(_showHint) DrawHintCard(cx);
             }
             else DrawWinPanel(cx, u);
         }
 
-        private void DrawHintCard(float cx, float u)
+        private void DrawHintCard(float cx)
         {
-            // dim, then a cozy panel with the level's nudge; tap anywhere to close.
             GUI.color=new Color(0,0,0,0.5f); GUI.DrawTexture(new Rect(0,0,Screen.width,Screen.height),_dimTex); GUI.color=Color.white;
             float w=Mathf.Min(Screen.width*0.84f,560), h=w*0.5f;
             var box=new Rect(cx-w/2,(Screen.height-h)/2,w,h);
@@ -435,17 +409,18 @@ namespace SleepyZoo
             var box=new Rect(cx-w/2,(Screen.height-h)/2,w,h);
             if(_panelTex!=null) GUI.DrawTexture(box,_panelTex);
 
-            GUI.Label(new Rect(box.x,box.y+h*0.11f,w,52),"All tucked in!",_win);
-            DrawStars(cx, box.y+h*0.30f, _stars, u*0.15f);
-            GUI.Label(new Rect(box.x,box.y+h*0.52f,w,30), $"{_moves} moves", _panelBody);
-            GUI.Label(new Rect(box.x,box.y+h*0.60f,w,26), $"3★ ≤ {_lv.par}      2★ ≤ {_lv.par+2}", _panelSub);
+            GUI.Label(new Rect(box.x,box.y+h*0.12f,w,52),"All tucked in!",_win);
+            // stars sized off the BOX so they always stay inside the cream panel
+            DrawStars(cx, box.y+h*0.34f, _stars, Mathf.Min(h*0.20f, w*0.16f));
+            GUI.Label(new Rect(box.x,box.y+h*0.56f,w,30), $"{_moves} moves", _panelBody);
+            GUI.Label(new Rect(box.x,box.y+h*0.64f,w,26), $"3 stars <= {_lv.par}     2 stars <= {_lv.par+2}", _panelSub);
 
             bool last=_levelIndex>=Levels.Length-1;
-            float bw=Mathf.Min(360,w*0.74f), bh=110;
-            var rNext=new Rect(cx-bw/2, box.yMax-bh-20, bw, bh); _uiRects.Add(rNext);
+            float bw=Mathf.Min(360,w*0.74f), bh=108;
+            var rNext=new Rect(cx-bw/2, box.yMax-bh-22, bw, bh); _uiRects.Add(rNext);
             if(CozyButton(rNext, last?"Play again":"Next level",_btn))
             { Sfx.Click(); LoadLevel(last?0:_levelIndex+1); }
-            var rMenu=new Rect(box.x+18, box.y+14, 116, 56); _uiRects.Add(rMenu);
+            var rMenu=new Rect(box.x+18, box.y+14, 120, 58); _uiRects.Add(rMenu);
             if(CozyButton(rMenu,"Menu",_btnMenu)){ Sfx.Click(); SceneManager.LoadScene("MainMenu"); }
         }
 
@@ -456,7 +431,7 @@ namespace SleepyZoo
             {
                 bool on=i<count;
                 GUI.color = on ? Color.white : new Color(0.30f,0.26f,0.34f,0.55f);
-                float lift = on ? -s*0.10f : 0f;                 // earned stars sit a touch higher
+                float lift = on ? -s*0.10f : 0f;
                 float sz = on ? s*1.06f : s*0.9f;
                 var r=new Rect(cx-total/2+i*(s+gap)+(s-sz)/2, y+lift+(s-sz)/2, sz, sz);
                 if(_starTex!=null) GUI.DrawTexture(r,_starTex);
@@ -464,7 +439,6 @@ namespace SleepyZoo
             GUI.color=Color.white;
         }
 
-        // ---- lively cozy button (matches the warm, chunky landing-page style) ----
         private bool CozyButton(Rect r, string label, GUIStyle style)
         {
             bool down = r.Contains(Event.current.mousePosition) &&
@@ -492,21 +466,32 @@ namespace SleepyZoo
             _round=Sprite.Create(tex,new Rect(0,0,s,s),new Vector2(0.5f,0.5f),s);
             return _round;
         }
-        private static Sprite BgSprite()
+
+        // Flat warm night gradient with a single soft moon glow — cozy, not busy.
+        private static Sprite BgGradient()
         {
             if(_bg!=null) return _bg;
-            int w=64,h=128; var tex=new Texture2D(w,h,TextureFormat.RGBA32,false){wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear};
-            var top=new Color(0.10f,0.09f,0.20f); var bottom=new Color(0.24f,0.18f,0.30f);
-            var rnd=new System.Random(7); var px=new Color32[w*h];
-            for(int y=0;y<h;y++){ float t=(float)y/(h-1); var c=Color.Lerp(bottom,top,t); for(int x=0;x<w;x++) px[y*w+x]=c; }
-            tex.SetPixels32(px);
-            for(int i=0;i<70;i++){ int x=rnd.Next(w),y=rnd.Next(h/3,h); float b=0.5f+(float)rnd.NextDouble()*0.5f; tex.SetPixel(x,y,new Color(b,b,b*0.9f,1)); }
-            tex.Apply();
+            int w=128,h=256;
+            var tex=new Texture2D(w,h,TextureFormat.RGBA32,false){wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear};
+            var px=new Color32[w*h];
+            Vector2 moon=new Vector2(0.74f,0.82f); float mr=0.10f;
+            var moonCol=new Color(1f,0.96f,0.84f);
+            for(int y=0;y<h;y++)for(int x=0;x<w;x++)
+            {
+                float t=(float)y/(h-1);
+                Color c=Color.Lerp(NightBottom,NightTop,t);
+                float nx=(float)x/(w-1), ny=(float)y/(h-1);
+                float d=Mathf.Sqrt((nx-moon.x)*(nx-moon.x)+(ny-moon.y)*(ny-moon.y));
+                float glow=Mathf.Clamp01(1f-d/(mr*3.2f)); glow*=glow;
+                float core=d<mr?Mathf.Clamp01(1f-d/mr):0f;
+                c=Color.Lerp(c,moonCol,Mathf.Clamp01(glow*0.5f+core*0.85f));
+                px[y*w+x]=c;
+            }
+            tex.SetPixels32(px); tex.Apply();
             _bg=Sprite.Create(tex,new Rect(0,0,w,h),new Vector2(0.5f,0.5f),1);
             return _bg;
         }
 
-        // Warm rounded button texture (9-sliced via GUIStyle.border) with a soft bevel.
         private static Texture2D MakeButtonTex(bool pressed)
         {
             int W=120,H=88; float r=28f, bt=4f;
@@ -520,13 +505,13 @@ namespace SleepyZoo
             {
                 float qx=Mathf.Abs(x+0.5f-hx)-(hx-r), qy=Mathf.Abs(y+0.5f-hy)-(hy-r);
                 float ax=Mathf.Max(qx,0f), ay=Mathf.Max(qy,0f);
-                float sdf=Mathf.Sqrt(ax*ax+ay*ay)+Mathf.Min(Mathf.Max(qx,qy),0f)-r; // <0 inside
+                float sdf=Mathf.Sqrt(ax*ax+ay*ay)+Mathf.Min(Mathf.Max(qx,qy),0f)-r;
                 float alpha=Mathf.Clamp01(-sdf/1.2f+0.5f);
                 float t=(float)y/(H-1);
                 Color fill=Color.Lerp(bottom,top,t);
-                if(t>0.72f) fill=Color.Lerp(fill,Color.white,(t-0.72f)*0.5f);   // top sheen
-                if(t<0.14f) fill=Color.Lerp(fill,edge,0.35f);                    // bottom bevel
-                float be=Mathf.Clamp01((-sdf)/bt);                               // border blend
+                if(t>0.72f) fill=Color.Lerp(fill,Color.white,(t-0.72f)*0.5f);
+                if(t<0.14f) fill=Color.Lerp(fill,edge,0.35f);
+                float be=Mathf.Clamp01((-sdf)/bt);
                 Color c=Color.Lerp(edge,fill,be);
                 px[y*W+x]=new Color(c.r,c.g,c.b,alpha);
             }
@@ -534,27 +519,23 @@ namespace SleepyZoo
             return tex;
         }
 
-        private Font _font;
         private void EnsureStyles()
         {
             if(_title!=null) return;
-            _font=Resources.Load<Font>("Fonts/Fredoka");   // cozy rounded font (falls back to default if missing)
-            var brown=new Color(0.38f,0.23f,0.12f);
+            _font=Resources.Load<Font>("Fonts/Fredoka");
             _title=new GUIStyle(GUI.skin.label){fontSize=34,fontStyle=FontStyle.Bold,alignment=TextAnchor.UpperCenter};
-            _hud=new GUIStyle(GUI.skin.label){fontSize=24,fontStyle=FontStyle.Bold,alignment=TextAnchor.MiddleCenter};
             _sub=new GUIStyle(GUI.skin.label){fontSize=20,alignment=TextAnchor.MiddleCenter};
             _win=new GUIStyle(GUI.skin.label){fontSize=40,fontStyle=FontStyle.Bold,alignment=TextAnchor.UpperCenter};
             _hintText=new GUIStyle(GUI.skin.label){fontSize=24,alignment=TextAnchor.UpperCenter,wordWrap=true};
             _panelBody=new GUIStyle(GUI.skin.label){fontSize=26,fontStyle=FontStyle.Bold,alignment=TextAnchor.MiddleCenter};
             _panelSub=new GUIStyle(GUI.skin.label){fontSize=21,alignment=TextAnchor.MiddleCenter};
-            _title.normal.textColor=_hud.normal.textColor=Color.white;
+            _title.normal.textColor=Color.white;
             _sub.normal.textColor=new Color(1f,0.95f,0.86f,0.92f);
-            _win.normal.textColor=_hintText.normal.textColor=brown;
-            _panelBody.normal.textColor=brown;
+            _win.normal.textColor=_hintText.normal.textColor=Brown;
+            _panelBody.normal.textColor=Brown;
             _panelSub.normal.textColor=new Color(0.45f,0.30f,0.18f);
-            if(_font!=null) foreach(var st in new[]{_title,_hud,_sub,_win,_hintText,_panelBody,_panelSub}) st.font=_font;
+            if(_font!=null) foreach(var st in new[]{_title,_sub,_win,_hintText,_panelBody,_panelSub}) st.font=_font;
 
-            // Prefer the real cozy pill art; fall back to the procedural button.
             var pill=Resources.Load<Texture2D>("Art/ui_button");
             var pillDown=Resources.Load<Texture2D>("Art/ui_button_down");
             if(pill!=null){ _btnTex=pill; _btnTexDown=pillDown!=null?pillDown:pill; _btnBorder=0; }
@@ -564,7 +545,7 @@ namespace SleepyZoo
             _starTex=Resources.Load<Texture2D>("Art/star_full");
 
             _btn=CozyStyle(36);
-            _btnMenu=CozyStyle(24);
+            _btnMenu=CozyStyle(26);
         }
 
         private GUIStyle CozyStyle(int fontSize)
@@ -573,8 +554,7 @@ namespace SleepyZoo
                 fontSize=fontSize, fontStyle=FontStyle.Bold, alignment=TextAnchor.MiddleCenter,
                 border=new RectOffset(_btnBorder,_btnBorder,_btnBorder,_btnBorder), padding=new RectOffset(12,12,6,10)
             };
-            var brown=new Color(0.36f,0.21f,0.10f);
-            s.normal.textColor=s.hover.textColor=s.active.textColor=brown;
+            s.normal.textColor=s.hover.textColor=s.active.textColor=Brown;
             s.normal.background=_btnTex; s.hover.background=_btnTex; s.active.background=_btnTexDown;
             if(_font!=null) s.font=_font;
             return s;

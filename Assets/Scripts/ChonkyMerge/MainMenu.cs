@@ -133,8 +133,10 @@ namespace ChonkyMerge
         private void BuildCornerIcons()
         {
             float m = H * 0.12f;
+            // Both corner icons live on the RIGHT so they never sit under the
+            // top-left "Levels" tab (which is drawn in OnGUI).
             string snd = Sfx.SoundOn ? "btn_sound_on" : "btn_sound_off";
-            var sGo = FitWidth(snd, new Vector2(-W + m, H - m), 11, ContentW * 0.14f, out _);
+            var sGo = FitWidth(snd, new Vector2(W - m - ContentW * 0.20f, H - m), 11, ContentW * 0.14f, out _);
             _soundIcon = sGo.GetComponent<SpriteRenderer>();
             var sc = sGo.AddComponent<BoxCollider2D>(); sc.isTrigger = true;
             sGo.AddComponent<MenuButton>().Setup(ButtonId.SoundToggle, sGo.transform.localScale);
@@ -197,7 +199,7 @@ namespace ChonkyMerge
                 case ButtonId.HighScore: _panel = Panel.HighScore; break;
                 case ButtonId.Settings: _panel = Panel.Settings; break;
                 case ButtonId.Share:
-                    NativeShare.ShareText($"I'm playing Wobble Zoo 🐾 — tilt your phone to merge cute animals! My best is {Best()}.");
+                    NativeShare.ShareText("I'm playing Wobble Zoo 🐾 — a cozy bedtime puzzle where you swipe to tuck every sleepy animal into bed. So relaxing!");
                     break;
                 case ButtonId.SoundToggle:
                     Sfx.SoundOn = !Sfx.SoundOn;
