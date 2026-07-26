@@ -32,6 +32,24 @@ namespace SleepyZoo
         private static readonly string[] Pets =
             { "dog","rabbit","panda","owl","pig","frog","penguin","bear","duck","cow" };
 
+        // Each species gets its OWN signature colour. The animal wears a soft glow of
+        // it and its bed's blanket is the same colour, so "whose bed is whose" reads at
+        // a glance — even when two faces are close (the grey dog vs the grey rabbit).
+        private static readonly Color[] PetColors =
+        {
+            new Color(0.42f,0.62f,0.96f), // dog     - blue
+            new Color(0.98f,0.55f,0.68f), // rabbit  - rose
+            new Color(0.36f,0.80f,0.68f), // panda   - teal
+            new Color(0.99f,0.72f,0.36f), // owl     - amber
+            new Color(0.86f,0.52f,0.93f), // pig     - orchid
+            new Color(0.62f,0.84f,0.40f), // frog    - lime
+            new Color(0.42f,0.80f,0.94f), // penguin - sky
+            new Color(0.93f,0.60f,0.42f), // bear    - coral
+            new Color(0.98f,0.84f,0.36f), // duck    - gold
+            new Color(0.70f,0.62f,0.95f), // cow     - lavender
+        };
+        private Color PetCol(int i)=>PetColors[i % PetColors.Length];
+
         // ---- BFS-verified level ramp (par = true optimal move count) ----
         private static readonly Lv[] Levels =
         {
@@ -116,6 +134,16 @@ namespace SleepyZoo
         private bool _swiping;
         private bool _solved;
 
+        // on-board guidance arrow (used for both the tutorial nudge and hints)
+        private Transform _arrowTf;
+        private SpriteRenderer _arrowSr;
+        private bool _arrowOn;
+        private Vector2Int _arrowDir;
+        private Color _arrowTint;
+        private bool _isTutorial;             // level 0 shows a guided first-swipe demo
+        private Vector2Int _tutorialDir;      // the helpful first swipe to demonstrate
+        private float _tipTime;               // brief per-level teaching tip fades out
+
         // UI
         private GUIStyle _title, _sub, _btn, _btnMenu, _win, _hintText, _panelBody, _panelSub;
         private Texture2D _btnTex, _btnTexDown, _panelTex, _starTex, _dimTex;
@@ -124,6 +152,41 @@ namespace SleepyZoo
         private readonly List<Rect> _uiRects = new();
 
         public static int LevelCount => Levels.Length;
+        public static int MaxStars => Levels.Length * 3;
+
+        // Where "Play" should drop the player: the furthest level they've reached that
+        // is actually unlocked, so they continue instead of replaying the tutorial.
+        public static int ResumeLevel()
+        {
+            int want=PlayerPrefs.GetInt("zoo_furthest",0);
+            want=Mathf.Clamp(want,0,Levels.Length-1);
+            while(want>0 && !IsUnlocked(want)) want--;   // gated? fall back to the last open one
+            return want;
+        }
+
+        // ---- star economy (Where's-My-Water style gentle checkpoints) ----
+        // Levels open in order once you've cleared the one before, but a few
+        // checkpoints also need a running star total — so a lazy 1-star run hits a
+        // wall and has to replay a couple of levels for more stars.
+        public static int StarsFor(int i) => PlayerPrefs.GetInt("zoo_stars_" + i, 0);
+        public static int TotalStars()
+        {
+            int t = 0; for (int i = 0; i < Levels.Length; i++) t += StarsFor(i); return t;
+        }
+        // Total stars required to step past each checkpoint.
+        public static int RequiredStars(int i)
+        {
+            if (i >= 12) return 24;   // gate before level 13
+            if (i >= 8)  return 14;   // gate before level 9
+            if (i >= 4)  return 6;    // gate before level 5
+            return 0;
+        }
+        public static bool IsUnlocked(int i)
+        {
+            if (i <= 0) return true;                       // tutorial always open
+            if (StarsFor(i - 1) <= 0) return false;        // must clear the previous level
+            return TotalStars() >= RequiredStars(i);       // …and clear the checkpoint
+        }
 
         private void Start(){ SetupCamera(); LoadLevel(PlayerPrefs.GetInt("zoo_level",0)); }
 
@@ -140,8 +203,13 @@ namespace SleepyZoo
             foreach (Transform c in transform) Destroy(c.gameObject);
             _walls.Clear(); _undo.Clear();
             _moves=0; _solved=false; _stars=0; _levelTime=0f; _showHint=false; _swiping=false;
+            _arrowTf=null; _arrowSr=null; _arrowOn=false; _hintPath=null;
 
             _levelIndex=Mathf.Clamp(index,0,Levels.Length-1);
+            // The full "how to play" walkthrough shows on level 1 only until it's been
+            // completed once; after that level 1 plays like any other level.
+            _isTutorial=(_levelIndex==0 && PlayerPrefs.GetInt("zoo_tutorial_done",0)==0);
+            _tipTime=0f;
             PlayerPrefs.SetInt("zoo_level",_levelIndex); PlayerPrefs.Save();
             _lv=Levels[_levelIndex];
             foreach (var w in _lv.walls) _walls.Add(w);
@@ -159,7 +227,24 @@ namespace SleepyZoo
                 _pet[i]=Pets[i % Pets.Length];
                 SpawnBed(i); SpawnAnimal(i);
             }
+            SpawnArrow();
+            if(_isTutorial)
+            {
+                var demo=SolveFrom(_pos);
+                _tutorialDir=(demo!=null&&demo.Count>0)?demo[0]:Vector2Int.right;
+            }
             FrameCamera();
+        }
+
+        // A single big translucent arrow, reused for the tutorial demo and hints.
+        private void SpawnArrow()
+        {
+            var go=new GameObject("GuideArrow"); go.transform.SetParent(transform);
+            go.transform.position=new Vector3(0,0,-0.4f);
+            _arrowSr=go.AddComponent<SpriteRenderer>();
+            _arrowSr.sprite=ArrowSprite(); _arrowSr.sortingOrder=30;
+            _arrowSr.enabled=false;
+            _arrowTf=go.transform;
         }
 
         // ---- visuals ----
@@ -208,18 +293,29 @@ namespace SleepyZoo
 
         private void SpawnBed(int i)
         {
-            // a cream nest with a soft ring, then a faded "ghost" of the exact animal
-            // that belongs here — so the player always knows whose bed is whose.
-            Tile(CellToWorld(_bed[i]),1,BedRing,RoundedTile(),0.80f);
-            Tile(CellToWorld(_bed[i])+new Vector3(0,0,-0.02f),2,BedNest,RoundedTile(),0.68f);
+            // Each bed is a soft colour-matched blanket (same signature colour the
+            // animal wears), a cream pillow, then a faded "ghost" of the exact animal
+            // that sleeps here — so whose bed is whose reads instantly, by colour.
+            Color col=PetCol(i);
+            var pos=CellToWorld(_bed[i]);
+            // A cozy nook: a soft round colour-glow (no hard edges), a cream pillow on
+            // top, then a faded ghost of the animal that sleeps here. The soft disc reads
+            // as a warm glow rather than a UI box, while still coding the bed by colour.
+            var halo=Tile(pos+new Vector3(0,0,0.03f),1,col,SoftDisc(),1.06f);
+            halo.GetComponent<SpriteRenderer>().color=new Color(col.r,col.g,col.b,0.9f);
+            var inner=Tile(pos+new Vector3(0,0,0.02f),2,col,SoftDisc(),0.72f);
+            inner.GetComponent<SpriteRenderer>().color=new Color(col.r,col.g,col.b,0.7f);
+            // soft cream pillow in the middle (small, so a clear colour rim shows around it)
+            Tile(pos+new Vector3(0,0.01f,-0.02f),3,BedNest,RoundedTile(),0.44f);
             var s=Pet(_pet[i]);
             if(s!=null)
             {
                 var go=new GameObject("BedGhost"); go.transform.SetParent(transform);
-                go.transform.position=CellToWorld(_bed[i])+new Vector3(0,0,-0.05f);
-                var sr=go.AddComponent<SpriteRenderer>(); sr.sprite=s; sr.sortingOrder=3;
-                sr.color=new Color(0.4f,0.35f,0.3f,0.32f);
-                float sc=0.52f/s.bounds.size.x; go.transform.localScale=new Vector3(sc,sc,1f);
+                go.transform.position=pos+new Vector3(0,0,-0.05f);
+                var sr=go.AddComponent<SpriteRenderer>(); sr.sprite=s; sr.sortingOrder=4;
+                // tint the sleeping ghost toward the bed colour so the match is obvious
+                sr.color=new Color(0.5f+col.r*0.18f,0.47f+col.g*0.18f,0.45f+col.b*0.18f,0.5f);
+                float sc=0.44f/s.bounds.size.x; go.transform.localScale=new Vector3(sc,sc,1f);
             }
         }
 
@@ -227,9 +323,23 @@ namespace SleepyZoo
         {
             var s=Pet(_pet[i]);
             var go=new GameObject("Animal"); go.transform.SetParent(transform); go.transform.position=CellToWorld(_pos[i]);
+
             var sr=go.AddComponent<SpriteRenderer>(); sr.sortingOrder=6;
-            if(s!=null){ sr.sprite=s; float sc=0.86f/s.bounds.size.x; go.transform.localScale=new Vector3(sc,sc,1f);}
-            else { sr.sprite=RoundedTile(); sr.color=new Color(0.9f,0.7f,0.55f); go.transform.localScale=new Vector3(0.7f,0.7f,1f);}
+            float parentScale;
+            if(s!=null){ sr.sprite=s; parentScale=0.86f/s.bounds.size.x; }
+            else { sr.sprite=RoundedTile(); sr.color=new Color(0.9f,0.7f,0.55f); parentScale=0.7f; }
+            go.transform.localScale=new Vector3(parentScale,parentScale,1f);
+
+            // soft signature-colour glow that rides along under the animal. It's a child,
+            // so its local scale is divided back out of the parent's scale to land at ~1 cell.
+            Color col=PetCol(i);
+            var glow=new GameObject("Glow"); glow.transform.SetParent(go.transform);
+            glow.transform.localPosition=new Vector3(0,0,0.2f);
+            var gsr=glow.AddComponent<SpriteRenderer>(); gsr.sprite=SoftDisc(); gsr.sortingOrder=5;
+            gsr.color=new Color(col.r,col.g,col.b,0.75f);
+            float gs=1.34f/(parentScale*SoftDisc().bounds.size.x);   // bigger than the animal so a coloured aura shows
+            glow.transform.localScale=new Vector3(gs,gs,1f);
+
             _view[i]=go.transform; _target[i]=CellToWorld(_pos[i]);
         }
 
@@ -273,8 +383,14 @@ namespace SleepyZoo
                 _view[i].position=Vector3.Lerp(_view[i].position,_target[i],Time.deltaTime*16f);
                 _view[i].localScale=Vector3.Lerp(_view[i].localScale,new Vector3(b,b,1f),Time.deltaTime*12f);
             }
-            if (_solved) return;
+            if (_solved){ DriveArrow(); return; }
             _levelTime+=Time.deltaTime;
+            _tipTime+=Time.deltaTime;
+            DriveArrow();
+
+            // Only read input while the app is actually in front — stops stray taps/swipes
+            // from registering when the window is in the background.
+            if (!Application.isFocused){ _swiping=false; return; }
 
             if (Input.GetMouseButtonDown(0))
             {
@@ -302,6 +418,29 @@ namespace SleepyZoo
         }
 
         private static Vector2Int Dir(Vector2 d)=>Mathf.Abs(d.x)>Mathf.Abs(d.y)?(d.x>0?Vector2Int.right:Vector2Int.left):(d.y>0?Vector2Int.up:Vector2Int.down);
+
+        // Shows/animates the single on-board guide arrow: a warm gold demo on the
+        // tutorial's first swipe, a minty "next move" arrow when a hint is open.
+        private void DriveArrow()
+        {
+            if(_arrowTf==null||_arrowSr==null) return;
+            bool show=false; Vector2Int dir=Vector2Int.right; Color tint=Color.white;
+            if(!_solved && _isTutorial && _moves==0)
+            { show=true; dir=_tutorialDir; tint=new Color(1f,0.85f,0.42f); }
+            else if(!_solved && _showHint && _hintPath!=null && _hintPath.Count>0)
+            { show=true; dir=_hintPath[0]; tint=new Color(0.52f,0.90f,0.70f); }
+
+            _arrowSr.enabled=show; _arrowOn=show;
+            if(!show) return;
+
+            _arrowTf.rotation=Quaternion.Euler(0,0,DirAngle(dir));
+            float pulse=0.5f+0.5f*Mathf.Sin(Time.unscaledTime*3.2f);
+            Vector3 off=new Vector3(dir.x,dir.y,0f)*(0.14f+0.14f*pulse);
+            _arrowTf.position=new Vector3(off.x,off.y,-0.4f);
+            float sc=(1.7f+0.18f*pulse)/ArrowSprite().bounds.size.x;
+            _arrowTf.localScale=new Vector3(sc,sc,1f);
+            _arrowSr.color=new Color(tint.r,tint.g,tint.b,0.5f+0.4f*pulse);
+        }
 
         // Slide EVERY animal at once. Process leading-edge-first so trains settle
         // deterministically. The hint solver reuses the exact same function, so the
@@ -337,7 +476,8 @@ namespace SleepyZoo
 
             PushUndo();
             for(int i=0;i<np.Length;i++){ _pos[i]=np[i]; _target[i]=CellToWorld(np[i]); }
-            _hintPath=null;            // any move invalidates a shown hint path
+            _hintPath=null; _showHint=false; _arrowOn=false;  // any move clears shown guidance
+            _tipTime=999f;             // hide the teaching tip once they act
             _moves++; Sfx.Click(); CheckWin();
         }
 
@@ -402,11 +542,14 @@ namespace SleepyZoo
             _stars = _moves<=_lv.par ? 3 : (_moves<=_lv.par+2 ? 2 : 1);
             int key=PlayerPrefs.GetInt("zoo_stars_"+_levelIndex,0);
             if(_stars>key) PlayerPrefs.SetInt("zoo_stars_"+_levelIndex,_stars);
+            if(_levelIndex==0) PlayerPrefs.SetInt("zoo_tutorial_done",1);  // never re-teach
+            // remember the furthest level reached so Play resumes there
+            int furthest=PlayerPrefs.GetInt("zoo_furthest",0);
+            int nextLv=Mathf.Min(_levelIndex+1,Levels.Length-1);
+            if(nextLv>furthest) PlayerPrefs.SetInt("zoo_furthest",nextLv);
             PlayerPrefs.Save();
             Sfx.Pop();
         }
-
-        private bool HintReady => !_solved && (_moves >= Mathf.Max(_lv.par+3,6) || _levelTime >= 30f);
 
         // ---- UI ----
         private void OnGUI()
@@ -419,68 +562,88 @@ namespace SleepyZoo
             float cx=Screen.width/2f;
             float u=Mathf.Min(Screen.width,Screen.height);
 
-            GUI.Label(new Rect(0,top+2,Screen.width,48), $"Level {_levelIndex+1}", _title);
-            GUI.Label(new Rect(0,top+56,Screen.width,30), $"3 stars in {_lv.par} moves   -   {_moves} so far", _sub);
+            // Header text sits BELOW the Menu button's row, centred full-width, so the
+            // Menu pill can never overlap the title (even the long "Welcome!").
+            float hy = top + 64f;
+            GUI.Label(new Rect(0,hy,Screen.width,46), _isTutorial?"Welcome!":$"Level {_levelIndex+1}", _title);
 
             if(!_solved)
             {
-                // Menu — clearly-sized, tappable pill (top-left, out of the board)
-                var rMenu=new Rect(sa.x+16, top, 148, 74); _uiRects.Add(rMenu);
+                // Menu — clearly-sized, tappable pill (top-left corner, above the title)
+                var rMenu=new Rect(sa.x+16, top, 132, 60); _uiRects.Add(rMenu);
                 if(CozyButton(rMenu,"Menu",_btnMenu)){ Sfx.Click(); SceneManager.LoadScene("MainMenu"); }
 
-                // big, obvious Undo | Reset
-                float bw=Mathf.Min(300, (Screen.width-64)/2f), bh=120, gap=24;
+                // teaching text: a guided tutorial on level 1, a gentle one-line tip
+                // on the next few levels — both fade the moment the player acts.
+                if(_isTutorial && _moves==0)
+                {
+                    GUI.Label(new Rect(16,hy+48,Screen.width-32,28),"Swipe any way — everyone slides at once.",_sub);
+                    GUI.Label(new Rect(16,hy+78,Screen.width-32,28),"Follow the arrow to the glowing bed.",_sub);
+                }
+                else if(!_isTutorial)
+                {
+                    GUI.Label(new Rect(0,hy+48,Screen.width,28), $"3 stars in {_lv.par} moves   -   {_moves} so far", _sub);
+                    // early-level teaching tip, on its own soft strip so it stays legible
+                    if(_levelIndex>=1 && _levelIndex<=4 && _moves==0 && _tipTime<6f)
+                    {
+                        float tw=Screen.width-56f;
+                        float th=_hintText.CalcHeight(new GUIContent(_lv.hint),tw)+16f;
+                        var tip=new Rect(28f,hy+80,tw,th);
+                        var pc=GUI.color;
+                        GUI.color=new Color(0.10f,0.07f,0.16f,0.55f);
+                        GUI.DrawTexture(tip,_dimTex);
+                        GUI.color=pc;
+                        GUI.Label(new Rect(tip.x+8,tip.y+8,tip.width-16,tip.height-12),_lv.hint,_hintText);
+                    }
+                }
+
+                // Undo | Reset — comfortably tappable but no longer dominating the screen
+                float bw=Mathf.Min(210, (Screen.width-80)/2f), bh=84, gap=20;
                 float by=Screen.height-bot-bh;
                 var rUndo=new Rect(cx-bw-gap/2, by, bw, bh); _uiRects.Add(rUndo);
                 var rReset=new Rect(cx+gap/2, by, bw, bh); _uiRects.Add(rReset);
                 if(CozyButton(rUndo,"Undo",_btn)) Undo();
                 if(CozyButton(rReset,"Reset",_btn)){ Sfx.Click(); LoadLevel(_levelIndex); }
 
-                if(HintReady && !_showHint)
+                // Hint is always here to help; it pulses and speaks up after a struggle.
+                // Tapping it drops a glowing arrow on the board showing the very next
+                // swipe — real help, one step at a time.
+                bool struggling = _moves>=Mathf.Max(_lv.par+2,5) || _levelTime>=25f;
+                float hw=Mathf.Min(260,Screen.width*0.60f), hh=70;
+                var rHint=new Rect(cx-hw/2, by-hh-16, hw, hh); _uiRects.Add(rHint);
+                string hlabel=_showHint?"Hide hint":(struggling?"Need a hint?":"Hint");
+                var prev=GUI.color;
+                if(struggling && !_showHint) GUI.color=new Color(1f,1f,1f,0.82f+0.18f*Mathf.Sin(Time.unscaledTime*4f));
+                if(CozyButton(rHint,hlabel,_btn))
                 {
-                    float hw=Mathf.Min(280,Screen.width*0.62f), hh=68;
-                    var rHint=new Rect(cx-hw/2, by-hh-18, hw, hh); _uiRects.Add(rHint);
-                    float pulse=0.82f+0.18f*Mathf.Sin(Time.unscaledTime*4f);
-                    var prev=GUI.color; GUI.color=new Color(1f,1f,1f,pulse);
-                    if(CozyButton(rHint,"Need a hint?",_btn)){ Sfx.Click(); _showHint=true; _hintPath=SolveFrom(_pos); }
-                    GUI.color=prev;
+                    Sfx.Click();
+                    if(_showHint) _showHint=false;
+                    else { _hintPath=SolveFrom(_pos); _showHint=true; }
                 }
+                GUI.color=prev;
 
-                if(_levelIndex==0 && _moves==0)
-                    GUI.Label(new Rect(0,Screen.height-bot-210,Screen.width,28),"Swipe anywhere to tip the room",_sub);
+                // Caption for the on-board arrow. It sits on its own dark rounded strip so
+                // it always reads clearly instead of disappearing into the board behind it.
+                if(_showHint)
+                {
+                    string cap;
+                    if(_hintPath==null) cap="This one's tangled - tap Reset to start fresh.";
+                    else if(_hintPath.Count==0) cap="You're there - one more nudge!";
+                    else cap=$"Swipe {DirWord(_hintPath[0])}   -   {_hintPath.Count} move"+(_hintPath.Count==1?"":"s")+" to go";
 
-                if(_showHint) DrawHintCard(cx);
+                    var size=_hintText.CalcSize(new GUIContent(cap));
+                    float pw=Mathf.Min(Screen.width-40f, size.x+44f), ph=44f;
+                    var strip=new Rect(cx-pw/2f, by-hh-16-ph-12f, pw, ph);
+                    var prevC=GUI.color;
+                    GUI.color=new Color(0.10f,0.07f,0.16f,0.80f);
+                    GUI.DrawTexture(strip,_dimTex);
+                    GUI.color=prevC;
+                    var lab=_hintText.alignment; _hintText.alignment=TextAnchor.MiddleCenter;
+                    GUI.Label(strip,cap,_hintText);
+                    _hintText.alignment=lab;
+                }
             }
             else DrawWinPanel(cx, u);
-        }
-
-        private void DrawHintCard(float cx)
-        {
-            GUI.color=new Color(0,0,0,0.55f); GUI.DrawTexture(new Rect(0,0,Screen.width,Screen.height),_dimTex); GUI.color=Color.white;
-            float w=Mathf.Min(Screen.width*0.88f,620), h=Mathf.Min(Screen.height*0.66f, w*0.9f);
-            var box=new Rect(cx-w/2,(Screen.height-h)/2,w,h);
-            if(_panelTex!=null) GUI.DrawTexture(box,_panelTex);
-
-            float pad=w*0.10f;
-            GUI.Label(new Rect(box.x+pad,box.y+h*0.10f,w-2*pad,44),"Hint",_win);
-            // short flavour line up top
-            GUI.Label(new Rect(box.x+pad,box.y+h*0.24f,w-2*pad,h*0.16f),_lv.hint,_hintText);
-
-            // the real help: the exact remaining swipes to finish, from here
-            string body;
-            if(_hintPath==null) body="(This one has you tangled up — try Reset and start fresh.)";
-            else if(_hintPath.Count==0) body="You're basically there — one more nudge!";
-            else
-            {
-                var sb=new System.Text.StringBuilder();
-                sb.Append("Swipe:  ");
-                for(int i=0;i<_hintPath.Count;i++){ if(i>0) sb.Append("  >  "); sb.Append(DirWord(_hintPath[i])); }
-                body=sb.ToString();
-            }
-            GUI.Label(new Rect(box.x+pad,box.y+h*0.42f,w-2*pad,h*0.34f),body,_hintText);
-
-            var rOk=new Rect(cx-100,box.yMax-h*0.16f-14,200,h*0.16f); _uiRects.Add(rOk);
-            if(CozyButton(rOk,"Got it",_btn)){ Sfx.Click(); _showHint=false; }
         }
 
         private void DrawWinPanel(float cx, float u)
@@ -490,19 +653,54 @@ namespace SleepyZoo
             var box=new Rect(cx-w/2,(Screen.height-h)/2,w,h);
             if(_panelTex!=null) GUI.DrawTexture(box,_panelTex);
 
-            GUI.Label(new Rect(box.x,box.y+h*0.12f,w,52),"All tucked in!",_win);
+            // Title owns the full top of the panel now — nothing overlaps it.
+            GUI.Label(new Rect(box.x,box.y+h*0.11f,w,52),"All tucked in!",_win);
             // stars sized off the BOX so they always stay inside the cream panel
-            DrawStars(cx, box.y+h*0.34f, _stars, Mathf.Min(h*0.20f, w*0.16f));
-            GUI.Label(new Rect(box.x,box.y+h*0.56f,w,30), $"{_moves} moves", _panelBody);
-            GUI.Label(new Rect(box.x,box.y+h*0.64f,w,26), $"3 stars <= {_lv.par}     2 stars <= {_lv.par+2}", _panelSub);
+            DrawStars(cx, box.y+h*0.31f, _stars, Mathf.Min(h*0.16f, w*0.13f));
+            GUI.Label(new Rect(box.x,box.y+h*0.49f,w,30), $"{_moves} moves   -   {TotalStars()} / {MaxStars} stars", _panelBody);
 
             bool last=_levelIndex>=Levels.Length-1;
-            float bw=Mathf.Min(360,w*0.74f), bh=108;
-            var rNext=new Rect(cx-bw/2, box.yMax-bh-22, bw, bh); _uiRects.Add(rNext);
-            if(CozyButton(rNext, last?"Play again":"Next level",_btn))
-            { Sfx.Click(); LoadLevel(last?0:_levelIndex+1); }
-            var rMenu=new Rect(box.x+18, box.y+14, 120, 58); _uiRects.Add(rMenu);
+            int next=_levelIndex+1;
+            bool nextOpen = !last && IsUnlocked(next);
+            bool nextGated = !last && !nextOpen;   // blocked by a star checkpoint
+
+            // Buttons live in one bottom row (Menu + action) so neither can collide with
+            // the title or the info line. Heights scale with the panel.
+            float bh=Mathf.Min(92f, h*0.20f);
+            float by=box.yMax - bh - h*0.07f;
+            float infoY=box.y+h*0.585f, infoH=by-infoY-6f;
+            if(nextGated)
+            {
+                int need=RequiredStars(next)-TotalStars();
+                GUI.Label(new Rect(box.x+22,infoY,w-44,infoH),
+                    $"Level {next+1} opens at {RequiredStars(next)} stars.\n{need} more to go — replay for stars!",_panelSub);
+            }
+            else
+            {
+                GUI.Label(new Rect(box.x,infoY,w,infoH), $"3 stars: {_lv.par} moves    2 stars: {_lv.par+2} moves", _panelSub);
+            }
+
+            float gap=16f;
+            float menuW=Mathf.Min(150f, w*0.32f);
+            float actW=Mathf.Min(330f, w*0.52f);
+            float rowW=menuW+gap+actW, sx=cx-rowW/2f;
+            var rMenu=new Rect(sx, by, menuW, bh); _uiRects.Add(rMenu);
             if(CozyButton(rMenu,"Menu",_btnMenu)){ Sfx.Click(); SceneManager.LoadScene("MainMenu"); }
+            var rAct=new Rect(sx+menuW+gap, by, actW, bh); _uiRects.Add(rAct);
+            if(nextGated)
+            {
+                if(CozyButton(rAct,"More stars",_btn)){ Sfx.Click(); LoadLevel(BestReplayLevel()); }
+            }
+            else if(CozyButton(rAct, last?"Play again":"Next level",_btn))
+            { Sfx.Click(); LoadLevel(last?0:next); }
+        }
+
+        // When a checkpoint blocks the next level, send the player to the earliest
+        // level where they haven't earned 3 stars yet — the easiest place to top up.
+        private int BestReplayLevel()
+        {
+            for(int i=0;i<=_levelIndex;i++) if(StarsFor(i)<3) return i;
+            return _levelIndex;
         }
 
         private void DrawStars(float cx,float y,int count,float s)
@@ -548,29 +746,141 @@ namespace SleepyZoo
             return _round;
         }
 
-        // Flat warm night gradient with a single soft moon glow — cozy, not busy.
+        // Soft radial disc used for animal glows and coloured bed blankets.
+        private static Sprite _disc;
+        private static Sprite SoftDisc()
+        {
+            if(_disc!=null) return _disc;
+            int s=128; float half=s*0.5f;
+            var tex=new Texture2D(s,s,TextureFormat.RGBA32,false){wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear};
+            var px=new Color32[s*s];
+            for(int y=0;y<s;y++)for(int x=0;x<s;x++){
+                float d=Mathf.Sqrt((x+0.5f-half)*(x+0.5f-half)+(y+0.5f-half)*(y+0.5f-half))/half;
+                float a=Mathf.Clamp01(1f-d); a=a*a*(3f-2f*a);   // smooth falloff
+                px[y*s+x]=new Color32(255,255,255,(byte)(a*255));
+            }
+            tex.SetPixels32(px); tex.Apply();
+            _disc=Sprite.Create(tex,new Rect(0,0,s,s),new Vector2(0.5f,0.5f),s);
+            return _disc;
+        }
+
+        // A chunky rounded arrow pointing +x (right). Rotate the transform for other dirs.
+        private static Sprite _arrowSprite;
+        private static Sprite ArrowSprite()
+        {
+            if(_arrowSprite!=null) return _arrowSprite;
+            int s=128; var tex=new Texture2D(s,s,TextureFormat.RGBA32,false){wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear};
+            var px=new Color32[s*s];
+            for(int y=0;y<s;y++)for(int x=0;x<s;x++){
+                float cx=x+0.5f-64f, cy=y+0.5f-64f;
+                // shaft: rounded bar; head: triangle narrowing to the tip at cx=48
+                bool shaft = cx>=-44f && cx<=16f && Mathf.Abs(cy)<=15f;
+                bool head  = cx>=8f && cx<=48f && Mathf.Abs(cy) <= (48f-cx)*0.95f;
+                float inside = (shaft||head)?1f:0f;
+                // cheap 1px anti-alias by sampling the boundary softly
+                float aa=Mathf.Clamp01(inside);
+                px[y*s+x]=new Color32(255,255,255,(byte)(aa*255));
+            }
+            tex.SetPixels32(px); tex.Apply();
+            _arrowSprite=Sprite.Create(tex,new Rect(0,0,s,s),new Vector2(0.5f,0.5f),s);
+            return _arrowSprite;
+        }
+
+        private static float DirAngle(Vector2Int d)=>
+            d==Vector2Int.right?0f:d==Vector2Int.up?90f:d==Vector2Int.left?180f:270f;
+
+        // A painted-feeling bedtime sky: deep indigo up top warming to dusky plum at the
+        // horizon, a scatter of twinkle-sized stars, a haloed moon, and three layers of
+        // rolling hills that get lighter with distance. All generated, so it costs no art.
         private static Sprite BgGradient()
         {
             if(_bg!=null) return _bg;
-            int w=128,h=256;
+            int w=360,h=720;
             var tex=new Texture2D(w,h,TextureFormat.RGBA32,false){wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear};
-            var px=new Color32[w*h];
-            Vector2 moon=new Vector2(0.74f,0.82f); float mr=0.10f;
-            var moonCol=new Color(1f,0.96f,0.84f);
-            for(int y=0;y<h;y++)for(int x=0;x<w;x++)
+            var px=new Color[w*h];
+
+            // sky palette (y=0 is the BOTTOM of the texture in Unity)
+            var skyTop    = new Color(0.13f,0.11f,0.24f);
+            var skyMid    = new Color(0.26f,0.18f,0.33f);
+            var skyHorizon= new Color(0.47f,0.29f,0.38f);
+            Vector2 moon=new Vector2(0.76f,0.84f); float mr=0.052f;
+            var moonCol=new Color(1f,0.97f,0.88f);
+
+            for(int y=0;y<h;y++)
             {
-                float t=(float)y/(h-1);
-                Color c=Color.Lerp(NightBottom,NightTop,t);
-                float nx=(float)x/(w-1), ny=(float)y/(h-1);
-                float d=Mathf.Sqrt((nx-moon.x)*(nx-moon.x)+(ny-moon.y)*(ny-moon.y));
-                float glow=Mathf.Clamp01(1f-d/(mr*3.2f)); glow*=glow;
-                float core=d<mr?Mathf.Clamp01(1f-d/mr):0f;
-                c=Color.Lerp(c,moonCol,Mathf.Clamp01(glow*0.5f+core*0.85f));
-                px[y*w+x]=c;
+                float ny=(float)y/(h-1);
+                for(int x=0;x<w;x++)
+                {
+                    float nx=(float)x/(w-1);
+                    // vertical gradient: horizon warmth low, deep indigo high
+                    Color c = ny<0.45f
+                        ? Color.Lerp(skyHorizon,skyMid, ny/0.45f)
+                        : Color.Lerp(skyMid,skyTop,(ny-0.45f)/0.55f);
+                    // moon halo + core
+                    float aspect=(float)w/h;
+                    float dx=(nx-moon.x)*aspect, dy=ny-moon.y;
+                    float d=Mathf.Sqrt(dx*dx+dy*dy);
+                    float halo=Mathf.Clamp01(1f-d/(mr*5.5f)); halo*=halo*halo;
+                    float core=Mathf.Clamp01(1f-d/mr);
+                    core=core*core*(3f-2f*core);
+                    c=Color.Lerp(c,moonCol,Mathf.Clamp01(halo*0.30f+core*0.95f));
+                    px[y*w+x]=c;
+                }
             }
-            tex.SetPixels32(px); tex.Apply();
+
+            // stars — deterministic scatter, denser and brighter high in the sky
+            var rng=new System.Random(20260726);
+            for(int i=0;i<170;i++)
+            {
+                float sx=(float)rng.NextDouble(), sy=0.38f+(float)rng.NextDouble()*0.62f;
+                float bright=0.35f+(float)rng.NextDouble()*0.65f;
+                // fade stars near the moon so its glow stays clean
+                float aspect=(float)w/h;
+                float ddx=(sx-moon.x)*aspect, ddy=sy-moon.y;
+                if(Mathf.Sqrt(ddx*ddx+ddy*ddy) < mr*4f) continue;
+                int cx=Mathf.RoundToInt(sx*(w-1)), cy=Mathf.RoundToInt(sy*(h-1));
+                float rad=(float)rng.NextDouble()<0.18f?1.7f:0.95f;   // a few bigger ones
+                int ri=Mathf.CeilToInt(rad);
+                for(int oy=-ri;oy<=ri;oy++)for(int ox=-ri;ox<=ri;ox++)
+                {
+                    int tx=cx+ox, ty=cy+oy;
+                    if(tx<0||tx>=w||ty<0||ty>=h) continue;
+                    float dd=Mathf.Sqrt(ox*ox+oy*oy);
+                    float a=Mathf.Clamp01(1f-dd/rad)*bright;
+                    if(a<=0f) continue;
+                    px[ty*w+tx]=Color.Lerp(px[ty*w+tx],new Color(1f,0.98f,0.92f),a);
+                }
+            }
+
+            // three hill layers, far (lightest) to near (darkest silhouette)
+            DrawHills(px,w,h, 0.30f, 0.055f, 1.7f, 0.6f,  new Color(0.32f,0.22f,0.35f));
+            DrawHills(px,w,h, 0.21f, 0.05f,  2.6f, 2.1f,  new Color(0.24f,0.16f,0.29f));
+            DrawHills(px,w,h, 0.12f, 0.045f, 3.7f, 4.3f,  new Color(0.17f,0.11f,0.22f));
+
+            var out32=new Color32[w*h];
+            for(int i=0;i<px.Length;i++) out32[i]=px[i];
+            tex.SetPixels32(out32); tex.Apply();
             _bg=Sprite.Create(tex,new Rect(0,0,w,h),new Vector2(0.5f,0.5f),1);
             return _bg;
+        }
+
+        // Fills everything below a soft sine-blended ridge line with `col`.
+        private static void DrawHills(Color[] px,int w,int h,float baseY,float amp,float freq,float phase,Color col)
+        {
+            for(int x=0;x<w;x++)
+            {
+                float nx=(float)x/(w-1);
+                float ridge=baseY
+                    + Mathf.Sin(nx*freq*Mathf.PI*2f+phase)*amp
+                    + Mathf.Sin(nx*freq*1.9f*Mathf.PI*2f+phase*1.7f)*amp*0.35f;
+                int ry=Mathf.RoundToInt(ridge*(h-1));
+                for(int y=0;y<=ry && y<h;y++)
+                {
+                    // soften the top 2px of the ridge so it doesn't alias
+                    float a=(ry-y)<2 ? 0.55f : 1f;
+                    px[y*w+x]=Color.Lerp(px[y*w+x],col,a);
+                }
+            }
         }
 
         private static Texture2D MakeButtonTex(bool pressed)
@@ -607,14 +917,17 @@ namespace SleepyZoo
             _title=new GUIStyle(GUI.skin.label){fontSize=34,fontStyle=FontStyle.Bold,alignment=TextAnchor.UpperCenter};
             _sub=new GUIStyle(GUI.skin.label){fontSize=20,alignment=TextAnchor.MiddleCenter};
             _win=new GUIStyle(GUI.skin.label){fontSize=40,fontStyle=FontStyle.Bold,alignment=TextAnchor.UpperCenter};
-            _hintText=new GUIStyle(GUI.skin.label){fontSize=24,alignment=TextAnchor.UpperCenter,wordWrap=true};
+            _hintText=new GUIStyle(GUI.skin.label){fontSize=23,fontStyle=FontStyle.Bold,alignment=TextAnchor.UpperCenter,wordWrap=true};
             _panelBody=new GUIStyle(GUI.skin.label){fontSize=26,fontStyle=FontStyle.Bold,alignment=TextAnchor.MiddleCenter};
             _panelSub=new GUIStyle(GUI.skin.label){fontSize=21,alignment=TextAnchor.MiddleCenter};
             _title.normal.textColor=Color.white;
-            _sub.normal.textColor=new Color(1f,0.95f,0.86f,0.92f);
-            _win.normal.textColor=_hintText.normal.textColor=Brown;
+            _sub.normal.textColor=new Color(1f,0.95f,0.86f,0.95f);
+            // Text ON THE DARK SKY is warm cream (brown vanished against the night);
+            // brown is reserved for text sitting inside the cream panels.
+            _hintText.normal.textColor=new Color(1f,0.93f,0.80f,0.98f);
+            _win.normal.textColor=Brown;
             _panelBody.normal.textColor=Brown;
-            _panelSub.normal.textColor=new Color(0.45f,0.30f,0.18f);
+            _panelSub.normal.textColor=new Color(0.42f,0.27f,0.16f);
             if(_font!=null) foreach(var st in new[]{_title,_sub,_win,_hintText,_panelBody,_panelSub}) st.font=_font;
 
             var pill=Resources.Load<Texture2D>("Art/ui_button");

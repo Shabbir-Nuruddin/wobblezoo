@@ -18,7 +18,7 @@ namespace ChonkyMerge
         private SpriteRenderer _soundIcon;
         private readonly System.Collections.Generic.List<Transform> _floaters = new();
         private readonly System.Collections.Generic.List<Vector3> _floaterBase = new();
-        private GUIStyle _title, _big, _mid, _btn, _cellNum, _pill, _bigPill;
+        private GUIStyle _title, _big, _mid, _btn, _cellNum, _pill, _bigPill, _note, _cellSub;
         private Texture2D _pillTex, _starTex, _dimTex, _cardTex;
         private Vector2 _levelScroll;
         private float _levelsCenterY, _levelsW, _levelsH;   // world footprint of the big Levels button
@@ -208,7 +208,12 @@ namespace ChonkyMerge
         {
             switch (id)
             {
-                case ButtonId.Play: SceneManager.LoadScene("Puzzle"); break;
+                case ButtonId.Play:
+                    // continue where they left off rather than restarting the tutorial
+                    PlayerPrefs.SetInt("zoo_level", SleepyZoo.PuzzleGame.ResumeLevel());
+                    PlayerPrefs.Save();
+                    SceneManager.LoadScene("Puzzle");
+                    break;
                 case ButtonId.HighScore: _panel = Panel.HighScore; break;
                 case ButtonId.Settings: _panel = Panel.Settings; break;
                 case ButtonId.Share:
@@ -237,6 +242,9 @@ namespace ChonkyMerge
                 Vector3 br = _cam.WorldToScreenPoint(new Vector3(_levelsW * 0.5f, _levelsCenterY - _levelsH * 0.5f, 0));
                 var rLv = new Rect(tl.x, Screen.height - tl.y, br.x - tl.x, (Screen.height - br.y) - (Screen.height - tl.y));
                 if (GUI.Button(rLv, "Levels", _bigPill)) { Sfx.Click(); _panel = Panel.Levels; }
+                // live star total, tucked just under the button so stars feel worth chasing
+                GUI.Label(new Rect(0, rLv.yMax + 2, Screen.width, 30),
+                    $"{SleepyZoo.PuzzleGame.TotalStars()} / {SleepyZoo.PuzzleGame.MaxStars} stars collected", _note);
             }
 
             if (_panel == Panel.Levels) { DrawLevelsPanel(); return; }
@@ -278,8 +286,11 @@ namespace ChonkyMerge
         }
 
         // ---- level picker ----
-        private static int StarsFor(int i) => PlayerPrefs.GetInt("zoo_stars_" + i, 0);
-        private static bool Unlocked(int i) => i == 0 || StarsFor(i - 1) > 0;
+        // Star economy lives in one place (PuzzleGame) so the menu and the game can
+        // never disagree about what's unlocked.
+        private static int StarsFor(int i) => SleepyZoo.PuzzleGame.StarsFor(i);
+        private static bool Unlocked(int i) => SleepyZoo.PuzzleGame.IsUnlocked(i);
+        private static bool GateBlocked(int i) => !Unlocked(i) && StarsFor(i - 1) > 0;
 
         private void DrawLevelsPanel()
         {
@@ -292,7 +303,9 @@ namespace ChonkyMerge
             var box = new Rect((Screen.width - w) / 2, (Screen.height - h) / 2, w, h);
             GUI.Box(box, GUIContent.none);
 
-            GUI.Label(new Rect(box.x, box.y + 22, box.width, 52), "Choose a level", _big);
+            GUI.Label(new Rect(box.x, box.y + 18, box.width, 46), "Choose a level", _big);
+            GUI.Label(new Rect(box.x, box.y + 62, box.width, 30),
+                $"{SleepyZoo.PuzzleGame.TotalStars()} / {SleepyZoo.PuzzleGame.MaxStars} stars collected", _note);
             if (GUI.Button(new Rect(box.xMax - 66, box.y + 14, 50, 50), "X", _pill))
             { Sfx.Click(); _panel = Panel.None; }
 
@@ -304,7 +317,7 @@ namespace ChonkyMerge
             int rows = Mathf.CeilToInt(count / (float)cols);
             float rowH = cell + 30f;
 
-            var view = new Rect(box.x + pad, box.y + 92, innerW, h - 120);
+            var view = new Rect(box.x + pad, box.y + 104, innerW, h - 132);
             var content = new Rect(0, 0, innerW - 16, rows * rowH);
             _levelScroll = GUI.BeginScrollView(view, _levelScroll, content);
             for (int i = 0; i < count; i++)
@@ -312,21 +325,20 @@ namespace ChonkyMerge
                 int r = i / cols, c = i % cols;
                 var cr = new Rect(c * (cell + gap), r * rowH, cell, cell);
                 bool open = Unlocked(i);
+                bool gated = GateBlocked(i);
                 int stars = StarsFor(i);
 
                 // card
-                GUI.color = open ? Color.white : new Color(0.6f, 0.6f, 0.62f, 0.5f);
+                GUI.color = open ? Color.white : new Color(0.62f, 0.60f, 0.64f, 0.5f);
                 if (_cardTex != null) GUI.DrawTexture(cr, _cardTex);
                 else GUI.Box(cr, GUIContent.none);
                 GUI.color = Color.white;
 
-                // number (locked levels are dimmed, not tappable)
-                GUI.Label(new Rect(cr.x, cr.y + cell * 0.12f, cr.width, cell * 0.5f),
-                          (i + 1).ToString(), _cellNum);
-
-                // three star pips
                 if (open)
                 {
+                    // number + three star pips
+                    GUI.Label(new Rect(cr.x, cr.y + cell * 0.10f, cr.width, cell * 0.5f),
+                              (i + 1).ToString(), _cellNum);
                     float ss = cell * 0.26f, sgap = ss * 0.14f, tot = 3 * ss + 2 * sgap;
                     float sy = cr.yMax - ss - cell * 0.10f, sx = cr.x + (cell - tot) / 2f;
                     for (int s = 0; s < 3; s++)
@@ -342,6 +354,26 @@ namespace ChonkyMerge
                         PlayerPrefs.SetInt("zoo_level", i); PlayerPrefs.Save();
                         SceneManager.LoadScene("Puzzle");
                     }
+                }
+                else if (gated)
+                {
+                    // a star checkpoint: show how many total stars it takes to open
+                    GUI.Label(new Rect(cr.x, cr.y + cell * 0.06f, cr.width, cell * 0.42f),
+                              (i + 1).ToString(), _cellNum);
+                    float ss = cell * 0.24f;
+                    var sr = new Rect(cr.x + cell * 0.5f - ss - 2, cr.yMax - ss - cell * 0.12f, ss, ss);
+                    GUI.color = new Color(1f, 0.86f, 0.30f);
+                    if (_starTex != null) GUI.DrawTexture(sr, _starTex);
+                    GUI.color = new Color(0.36f, 0.21f, 0.10f);
+                    GUI.Label(new Rect(sr.xMax, sr.y - 2, cell * 0.4f, ss + 4),
+                              SleepyZoo.PuzzleGame.RequiredStars(i).ToString(), _cellSub);
+                    GUI.color = Color.white;
+                }
+                else
+                {
+                    // not reached yet — just a dim number
+                    GUI.Label(new Rect(cr.x, cr.y + cell * 0.12f, cr.width, cell * 0.5f),
+                              (i + 1).ToString(), _cellNum);
                 }
             }
             GUI.EndScrollView();
@@ -370,12 +402,18 @@ namespace ChonkyMerge
             if (_pillTex != null) { _bigPill.normal.background = _bigPill.hover.background = _bigPill.active.background = _pillTex; }
             _cellNum.normal.textColor = brown;
 
+            // small brown caption used for the star totals and gate labels
+            _note = new GUIStyle(GUI.skin.label) { fontSize = 24, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+            _note.normal.textColor = new Color(0.40f, 0.24f, 0.12f);
+            _cellSub = new GUIStyle(GUI.skin.label) { fontSize = 22, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft };
+            _cellSub.normal.textColor = brown;
+
             _starTex = Resources.Load<Texture2D>("Art/star_full");
             _cardTex = Resources.Load<Texture2D>("Art/tile_bed");   // warm cream card, matches the puzzle
             _dimTex = Texture2D.whiteTexture;
 
             var font = Resources.Load<Font>("Fonts/Fredoka");   // cozy rounded font, consistent with the puzzle
-            if (font != null) foreach (var st in new[] { _title, _big, _mid, _btn, _pill, _bigPill, _cellNum }) st.font = font;
+            if (font != null) foreach (var st in new[] { _title, _big, _mid, _btn, _pill, _bigPill, _cellNum, _note, _cellSub }) st.font = font;
         }
     }
 }
