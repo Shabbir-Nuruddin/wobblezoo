@@ -14,8 +14,27 @@ namespace SleepyZoo
     ///
     /// Because one swipe moves the whole room at once, the player can't just walk
     /// each animal home — placing one shoves the others, so real planning is
-    /// required. Every level below is BFS-verified: its par is the true optimal
-    /// number of moves, so 3 stars is always achievable and never trivial.
+    /// required.
+    ///
+    /// CHAPTERS. The game is two 20-level chapters, and the second one breaks the
+    /// rule the first one spent 20 levels teaching:
+    ///
+    ///   Chapter 1 "Bedtime Shuffle"  — beds are just destinations. Land on one
+    ///                                  and the next swipe drags you straight
+    ///                                  back off it. That near-miss frustration
+    ///                                  is the whole point: it's the setup.
+    ///   Chapter 2 "Sleepyheads"      — the beds turn sticky. The instant an
+    ///                                  animal *touches* its own bed, even
+    ///                                  mid-slide, it snuggles in, stops dead,
+    ///                                  and never moves again — becoming a soft
+    ///                                  wall for everyone still awake.
+    ///
+    /// Chapter 2 is hidden behind a star total, and the menu deliberately refuses
+    /// to say what changes, so finishing chapter 1 is the reward.
+    ///
+    /// Every level below is BFS-verified by tools/gen_levels.py, which mirrors
+    /// SlideSim exactly: par is the true optimal move count, so 3 stars is always
+    /// achievable and never a designer's guess.
     /// </summary>
     public class PuzzleGame : MonoBehaviour
     {
@@ -51,8 +70,13 @@ namespace SleepyZoo
         private Color PetCol(int i)=>PetColors[i % PetColors.Length];
 
         // ---- BFS-verified level ramp (par = true optimal move count) ----
+        // Levels 1-20  = chapter 1, normal beds.
+        // Levels 21-40 = chapter 2, sticky beds (see StickyBeds / SlideSim).
         private static readonly Lv[] Levels =
         {
+            // ============================ CHAPTER 1 ============================
+            // Beds are just destinations - land on one and the next swipe drags you
+            // right back off it. Twenty levels of that is what makes chapter 2 land.
             new Lv(4,4,2,"Swipe and your animal slides all the way to the wall.",
                 new Vector2Int[0],
                 new[]{ new EntDef(2,1, 3,3) }),
@@ -98,9 +122,86 @@ namespace SleepyZoo
             new Lv(6,6,14,"Almost there. Every swipe counts now.",
                 new[]{ W2(1,0),W2(2,3),W2(4,0),W2(4,3) },
                 new[]{ new EntDef(4,4, 5,4), new EntDef(1,4, 5,2), new EntDef(3,4, 5,0), new EntDef(4,1, 5,1) }),
-            new Lv(6,6,17,"Last one - tuck the whole zoo in. Good night.",
+            new Lv(6,6,17,"Four in a row. Break the line before you place anyone.",
                 new[]{ W2(1,4),W2(2,1),W2(3,1),W2(4,4),W2(5,3) },
                 new[]{ new EntDef(4,2, 5,5), new EntDef(3,2, 4,0), new EntDef(2,2, 5,0), new EntDef(0,2, 5,4) }),
+            new Lv(6,6,15,"Beds down low. Sweep everyone to the floor, then sort them.",
+                new[]{ W2(0,2),W2(0,3),W2(2,1),W2(4,3) },
+                new[]{ new EntDef(1,5, 3,1), new EntDef(3,0, 2,0), new EntDef(5,2, 0,0), new EntDef(3,5, 1,0) }),
+            new Lv(6,6,16,"Five friends. Find the one with only one way home.",
+                new[]{ W2(0,3),W2(0,5),W2(1,5),W2(3,4),W2(4,2) },
+                new[]{ new EntDef(0,2, 5,5), new EntDef(3,3, 4,1), new EntDef(0,1, 3,3), new EntDef(3,2, 5,4), new EntDef(4,1, 4,0) }),
+            new Lv(7,7,17,"A bigger room. Long slides need a plan before the first swipe.",
+                new[]{ W2(0,2),W2(4,3),W2(5,2),W2(5,4),W2(6,4) },
+                new[]{ new EntDef(1,0, 0,0), new EntDef(5,3, 1,0), new EntDef(6,6, 2,0), new EntDef(2,0, 0,1) }),
+            new Lv(7,7,19,"The whole zoo, one last time. Then something changes...",
+                new[]{ W2(2,1),W2(3,2),W2(3,4),W2(3,5),W2(5,1) },
+                new[]{ new EntDef(0,5, 4,0), new EntDef(6,3, 1,0), new EntDef(3,3, 0,1), new EntDef(5,4, 0,0), new EntDef(4,2, 4,1) }),
+
+            // ============================ CHAPTER 2 ============================
+            // STICKY BEDS. Touch your own bed - even mid-slide - and you're asleep
+            // for the night. Every level here is impossible under chapter 1's rules,
+            // so the twist isn't decoration: it's the only way through.
+            new Lv(4,4,3,"Sticky beds tonight! Touch your own bed and you're in.",
+                new Vector2Int[0],
+                new[]{ new EntDef(0,1, 1,0), new EntDef(2,1, 3,1) }),
+            new Lv(4,4,4,"You don't have to stop on your bed - sliding across it is enough.",
+                new[]{ W2(0,2) },
+                new[]{ new EntDef(3,0, 2,1), new EntDef(1,2, 0,3) }),
+            new Lv(4,4,5,"A sleeping friend never gets up again - so they make a handy wall.",
+                new[]{ W2(1,1),W2(3,2) },
+                new[]{ new EntDef(1,2, 3,1), new EntDef(3,3, 2,3), new EntDef(0,1, 2,0) }),
+            new Lv(5,5,6,"Choose who goes to bed first. It changes everything after.",
+                new[]{ W2(1,4),W2(4,2) },
+                new[]{ new EntDef(4,3, 3,0), new EntDef(0,4, 3,3) }),
+            new Lv(5,5,7,"You can't slide past your own bed any more. Plan the approach.",
+                new[]{ W2(3,0),W2(4,3) },
+                new[]{ new EntDef(4,4, 3,3), new EntDef(3,2, 1,0), new EntDef(2,1, 0,2) }),
+            new Lv(5,5,8,"Tuck the far ones in first - they leave the room emptier.",
+                new[]{ W2(0,1),W2(0,2),W2(2,0) },
+                new[]{ new EntDef(4,2, 4,4), new EntDef(3,2, 0,4), new EntDef(1,3, 3,0) }),
+            new Lv(5,5,9,"A sleeper in the middle splits the room in two.",
+                new[]{ W2(0,4),W2(2,3),W2(3,1) },
+                new[]{ new EntDef(0,1, 4,0), new EntDef(0,0, 2,2), new EntDef(1,4, 0,3), new EntDef(3,4, 4,1) }),
+            new Lv(6,6,10,"Line them up and one long swipe can put two to bed.",
+                new[]{ W2(2,0),W2(3,4),W2(4,2) },
+                new[]{ new EntDef(0,1, 4,3), new EntDef(4,4, 1,3), new EntDef(1,5, 2,4) }),
+            new Lv(6,6,11,"Wrong one asleep? Undo - a sleeper never gets up.",
+                new[]{ W2(0,3),W2(3,3),W2(4,4),W2(5,2) },
+                new[]{ new EntDef(3,1, 4,5), new EntDef(5,1, 1,2), new EntDef(4,3, 0,5), new EntDef(0,4, 3,0) }),
+            new Lv(6,6,13,"Build a wall of sleepers, then slide the last one along it.",
+                new[]{ W2(3,2),W2(4,1),W2(4,4),W2(5,3) },
+                new[]{ new EntDef(4,0, 0,3), new EntDef(1,5, 2,3), new EntDef(0,0, 2,2), new EntDef(2,4, 4,3) }),
+            new Lv(6,6,14,"Order matters more than direction here.",
+                new[]{ W2(1,0),W2(2,2),W2(2,5),W2(3,1),W2(5,3) },
+                new[]{ new EntDef(3,5, 0,5), new EntDef(1,5, 5,0), new EntDef(4,0, 2,4), new EntDef(3,4, 1,1) }),
+            new Lv(6,6,14,"Five friends, five beds. Find the one that has to go last.",
+                new[]{ W2(2,4),W2(2,5),W2(3,1),W2(3,4) },
+                new[]{ new EntDef(5,0, 2,1), new EntDef(1,0, 4,2), new EntDef(1,4, 4,5), new EntDef(3,5, 0,4), new EntDef(4,0, 4,1) }),
+            new Lv(6,6,15,"Use the edges to line everyone up before you tuck anyone in.",
+                new[]{ W2(0,0),W2(3,1),W2(3,2),W2(5,2),W2(5,5) },
+                new[]{ new EntDef(1,5, 4,4), new EntDef(0,4, 4,2), new EntDef(4,0, 3,4), new EntDef(3,0, 5,4), new EntDef(0,3, 1,1) }),
+            new Lv(7,7,15,"A bigger room. Look for the animal whose bed is already in its path.",
+                new[]{ W2(0,4),W2(1,4),W2(2,6),W2(4,5) },
+                new[]{ new EntDef(2,1, 0,5), new EntDef(2,0, 1,1), new EntDef(2,2, 1,2), new EntDef(4,2, 3,1) }),
+            new Lv(7,7,16,"The awkward one usually needs a sleeper to stop against.",
+                new[]{ W2(3,0),W2(3,2),W2(3,4),W2(4,6),W2(6,0) },
+                new[]{ new EntDef(5,6, 6,3), new EntDef(2,2, 4,0), new EntDef(0,2, 5,3), new EntDef(0,6, 6,2) }),
+            new Lv(7,7,15,"Count the last three moves before you make the first.",
+                new[]{ W2(0,2),W2(1,1),W2(2,4),W2(5,1),W2(5,2) },
+                new[]{ new EntDef(0,1, 3,2), new EntDef(2,5, 5,5), new EntDef(0,5, 1,3), new EntDef(1,6, 6,2), new EntDef(5,3, 6,6) }),
+            new Lv(7,7,15,"Crowded corner. Clear it before it fills up.",
+                new[]{ W2(0,0),W2(1,0),W2(1,1),W2(2,2),W2(4,6) },
+                new[]{ new EntDef(4,3, 4,2), new EntDef(2,1, 6,5), new EntDef(3,3, 5,1), new EntDef(6,4, 4,4), new EntDef(5,4, 1,2) }),
+            new Lv(7,7,16,"Every sleeper you place is a new wall. Place them kindly.",
+                new[]{ W2(0,0),W2(0,4),W2(1,3),W2(3,6),W2(4,0),W2(6,1) },
+                new[]{ new EntDef(5,5, 1,1), new EntDef(6,0, 3,4), new EntDef(4,5, 3,1), new EntDef(2,5, 6,2), new EntDef(5,6, 3,5) }),
+            new Lv(7,7,19,"Almost the last night. Take it slow.",
+                new[]{ W2(0,5),W2(1,0),W2(1,3),W2(2,0),W2(2,6),W2(6,3) },
+                new[]{ new EntDef(2,3, 0,4), new EntDef(0,6, 4,3), new EntDef(3,4, 2,4), new EntDef(1,4, 0,1), new EntDef(0,2, 0,3) }),
+            new Lv(7,7,23,"The whole zoo, sticky beds and all. Sweet dreams.",
+                new[]{ W2(0,1),W2(1,2),W2(1,4),W2(1,6),W2(2,5),W2(6,3) },
+                new[]{ new EntDef(6,6, 0,6), new EntDef(0,5, 6,0), new EntDef(3,1, 4,4), new EntDef(5,0, 3,4), new EntDef(1,5, 2,1) }),
         };
 
         // ---- warm, flat cozy palette (everything sits in the same family) ----
@@ -125,6 +226,8 @@ namespace SleepyZoo
         private Vector3[] _target;
         private readonly Stack<Vector2Int[]> _undo = new();
         private Transform _bgTf;
+        private bool _sticky;                       // chapter 2: beds catch and hold
+        private readonly List<SpriteRenderer> _bedGlow = new();  // pulsed while sticky
 
         private int _moves, _stars;
         private float _levelTime;
@@ -140,9 +243,12 @@ namespace SleepyZoo
         private bool _arrowOn;
         private Vector2Int _arrowDir;
         private Color _arrowTint;
-        private bool _isTutorial;             // level 0 shows a guided first-swipe demo
+        private bool _isTutorial;             // first level of a chapter: guided first-swipe demo
         private Vector2Int _tutorialDir;      // the helpful first swipe to demonstrate
         private float _tipTime;               // brief per-level teaching tip fades out
+        private int _chapter;                 // which chapter this level belongs to
+        private static string TaughtKey(int chapter) =>
+            chapter == 0 ? "zoo_tutorial_done" : "zoo_taught_ch" + chapter;
 
         // UI
         private GUIStyle _title, _sub, _btn, _btnMenu, _win, _hintText, _panelBody, _panelSub;
@@ -153,6 +259,31 @@ namespace SleepyZoo
 
         public static int LevelCount => Levels.Length;
         public static int MaxStars => Levels.Length * 3;
+
+        // ---- chapters ----
+        // Chapter 2 rewrites the sliding rule. Everything the menu shows about it
+        // stays vague until it's unlocked — the surprise IS the reward.
+        public const int ChapterSize = 20;
+        public static int ChapterCount => Mathf.CeilToInt(Levels.Length / (float)ChapterSize);
+        public static int ChapterOf(int level) => Mathf.Clamp(level / ChapterSize, 0, ChapterCount - 1);
+        public static int ChapterFirstLevel(int chapter) => chapter * ChapterSize;
+        public static int ChapterLastLevel(int chapter) =>
+            Mathf.Min((chapter + 1) * ChapterSize - 1, Levels.Length - 1);
+        public static string ChapterName(int chapter) => chapter == 0 ? "Bedtime Shuffle" : "Sleepyheads";
+        // Shown on the locked chapter card. Teases the change without spoiling it.
+        public static string ChapterTease(int chapter) =>
+            chapter == 0 ? "Swipe — everyone slides at once."
+                         : "One bedtime rule you know by heart is about to change.";
+        public static string ChapterBlurb(int chapter) =>
+            chapter == 0 ? "Swipe — everyone slides at once."
+                         : "Sticky beds! Touch your own bed and you're in for the night.";
+        // Chapter 2 = sticky beds. Kept as a single question so the rule, the
+        // solver and the UI can never drift apart.
+        public static bool StickyBeds(int level) => ChapterOf(level) >= 1;
+
+        // 3 stars is always the BFS-optimal par. The 2-star window widens with the
+        // level so a 19-move puzzle isn't judged as harshly as a 3-move one.
+        public static int TwoStarMoves(int par) => par + Mathf.Max(2, Mathf.RoundToInt(par / 3f));
 
         // Where "Play" should drop the player: the furthest level they've reached that
         // is actually unlocked, so they continue instead of replaying the tutorial.
@@ -173,14 +304,23 @@ namespace SleepyZoo
         {
             int t = 0; for (int i = 0; i < Levels.Length; i++) t += StarsFor(i); return t;
         }
-        // Total stars required to step past each checkpoint.
+        // Total stars required to step past each checkpoint. Every 4 levels there's
+        // a small one; the big one is the chapter door at level 21. The curve sits
+        // just under 2 stars per cleared level, so a player averaging 2 stars walks
+        // straight through and a player scraping 1s replays a couple of favourites.
+        private static readonly int[] Gates =
+            { 4, 6, 8, 13, 12, 20, 16, 28, 20, 36, 24, 44, 28, 52, 32, 60, 36, 68 };
         public static int RequiredStars(int i)
         {
-            if (i >= 12) return 24;   // gate before level 13
-            if (i >= 8)  return 14;   // gate before level 9
-            if (i >= 4)  return 6;    // gate before level 5
-            return 0;
+            int need = 0;
+            for (int g = 0; g < Gates.Length; g += 2) if (i >= Gates[g]) need = Gates[g + 1];
+            return need;
         }
+        // The star total that opens a whole chapter (0 for chapter 1).
+        public static int ChapterRequiredStars(int chapter) => RequiredStars(ChapterFirstLevel(chapter));
+        public static bool ChapterUnlocked(int chapter) =>
+            chapter <= 0 || (TotalStars() >= ChapterRequiredStars(chapter)
+                             && StarsFor(ChapterFirstLevel(chapter) - 1) > 0);
         public static bool IsUnlocked(int i)
         {
             if (i <= 0) return true;                       // tutorial always open
@@ -206,9 +346,14 @@ namespace SleepyZoo
             _arrowTf=null; _arrowSr=null; _arrowOn=false; _hintPath=null;
 
             _levelIndex=Mathf.Clamp(index,0,Levels.Length-1);
-            // The full "how to play" walkthrough shows on level 1 only until it's been
-            // completed once; after that level 1 plays like any other level.
-            _isTutorial=(_levelIndex==0 && PlayerPrefs.GetInt("zoo_tutorial_done",0)==0);
+            _sticky=StickyBeds(_levelIndex);
+            _bedGlow.Clear();
+            // The full "how to play" walkthrough shows on the FIRST level of each
+            // chapter until it's been cleared once — chapter 2 changes the rule, so
+            // it earns the same guided first swipe that level 1 gets.
+            _chapter=ChapterOf(_levelIndex);
+            _isTutorial=(_levelIndex==ChapterFirstLevel(_chapter)
+                         && PlayerPrefs.GetInt(TaughtKey(_chapter),0)==0);
             _tipTime=0f;
             PlayerPrefs.SetInt("zoo_level",_levelIndex); PlayerPrefs.Save();
             _lv=Levels[_levelIndex];
@@ -303,6 +448,9 @@ namespace SleepyZoo
             // as a warm glow rather than a UI box, while still coding the bed by colour.
             var halo=Tile(pos+new Vector3(0,0,0.03f),1,col,SoftDisc(),1.06f);
             halo.GetComponent<SpriteRenderer>().color=new Color(col.r,col.g,col.b,0.9f);
+            // In chapter 2 the beds are sticky, so they breathe — a standing visual
+            // promise that this bed will grab its animal the moment it's touched.
+            if(_sticky) _bedGlow.Add(halo.GetComponent<SpriteRenderer>());
             var inner=Tile(pos+new Vector3(0,0,0.02f),2,col,SoftDisc(),0.72f);
             inner.GetComponent<SpriteRenderer>().color=new Color(col.r,col.g,col.b,0.7f);
             // soft cream pillow in the middle (small, so a clear colour rim shows around it)
@@ -380,9 +528,13 @@ namespace SleepyZoo
             for (int i=0;i<_view.Length;i++)
             {
                 var s=Pet(_pet[i]); float b=s!=null?0.86f/s.bounds.size.x:0.7f;
+                // a tucked-in sleeper settles a little smaller, so "this one is done"
+                // is readable without reading the board
+                if(_sticky && _pos[i]==_bed[i]) b*=0.86f;
                 _view[i].position=Vector3.Lerp(_view[i].position,_target[i],Time.deltaTime*16f);
                 _view[i].localScale=Vector3.Lerp(_view[i].localScale,new Vector3(b,b,1f),Time.deltaTime*12f);
             }
+            PulseBeds();
             if (_solved){ DriveArrow(); return; }
             _levelTime+=Time.deltaTime;
             _tipTime+=Time.deltaTime;
@@ -408,6 +560,21 @@ namespace SleepyZoo
             else if (Input.GetKeyDown(KeyCode.LeftArrow)) DoMove(Vector2Int.left);
             else if (Input.GetKeyDown(KeyCode.UpArrow)) DoMove(Vector2Int.up);
             else if (Input.GetKeyDown(KeyCode.DownArrow)) DoMove(Vector2Int.down);
+        }
+
+        // Sticky beds glow in and out, and an animal that's already tucked in gets a
+        // steady bright bed — so "asleep, and never moving again" reads at a glance.
+        private void PulseBeds()
+        {
+            if(!_sticky) return;
+            float pulse=0.5f+0.5f*Mathf.Sin(Time.unscaledTime*2.2f);
+            for(int i=0;i<_bedGlow.Count && i<_pos.Length;i++)
+            {
+                var sr=_bedGlow[i]; if(sr==null) continue;
+                var c=sr.color;
+                float a = _pos[i]==_bed[i] ? 1f : 0.62f+0.30f*pulse;
+                sr.color=new Color(c.r,c.g,c.b,a);
+            }
         }
 
         private bool PointerOverUI(Vector2 mouse)
@@ -445,6 +612,10 @@ namespace SleepyZoo
         // Slide EVERY animal at once. Process leading-edge-first so trains settle
         // deterministically. The hint solver reuses the exact same function, so the
         // moves it suggests are guaranteed to behave identically in play.
+        //
+        // Chapter 2 adds exactly two lines to this loop (both guarded by _sticky):
+        // an animal already tucked in never moves again, and any animal that
+        // touches its own bed mid-slide stops right there. That's the whole twist.
         private Vector2Int[] SlideSim(Vector2Int[] pos, Vector2Int dir)
         {
             int n=pos.Length;
@@ -454,6 +625,7 @@ namespace SleepyZoo
             var occ=new HashSet<Vector2Int>(np);
             foreach(int i in order)
             {
+                if(_sticky && np[i]==_bed[i]) continue;   // fast asleep — a soft wall now
                 occ.Remove(np[i]);
                 var p=np[i];
                 while(true)
@@ -461,6 +633,7 @@ namespace SleepyZoo
                     var q=p+dir;
                     if(q.x<0||q.x>=_lv.w||q.y<0||q.y>=_lv.h||_walls.Contains(q)||occ.Contains(q)) break;
                     p=q;
+                    if(_sticky && p==_bed[i]) break;      // caught by its own bed
                 }
                 np[i]=p; occ.Add(p);
             }
@@ -539,10 +712,10 @@ namespace SleepyZoo
         {
             for(int i=0;i<_pos.Length;i++) if(_pos[i]!=_bed[i]) return;
             _solved=true;
-            _stars = _moves<=_lv.par ? 3 : (_moves<=_lv.par+2 ? 2 : 1);
+            _stars = _moves<=_lv.par ? 3 : (_moves<=TwoStarMoves(_lv.par) ? 2 : 1);
             int key=PlayerPrefs.GetInt("zoo_stars_"+_levelIndex,0);
             if(_stars>key) PlayerPrefs.SetInt("zoo_stars_"+_levelIndex,_stars);
-            if(_levelIndex==0) PlayerPrefs.SetInt("zoo_tutorial_done",1);  // never re-teach
+            if(_isTutorial) PlayerPrefs.SetInt(TaughtKey(_chapter),1);     // never re-teach
             // remember the furthest level reached so Play resumes there
             int furthest=PlayerPrefs.GetInt("zoo_furthest",0);
             int nextLv=Mathf.Min(_levelIndex+1,Levels.Length-1);
@@ -565,7 +738,8 @@ namespace SleepyZoo
             // Header text sits BELOW the Menu button's row, centred full-width, so the
             // Menu pill can never overlap the title (even the long "Welcome!").
             float hy = top + 64f;
-            GUI.Label(new Rect(0,hy,Screen.width,46), _isTutorial?"Welcome!":$"Level {_levelIndex+1}", _title);
+            string heading = _isTutorial ? (_chapter==0?"Welcome!":"Sticky beds!") : $"Level {_levelIndex+1}";
+            GUI.Label(new Rect(0,hy,Screen.width,46), heading, _title);
 
             if(!_solved)
             {
@@ -577,14 +751,24 @@ namespace SleepyZoo
                 // on the next few levels — both fade the moment the player acts.
                 if(_isTutorial && _moves==0)
                 {
-                    GUI.Label(new Rect(16,hy+48,Screen.width-32,28),"Swipe any way — everyone slides at once.",_sub);
-                    GUI.Label(new Rect(16,hy+78,Screen.width-32,28),"Follow the arrow to the glowing bed.",_sub);
+                    if(_chapter==0)
+                    {
+                        GUI.Label(new Rect(16,hy+48,Screen.width-32,28),"Swipe any way — everyone slides at once.",_sub);
+                        GUI.Label(new Rect(16,hy+78,Screen.width-32,28),"Follow the arrow to the glowing bed.",_sub);
+                    }
+                    else
+                    {
+                        GUI.Label(new Rect(16,hy+48,Screen.width-32,28),"Tonight the beds hold on to you.",_sub);
+                        GUI.Label(new Rect(16,hy+78,Screen.width-32,28),"Brush past your own bed and you're in for good.",_sub);
+                    }
                 }
                 else if(!_isTutorial)
                 {
                     GUI.Label(new Rect(0,hy+48,Screen.width,28), $"3 stars in {_lv.par} moves   -   {_moves} so far", _sub);
-                    // early-level teaching tip, on its own soft strip so it stays legible
-                    if(_levelIndex>=1 && _levelIndex<=4 && _moves==0 && _tipTime<6f)
+                    // teaching tip on the first few levels of EACH chapter, on its own
+                    // soft strip so it stays legible over the board
+                    int intoChapter=_levelIndex-ChapterFirstLevel(_chapter);
+                    if(intoChapter>=1 && intoChapter<=4 && _moves==0 && _tipTime<6f)
                     {
                         float tw=Screen.width-56f;
                         float th=_hintText.CalcHeight(new GUIContent(_lv.hint),tw)+16f;
@@ -608,7 +792,7 @@ namespace SleepyZoo
                 // Hint is always here to help; it pulses and speaks up after a struggle.
                 // Tapping it drops a glowing arrow on the board showing the very next
                 // swipe — real help, one step at a time.
-                bool struggling = _moves>=Mathf.Max(_lv.par+2,5) || _levelTime>=25f;
+                bool struggling = _moves>=Mathf.Max(TwoStarMoves(_lv.par),5) || _levelTime>=25f;
                 float hw=Mathf.Min(260,Screen.width*0.60f), hh=70;
                 var rHint=new Rect(cx-hw/2, by-hh-16, hw, hh); _uiRects.Add(rHint);
                 string hlabel=_showHint?"Hide hint":(struggling?"Need a hint?":"Hint");
@@ -627,7 +811,10 @@ namespace SleepyZoo
                 if(_showHint)
                 {
                     string cap;
-                    if(_hintPath==null) cap="This one's tangled - tap Reset to start fresh.";
+                    // With sticky beds a tucked-in animal can block the last friend,
+                    // so a dead end is possible — point at Undo, not a full restart.
+                    if(_hintPath==null) cap=_sticky?"That corner's blocked now - tap Undo."
+                                                   :"This one's tangled - tap Reset to start fresh.";
                     else if(_hintPath.Count==0) cap="You're there - one more nudge!";
                     else cap=$"Swipe {DirWord(_hintPath[0])}   -   {_hintPath.Count} move"+(_hintPath.Count==1?"":"s")+" to go";
 
@@ -653,16 +840,20 @@ namespace SleepyZoo
             var box=new Rect(cx-w/2,(Screen.height-h)/2,w,h);
             if(_panelTex!=null) GUI.DrawTexture(box,_panelTex);
 
-            // Title owns the full top of the panel now — nothing overlaps it.
-            GUI.Label(new Rect(box.x,box.y+h*0.11f,w,52),"All tucked in!",_win);
-            // stars sized off the BOX so they always stay inside the cream panel
-            DrawStars(cx, box.y+h*0.31f, _stars, Mathf.Min(h*0.16f, w*0.13f));
-            GUI.Label(new Rect(box.x,box.y+h*0.49f,w,30), $"{_moves} moves   -   {TotalStars()} / {MaxStars} stars", _panelBody);
-
             bool last=_levelIndex>=Levels.Length-1;
             int next=_levelIndex+1;
             bool nextOpen = !last && IsUnlocked(next);
             bool nextGated = !last && !nextOpen;   // blocked by a star checkpoint
+            // Clearing the last level of a chapter is the big moment: name it, and
+            // dangle the fact that the rules are about to move without saying how.
+            bool chapterDone = !last && ChapterOf(next)>_chapter;
+
+            // Title owns the full top of the panel now — nothing overlaps it.
+            GUI.Label(new Rect(box.x,box.y+h*0.11f,w,52),
+                chapterDone?"Chapter complete!":"All tucked in!",_win);
+            // stars sized off the BOX so they always stay inside the cream panel
+            DrawStars(cx, box.y+h*0.31f, _stars, Mathf.Min(h*0.16f, w*0.13f));
+            GUI.Label(new Rect(box.x,box.y+h*0.49f,w,30), $"{_moves} moves   -   {TotalStars()} / {MaxStars} stars", _panelBody);
 
             // Buttons live in one bottom row (Menu + action) so neither can collide with
             // the title or the info line. Heights scale with the panel.
@@ -672,12 +863,20 @@ namespace SleepyZoo
             if(nextGated)
             {
                 int need=RequiredStars(next)-TotalStars();
+                string what = chapterDone
+                    ? $"Chapter {ChapterOf(next)+1} opens at {RequiredStars(next)} stars — {need} to go.\nOne bedtime rule is about to change."
+                    : $"Level {next+1} opens at {RequiredStars(next)} stars.\n{need} more to go — replay for stars!";
+                GUI.Label(new Rect(box.x+22,infoY,w-44,infoH), what,_panelSub);
+            }
+            else if(chapterDone)
+            {
                 GUI.Label(new Rect(box.x+22,infoY,w-44,infoH),
-                    $"Level {next+1} opens at {RequiredStars(next)} stars.\n{need} more to go — replay for stars!",_panelSub);
+                    $"Chapter {ChapterOf(next)+1}: {ChapterName(ChapterOf(next))}\nSomething about bedtime is different from here on.",_panelSub);
             }
             else
             {
-                GUI.Label(new Rect(box.x,infoY,w,infoH), $"3 stars: {_lv.par} moves    2 stars: {_lv.par+2} moves", _panelSub);
+                GUI.Label(new Rect(box.x,infoY,w,infoH),
+                    $"3 stars: {_lv.par} moves    2 stars: {TwoStarMoves(_lv.par)} moves", _panelSub);
             }
 
             float gap=16f;
@@ -691,7 +890,7 @@ namespace SleepyZoo
             {
                 if(CozyButton(rAct,"More stars",_btn)){ Sfx.Click(); LoadLevel(BestReplayLevel()); }
             }
-            else if(CozyButton(rAct, last?"Play again":"Next level",_btn))
+            else if(CozyButton(rAct, last?"Play again":(chapterDone?"See what changed":"Next level"),_btn))
             { Sfx.Click(); LoadLevel(last?0:next); }
         }
 
@@ -919,7 +1118,7 @@ namespace SleepyZoo
             _win=new GUIStyle(GUI.skin.label){fontSize=40,fontStyle=FontStyle.Bold,alignment=TextAnchor.UpperCenter};
             _hintText=new GUIStyle(GUI.skin.label){fontSize=23,fontStyle=FontStyle.Bold,alignment=TextAnchor.UpperCenter,wordWrap=true};
             _panelBody=new GUIStyle(GUI.skin.label){fontSize=26,fontStyle=FontStyle.Bold,alignment=TextAnchor.MiddleCenter};
-            _panelSub=new GUIStyle(GUI.skin.label){fontSize=21,alignment=TextAnchor.MiddleCenter};
+            _panelSub=new GUIStyle(GUI.skin.label){fontSize=21,alignment=TextAnchor.MiddleCenter,wordWrap=true};
             _title.normal.textColor=Color.white;
             _sub.normal.textColor=new Color(1f,0.95f,0.86f,0.95f);
             // Text ON THE DARK SKY is warm cream (brown vanished against the night);

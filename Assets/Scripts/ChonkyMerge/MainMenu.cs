@@ -18,7 +18,7 @@ namespace ChonkyMerge
         private SpriteRenderer _soundIcon;
         private readonly System.Collections.Generic.List<Transform> _floaters = new();
         private readonly System.Collections.Generic.List<Vector3> _floaterBase = new();
-        private GUIStyle _title, _big, _mid, _btn, _cellNum, _pill, _bigPill, _note, _cellSub;
+        private GUIStyle _title, _big, _mid, _btn, _cellNum, _pill, _bigPill, _note, _cellSub, _chapTitle;
         private Texture2D _pillTex, _starTex, _dimTex, _cardTex;
         private Vector2 _levelScroll;
         private float _levelsCenterY, _levelsW, _levelsH;   // world footprint of the big Levels button
@@ -309,74 +309,129 @@ namespace ChonkyMerge
             if (GUI.Button(new Rect(box.xMax - 66, box.y + 14, 50, 50), "X", _pill))
             { Sfx.Click(); _panel = Panel.None; }
 
-            int count = SleepyZoo.PuzzleGame.LevelCount;
             int cols = 4;
             float pad = 24f, gap = 16f;
             float innerW = w - pad * 2;
             float cell = (innerW - gap * (cols - 1)) / cols;
-            int rows = Mathf.CeilToInt(count / (float)cols);
             float rowH = cell + 30f;
+            const float headH = 96f, chapGap = 22f;
+
+            int chapters = SleepyZoo.PuzzleGame.ChapterCount;
+            float contentH = 0f;
+            for (int ch = 0; ch < chapters; ch++)
+            {
+                int n = SleepyZoo.PuzzleGame.ChapterLastLevel(ch) - SleepyZoo.PuzzleGame.ChapterFirstLevel(ch) + 1;
+                contentH += headH + Mathf.CeilToInt(n / (float)cols) * rowH + chapGap;
+            }
 
             var view = new Rect(box.x + pad, box.y + 104, innerW, h - 132);
-            var content = new Rect(0, 0, innerW - 16, rows * rowH);
+            var content = new Rect(0, 0, innerW - 16, contentH);
             _levelScroll = GUI.BeginScrollView(view, _levelScroll, content);
-            for (int i = 0; i < count; i++)
+
+            float y = 0f;
+            for (int ch = 0; ch < chapters; ch++)
             {
-                int r = i / cols, c = i % cols;
-                var cr = new Rect(c * (cell + gap), r * rowH, cell, cell);
-                bool open = Unlocked(i);
-                bool gated = GateBlocked(i);
-                int stars = StarsFor(i);
+                int first = SleepyZoo.PuzzleGame.ChapterFirstLevel(ch);
+                int lastLv = SleepyZoo.PuzzleGame.ChapterLastLevel(ch);
+                bool chOpen = SleepyZoo.PuzzleGame.ChapterUnlocked(ch);
+                y = DrawChapterHeader(y, innerW - 16, ch, chOpen, headH);
 
-                // card
-                GUI.color = open ? Color.white : new Color(0.62f, 0.60f, 0.64f, 0.5f);
-                if (_cardTex != null) GUI.DrawTexture(cr, _cardTex);
-                else GUI.Box(cr, GUIContent.none);
-                GUI.color = Color.white;
-
-                if (open)
+                for (int i = first; i <= lastLv; i++)
                 {
-                    // number + three star pips
-                    GUI.Label(new Rect(cr.x, cr.y + cell * 0.10f, cr.width, cell * 0.5f),
-                              (i + 1).ToString(), _cellNum);
-                    float ss = cell * 0.26f, sgap = ss * 0.14f, tot = 3 * ss + 2 * sgap;
-                    float sy = cr.yMax - ss - cell * 0.10f, sx = cr.x + (cell - tot) / 2f;
-                    for (int s = 0; s < 3; s++)
-                    {
-                        GUI.color = s < stars ? Color.white : new Color(0.35f, 0.30f, 0.34f, 0.5f);
-                        if (_starTex != null) GUI.DrawTexture(new Rect(sx + s * (ss + sgap), sy, ss, ss), _starTex);
-                    }
-                    GUI.color = Color.white;
-
-                    if (GUI.Button(cr, GUIContent.none, GUIStyle.none))
-                    {
-                        Sfx.Click();
-                        PlayerPrefs.SetInt("zoo_level", i); PlayerPrefs.Save();
-                        SceneManager.LoadScene("Puzzle");
-                    }
+                    int k = i - first;
+                    int r = k / cols, c = k % cols;
+                    var cr = new Rect(c * (cell + gap), y + r * rowH, cell, cell);
+                    DrawLevelCell(cr, cell, i, chOpen);
                 }
-                else if (gated)
-                {
-                    // a star checkpoint: show how many total stars it takes to open
-                    GUI.Label(new Rect(cr.x, cr.y + cell * 0.06f, cr.width, cell * 0.42f),
-                              (i + 1).ToString(), _cellNum);
-                    float ss = cell * 0.24f;
-                    var sr = new Rect(cr.x + cell * 0.5f - ss - 2, cr.yMax - ss - cell * 0.12f, ss, ss);
-                    GUI.color = new Color(1f, 0.86f, 0.30f);
-                    if (_starTex != null) GUI.DrawTexture(sr, _starTex);
-                    GUI.color = new Color(0.36f, 0.21f, 0.10f);
-                    GUI.Label(new Rect(sr.xMax, sr.y - 2, cell * 0.4f, ss + 4),
-                              SleepyZoo.PuzzleGame.RequiredStars(i).ToString(), _cellSub);
-                    GUI.color = Color.white;
-                }
-                else
-                {
-                    // not reached yet — just a dim number
-                    GUI.Label(new Rect(cr.x, cr.y + cell * 0.12f, cr.width, cell * 0.5f),
-                              (i + 1).ToString(), _cellNum);
-                }
+                y += Mathf.CeilToInt((lastLv - first + 1) / (float)cols) * rowH + chapGap;
             }
             GUI.EndScrollView();
+        }
+
+        // A chapter strip. A locked chapter deliberately hides its name and its
+        // twist — knowing that SOMETHING changes, but not what, is what makes the
+        // last few levels of the chapter before it worth grinding stars for.
+        private float DrawChapterHeader(float y, float wide, int ch, bool open, float headH)
+        {
+            var strip = new Rect(0, y, wide, headH - 12f);
+            GUI.color = open ? new Color(1f, 1f, 1f, 0.85f) : new Color(0.66f, 0.63f, 0.68f, 0.55f);
+            if (_cardTex != null) GUI.DrawTexture(strip, _cardTex);
+            else GUI.Box(strip, GUIContent.none);
+            GUI.color = Color.white;
+
+            string name = open ? SleepyZoo.PuzzleGame.ChapterName(ch) : "? ? ?";
+            GUI.Label(new Rect(strip.x + 14, strip.y + 8, strip.width - 28, 34),
+                      $"Chapter {ch + 1}  -  {name}", _chapTitle);
+
+            if (open)
+            {
+                GUI.Label(new Rect(strip.x + 14, strip.y + 42, strip.width - 28, 34),
+                          SleepyZoo.PuzzleGame.ChapterBlurb(ch), _cellSub);
+            }
+            else
+            {
+                int need = SleepyZoo.PuzzleGame.ChapterRequiredStars(ch);
+                int have = SleepyZoo.PuzzleGame.TotalStars();
+                GUI.Label(new Rect(strip.x + 14, strip.y + 40, strip.width - 28, 22),
+                          SleepyZoo.PuzzleGame.ChapterTease(ch), _cellSub);
+                GUI.Label(new Rect(strip.x + 14, strip.y + 62, strip.width - 28, 22),
+                          $"Opens at {need} stars  -  {Mathf.Max(0, need - have)} to go", _cellSub);
+            }
+            return y + headH;
+        }
+
+        private void DrawLevelCell(Rect cr, float cell, int i, bool chapterOpen)
+        {
+            bool open = chapterOpen && Unlocked(i);
+            bool gated = chapterOpen && GateBlocked(i);
+            int stars = StarsFor(i);
+
+            GUI.color = open ? Color.white : new Color(0.62f, 0.60f, 0.64f, 0.5f);
+            if (_cardTex != null) GUI.DrawTexture(cr, _cardTex);
+            else GUI.Box(cr, GUIContent.none);
+            GUI.color = Color.white;
+
+            if (open)
+            {
+                // number + three star pips
+                GUI.Label(new Rect(cr.x, cr.y + cell * 0.10f, cr.width, cell * 0.5f),
+                          (i + 1).ToString(), _cellNum);
+                float ss = cell * 0.26f, sgap = ss * 0.14f, tot = 3 * ss + 2 * sgap;
+                float sy = cr.yMax - ss - cell * 0.10f, sx = cr.x + (cell - tot) / 2f;
+                for (int s = 0; s < 3; s++)
+                {
+                    GUI.color = s < stars ? Color.white : new Color(0.35f, 0.30f, 0.34f, 0.5f);
+                    if (_starTex != null) GUI.DrawTexture(new Rect(sx + s * (ss + sgap), sy, ss, ss), _starTex);
+                }
+                GUI.color = Color.white;
+
+                if (GUI.Button(cr, GUIContent.none, GUIStyle.none))
+                {
+                    Sfx.Click();
+                    PlayerPrefs.SetInt("zoo_level", i); PlayerPrefs.Save();
+                    SceneManager.LoadScene("Puzzle");
+                }
+            }
+            else if (gated)
+            {
+                // a star checkpoint: show how many total stars it takes to open
+                GUI.Label(new Rect(cr.x, cr.y + cell * 0.06f, cr.width, cell * 0.42f),
+                          (i + 1).ToString(), _cellNum);
+                float ss = cell * 0.24f;
+                var sr = new Rect(cr.x + cell * 0.5f - ss - 2, cr.yMax - ss - cell * 0.12f, ss, ss);
+                GUI.color = new Color(1f, 0.86f, 0.30f);
+                if (_starTex != null) GUI.DrawTexture(sr, _starTex);
+                GUI.color = new Color(0.36f, 0.21f, 0.10f);
+                GUI.Label(new Rect(sr.xMax, sr.y - 2, cell * 0.4f, ss + 4),
+                          SleepyZoo.PuzzleGame.RequiredStars(i).ToString(), _cellSub);
+                GUI.color = Color.white;
+            }
+            else
+            {
+                // not reached yet — just a dim number
+                GUI.Label(new Rect(cr.x, cr.y + cell * 0.12f, cr.width, cell * 0.5f),
+                          (i + 1).ToString(), _cellNum);
+            }
         }
 
         private void EnsureStyles()
@@ -405,15 +460,17 @@ namespace ChonkyMerge
             // small brown caption used for the star totals and gate labels
             _note = new GUIStyle(GUI.skin.label) { fontSize = 24, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             _note.normal.textColor = new Color(0.40f, 0.24f, 0.12f);
-            _cellSub = new GUIStyle(GUI.skin.label) { fontSize = 22, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft };
+            _cellSub = new GUIStyle(GUI.skin.label) { fontSize = 22, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft, wordWrap = true };
             _cellSub.normal.textColor = brown;
+            _chapTitle = new GUIStyle(GUI.skin.label) { fontSize = 30, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft };
+            _chapTitle.normal.textColor = brown;
 
             _starTex = Resources.Load<Texture2D>("Art/star_full");
             _cardTex = Resources.Load<Texture2D>("Art/tile_bed");   // warm cream card, matches the puzzle
             _dimTex = Texture2D.whiteTexture;
 
             var font = Resources.Load<Font>("Fonts/Fredoka");   // cozy rounded font, consistent with the puzzle
-            if (font != null) foreach (var st in new[] { _title, _big, _mid, _btn, _pill, _bigPill, _cellNum, _note, _cellSub }) st.font = font;
+            if (font != null) foreach (var st in new[] { _title, _big, _mid, _btn, _pill, _bigPill, _cellNum, _note, _cellSub, _chapTitle }) st.font = font;
         }
     }
 }

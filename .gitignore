@@ -45,3 +45,7 @@ Thumbs.db
 
 # Raw art source (originals + reference images) — kept locally, not in the repo
 _ArtSource/
+
+# Python bytecode from tools/
+__pycache__/
+*.pyc
