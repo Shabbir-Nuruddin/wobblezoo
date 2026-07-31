@@ -1024,7 +1024,7 @@ namespace SleepyZoo
             // the title or the info line. Heights scale with the panel.
             float bh=Mathf.Min(92f, h*0.20f);
             float by=box.yMax - bh - h*0.07f;
-            float infoY=box.y+h*0.585f, infoH=by-infoY-6f;
+            float infoY=box.y+h*0.545f, infoH=by-infoY-4f;
             if(nextGated)
             {
                 int need=RequiredStars(next)-TotalStars();
@@ -1040,8 +1040,13 @@ namespace SleepyZoo
             }
             else
             {
+                // Stars are only worth chasing if they're buying something. This is the
+                // line that connects them to the zoo: who's arriving, and how far off.
+                string zooLine = Zoo.PendingArrival()>=0
+                    ? "A new friend moved in! Say hello from the menu."
+                    : Zoo.NextLine();
                 GUI.Label(new Rect(box.x,infoY,w,infoH),
-                    $"3 stars: {_lv.par} moves    2 stars: {TwoStarMoves(_lv.par)} moves", _panelSub);
+                    $"3 stars: {_lv.par} moves    2 stars: {TwoStarMoves(_lv.par)} moves\n{zooLine}", _panelSub);
             }
 
             float gap=16f;
