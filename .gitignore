@@ -49,3 +49,6 @@ _ArtSource/
 # Python bytecode from tools/
 __pycache__/
 *.pyc
+
+# Regenerable design artifact from tools/gen_levels.py plan
+tools/levels_plan.json
