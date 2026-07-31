@@ -51,12 +51,14 @@ The whole 40-level ramp was regenerated to cap par at 12 and to ramp the animal 
 - **Star economy with checkpoints**: 1–3 stars per level (3★ = `par`, 2★ = `TwoStarMoves(par)` = par + half again, minimum +3 — deliberately generous now that pars are short); a running total gates every 4th level behind a cumulative star threshold (`Gates` / `RequiredStars` / `IsUnlocked`). The big one is **level 21 = 36 of a possible 60 stars**, which is the door into chapter 2. 120 stars total.
 - **Chapter reveal as the retention hook**: the level picker shows a locked chapter as `Chapter 2 — ? ? ?` with only a tease ("One bedtime rule you know by heart is about to change") and the star cost. Clearing level 20 shows a "Chapter complete!" panel whose button reads **See what changed**. Level 21 gets its own guided-arrow tutorial (`TaughtKey(chapter)`), same as level 1.
 - **Main menu**: background, bobbing floater critters, logo, Play/Settings buttons, sound toggle, share button, and a **Levels** picker panel showing a 4-column grid with per-level stars and lock/gate state (`Assets/Scripts/ChonkyMerge/MainMenu.cs`).
+- **A room per chapter**: `Rooms` in `PuzzleGame.cs` holds eight painted skies (nursery, treehouse, meadow, snow cabin, pantry, garden, library, under the stars) — sky gradient, moon position/size, three hill silhouettes, and a twinkle colour/density that doubles as stars, fireflies or snow. `BgGradient(chapter)` paints and caches one per chapter, and the camera clear colour follows. The photo-real `Art/bg_*.png` images are from an older art direction and stay unused on purpose (they clash with the flat pastel style).
+- **Feel pass**: animals squash on landing and breathe while idle, a thump plays pitched by how far each one skidded (max two per swipe), sleeping animals get a soft puff of motes, and the win panel rings its stars one at a time. Short Android vibrations via `Haptics.cs` (own `haptics_on` setting, toggled in Settings; no-op off-device).
 - **Fully procedural visuals for the puzzle screen** — board tiles, bed glow rings, arrow, button pill fallback, background gradient/moon are all generated in code (`RoundedTile`, `SoftDisc`, `ArrowSprite`, `BgGradient`, `MakeButtonTex` in `PuzzleGame.cs`), so the puzzle scene has minimal art dependencies.
 - **Android APK build path** verified working headlessly (see Environment Requirements).
 
 ### What is partially implemented
 - **Windows Standalone build** (`Assets/Editor/StandaloneBuilder.cs`) exists only for local screenshotting/testing; the file's own header comment calls it "TEMPORARY... Safe to delete."
-- **Audio**: only procedural click/pop blips (`Sfx.cs`). Real audio files were received per `docs/ASSETS_AND_TODO.md` (Kenney SFX + music) but were **never wired in** — status of those source files is unknown post-pivot (they lived in `_ArtSource/audio_pending/`, which is git-ignored and not verifiable from the repo alone).
+- **Audio**: wired in. Seven CC0 Kenney clips live in `Assets/Resources/Audio/` (tap, land, sleep, star, win, undo, locked) and `Sfx.cs` is a small event bank on top of them; the swipe whoosh is still generated in code. See `docs/CREDITS.md` for the mapping and licences. **Background music is still an open slot** — the four MP3s in `_ArtSource/audio_pending/` look like commercial documentary tracks with no licence file and must not ship.
 - **Sharing copy** is hardcoded and generic (`MainMenu.cs:215`) — not tested on a real device.
 
 ### What is intentionally not implemented
@@ -193,7 +195,10 @@ Check the log for `"APK build result: Succeeded"`. Exits with code 1 on failure 
 | `Assets/Scripts/SleepyZoo/PuzzleGame.cs` | The entire puzzle game: levels, slide-simulation mechanic, BFS hint solver, star economy, all runtime-generated visuals and IMGUI. |
 | `Assets/Scripts/ChonkyMerge/MainMenu.cs` | Landing page: background/floaters/logo/buttons, Settings panel, and the Levels picker panel with per-level stars. |
 | `Assets/Scripts/ChonkyMerge/MenuButton.cs` | Tappable sprite-button component with squash/bounce feedback; defines `ButtonId` enum. |
-| `Assets/Scripts/ChonkyMerge/Sfx.cs` | Procedural audio (click/pop blips generated in code); reads/writes the `sound_on` PlayerPrefs flag. |
+| `Assets/Scripts/ChonkyMerge/Sfx.cs` | The game's sound bank: seven CC0 clips from `Resources/Audio` + a code-generated swipe whoosh; reads/writes `sound_on`. |
+| `Assets/Scripts/ChonkyMerge/Haptics.cs` | Short Android vibrations (8-26ms) for landing/sleeping/winning; own `haptics_on` flag; no-op in editor and off-device. |
+| `Assets/Resources/Audio/` | The seven shipped sound effects (Kenney, CC0 — see `docs/CREDITS.md`). |
+| `docs/CREDITS.md` | Asset licences and the sound-event mapping; also records which assets are deliberately NOT shipped. |
 | `Assets/Scripts/ChonkyMerge/NativeShare.cs` | Android native share-sheet intent wrapper; no-ops to `Debug.Log` in the editor. |
 | `Assets/Scripts/ChonkyMerge/GameConfig.cs` | **Dead code** — unused 14-tier animal config from a retired mechanic. See TODO #2. |
 | `Assets/Scripts/ChonkyMerge/AnimalSprites.cs` | **Dead code** — unused sprite loader for the retired tier system. See TODO #2. |
@@ -223,7 +228,7 @@ Check the log for `"APK build result: Succeeded"`. Exits with code 1 on failure 
 - **`_ArtSource/` is git-ignored.** A fresh clone will not have raw art, reference images, or "pending" unused art. Do not assume it exists; do not add gameplay-critical assets there.
 - **Unity batch-mode builds fail if the Unity Editor is already open** on this project (Hub alone is fine). If a build command mysteriously fails, check for a stray open Editor instance first.
 - **`ArtImportSettings.cs` force-sets all `Resources/Art/*` textures to Uncompressed.** This keeps sprite quality high but means large PNGs bloat the build significantly — keep background images downscaled (this was a real issue addressed in an earlier commit, per `docs/ASSETS_AND_TODO.md`'s now-outdated background list).
-- **PlayerPrefs keys in active use:** `zoo_level` (last/selected level index), `zoo_stars_<i>` (best stars per level index), `sound_on` (0/1), `chonky_best` (leftover from the old merge game — still read by the vestigial `HighScore` panel, TODO #3). Changing any of these keys' names will silently reset player progress.
+- **PlayerPrefs keys in active use:** `zoo_level` (last/selected level index), `zoo_stars_<i>` (best stars per level index), `sound_on` (0/1), `haptics_on` (0/1), `chonky_best` (leftover from the old merge game — still read by the vestigial `HighScore` panel, TODO #3). Changing any of these keys' names will silently reset player progress.
 - **No git remote issues** — `origin` is configured (`https://github.com/Shabbir-Nuruddin/wobblezoo.git`) and `master` tracks `origin/master`. (An earlier note in project memory claiming "no remote configured" is stale — a remote exists now.)
 
 ---

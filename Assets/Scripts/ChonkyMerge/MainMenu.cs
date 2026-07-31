@@ -22,6 +22,10 @@ namespace ChonkyMerge
         private Texture2D _pillTex, _starTex, _dimTex, _cardTex;
         private Vector2 _levelScroll;
         private float _levelsCenterY, _levelsW, _levelsH;   // world footprint of the big Levels button
+        // the "this level is star-locked" helper strip: which gate was tapped, where to
+        // send them for the missing stars, and how long the strip stays up
+        private int _gateLevel, _topUpLevel;
+        private float _gateTime;
 
         private void Start()
         {
@@ -277,7 +281,16 @@ namespace ChonkyMerge
                     Sfx.SoundOn = !Sfx.SoundOn; Sfx.Click();
                     if (_soundIcon) _soundIcon.sprite = Resources.Load<Sprite>("Art/" + (Sfx.SoundOn ? "btn_sound_on" : "btn_sound_off"));
                 }
-                if (GUI.Button(new Rect(box.x + box.width / 2 - 150, box.y + 185, 300, 60), "Reset high score", _btn))
+                // Vibration is its own switch, not part of Sound: playing muted with
+                // the animals still landing in your hand is a real way people play.
+                if (GUI.Button(new Rect(box.x + box.width / 2 - 150, box.y + 185, 300, 60),
+                        Haptics.Enabled ? "Vibration:  ON" : "Vibration:  OFF", _btn))
+                {
+                    Haptics.Enabled = !Haptics.Enabled;
+                    Sfx.Tap();
+                    if (Haptics.Enabled) Haptics.Soft();     // let them feel what they just turned on
+                }
+                if (GUI.Button(new Rect(box.x + box.width / 2 - 150, box.y + 260, 300, 60), "Reset high score", _btn))
                 { Sfx.Click(); PlayerPrefs.SetInt("chonky_best", 0); PlayerPrefs.Save(); }
             }
 
@@ -346,6 +359,36 @@ namespace ChonkyMerge
                 y += Mathf.CeilToInt((lastLv - first + 1) / (float)cols) * rowH + chapGap;
             }
             GUI.EndScrollView();
+            DrawGateHelp(box);
+        }
+
+        // A star checkpoint used to be a dead end: it said "no" and left the player
+        // with nowhere to tap. Now tapping a locked level explains the gap and offers
+        // the easiest level to replay for the missing stars.
+        private void DrawGateHelp(Rect box)
+        {
+            if (_gateTime <= 0f) return;
+            _gateTime -= Time.deltaTime;
+
+            float hgt = 84f, m = 16f;
+            var r = new Rect(box.x + m, box.yMax - hgt - m, box.width - m * 2, hgt);
+            GUI.color = new Color(0.16f, 0.12f, 0.20f, 0.94f);
+            GUI.DrawTexture(r, _dimTex);
+            GUI.color = Color.white;
+
+            int need = SleepyZoo.PuzzleGame.RequiredStars(_gateLevel) - SleepyZoo.PuzzleGame.TotalStars();
+            GUI.Label(new Rect(r.x + 16, r.y + 10, r.width - 190, 30),
+                      $"Level {_gateLevel + 1} opens at {SleepyZoo.PuzzleGame.RequiredStars(_gateLevel)} stars", _note);
+            GUI.Label(new Rect(r.x + 16, r.y + 40, r.width - 190, 30),
+                      need == 1 ? "1 star to go" : $"{need} stars to go", _note);
+
+            var br = new Rect(r.xMax - 176, r.y + 16, 160, hgt - 32);
+            if (GUI.Button(br, $"Replay {_topUpLevel + 1}", _pill))
+            {
+                Sfx.Tap();
+                PlayerPrefs.SetInt("zoo_level", _topUpLevel); PlayerPrefs.Save();
+                SceneManager.LoadScene("Puzzle");
+            }
         }
 
         // A chapter strip. A locked chapter deliberately hides its name and its
@@ -414,7 +457,15 @@ namespace ChonkyMerge
             }
             else if (gated)
             {
-                // a star checkpoint: show how many total stars it takes to open
+                // a star checkpoint: show how many total stars it takes to open, and
+                // make it tappable so it can explain itself instead of just refusing
+                if (GUI.Button(cr, GUIContent.none, GUIStyle.none))
+                {
+                    Sfx.Locked();
+                    _gateLevel = i;
+                    _topUpLevel = SleepyZoo.PuzzleGame.EasiestTopUpLevel();
+                    _gateTime = 6f;
+                }
                 GUI.Label(new Rect(cr.x, cr.y + cell * 0.06f, cr.width, cell * 0.42f),
                           (i + 1).ToString(), _cellNum);
                 float ss = cell * 0.24f;

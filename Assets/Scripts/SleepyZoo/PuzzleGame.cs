@@ -212,6 +212,65 @@ namespace SleepyZoo
         // ---- warm, flat cozy palette (everything sits in the same family) ----
         private static readonly Color NightTop   = new Color(0.15f,0.12f,0.23f);
         private static readonly Color NightBottom = new Color(0.34f,0.24f,0.31f);
+
+        // ---- one room per chapter -------------------------------------------------
+        // Every chapter is somewhere else in the house, so progress is something you
+        // SEE rather than a number you read. The board furniture never changes; only
+        // the sky, the moon and the hills behind it do.
+        //
+        // These are painted in code in the same flat style as everything else (see
+        // BgGradient). The photo-real room photographs in Resources/Art are from an
+        // older art direction and would fight this one, so they're deliberately unused.
+        private class Room
+        {
+            public string name;
+            public Color skyTop, skyMid, skyHorizon;   // vertical gradient, bottom-up
+            public Color hillFar, hillMid, hillNear;   // three silhouette layers
+            public Vector2 moon; public float moonSize;
+            public Color glow;                         // twinkle colour: stars, fireflies, snow
+            public int glowCount;                      // how busy the sky is
+            public Room(string name, Color t, Color m, Color hz, Color hf, Color hm, Color hn,
+                        Vector2 moon, float moonSize, Color glow, int glowCount)
+            { this.name=name; skyTop=t; skyMid=m; skyHorizon=hz; hillFar=hf; hillMid=hm;
+              hillNear=hn; this.moon=moon; this.moonSize=moonSize; this.glow=glow; this.glowCount=glowCount; }
+        }
+        private static Color C(float r,float g,float b)=>new Color(r,g,b);
+        private static readonly Room[] Rooms =
+        {
+            // 1 - the nursery: the warmest, softest sky in the game. Home.
+            new Room("The nursery",   C(0.13f,0.11f,0.24f), C(0.26f,0.18f,0.33f), C(0.47f,0.29f,0.38f),
+                     C(0.32f,0.22f,0.35f), C(0.24f,0.16f,0.29f), C(0.17f,0.11f,0.22f),
+                     new Vector2(0.76f,0.84f), 0.052f, C(1f,0.98f,0.92f), 170),
+            // 2 - the treehouse: leaves and moss creep into the night
+            new Room("The treehouse", C(0.09f,0.14f,0.20f), C(0.15f,0.24f,0.28f), C(0.31f,0.36f,0.30f),
+                     C(0.20f,0.28f,0.26f), C(0.14f,0.21f,0.20f), C(0.09f,0.15f,0.15f),
+                     new Vector2(0.24f,0.86f), 0.046f, C(0.86f,1f,0.82f), 150),
+            // 3 - the meadow: a wide open summer night, thick with fireflies
+            new Room("The meadow",    C(0.08f,0.12f,0.26f), C(0.16f,0.21f,0.38f), C(0.42f,0.32f,0.44f),
+                     C(0.24f,0.27f,0.40f), C(0.16f,0.20f,0.31f), C(0.10f,0.14f,0.22f),
+                     new Vector2(0.70f,0.88f), 0.060f, C(1f,0.95f,0.70f), 200),
+            // 4 - the snow cabin: the coldest, quietest room. Fewer, bigger flakes.
+            new Room("The snow cabin",C(0.11f,0.15f,0.28f), C(0.19f,0.26f,0.40f), C(0.44f,0.49f,0.61f),
+                     C(0.30f,0.36f,0.48f), C(0.21f,0.26f,0.37f), C(0.14f,0.18f,0.27f),
+                     new Vector2(0.20f,0.82f), 0.058f, C(1f,1f,1f), 130),
+            // 5 - the pantry: lamplight, honey and warm wood
+            new Room("The pantry",    C(0.18f,0.11f,0.16f), C(0.32f,0.19f,0.20f), C(0.55f,0.36f,0.26f),
+                     C(0.38f,0.24f,0.22f), C(0.28f,0.17f,0.17f), C(0.19f,0.11f,0.12f),
+                     new Vector2(0.78f,0.80f), 0.050f, C(1f,0.88f,0.66f), 120),
+            // 6 - the garden: deep green, dew, things moving in the dark
+            new Room("The garden",    C(0.07f,0.13f,0.16f), C(0.12f,0.22f,0.24f), C(0.28f,0.36f,0.32f),
+                     C(0.18f,0.28f,0.26f), C(0.12f,0.20f,0.19f), C(0.07f,0.13f,0.13f),
+                     new Vector2(0.30f,0.88f), 0.044f, C(0.80f,1f,0.90f), 175),
+            // 7 - the library: dusty violet, hushed, the lamp turned low
+            new Room("The library",   C(0.14f,0.10f,0.20f), C(0.24f,0.17f,0.30f), C(0.40f,0.28f,0.36f),
+                     C(0.29f,0.21f,0.33f), C(0.21f,0.15f,0.25f), C(0.14f,0.10f,0.18f),
+                     new Vector2(0.72f,0.86f), 0.040f, C(0.96f,0.90f,1f), 140),
+            // 8 - under the stars: the darkest sky, the most stars, the last night
+            new Room("Under the stars",C(0.05f,0.06f,0.16f), C(0.10f,0.11f,0.26f), C(0.26f,0.20f,0.38f),
+                     C(0.18f,0.16f,0.32f), C(0.12f,0.10f,0.23f), C(0.07f,0.06f,0.15f),
+                     new Vector2(0.50f,0.90f), 0.066f, C(1f,1f,1f), 260),
+        };
+        private static Room RoomFor(int chapter)=>Rooms[Mathf.Clamp(chapter,0,Rooms.Length-1)];
         private static readonly Color BoardCream  = new Color(0.99f,0.93f,0.82f);
         private static readonly Color TileCream   = new Color(1.00f,0.965f,0.89f);
         private static readonly Color TileShadow  = new Color(0.90f,0.82f,0.70f);
@@ -229,6 +288,14 @@ namespace SleepyZoo
         private string[] _pet;
         private Transform[] _view;
         private Vector3[] _target;
+        // per-animal feel: is it still sliding, how far it's going, how squashed it is
+        // right now, whether it's already tucked in, and a random breathing offset so
+        // the room doesn't pulse in unison.
+        private bool[] _moving, _wasAsleep;
+        private int[] _travel;
+        private float[] _squash, _phase;
+        private int _landsThisMove;          // cap the thumps so a 5-animal swipe isn't a drum roll
+        private bool _hapticThisMove;
         private readonly Stack<Vector2Int[]> _undo = new();
         private Transform _bgTf;
         private bool _sticky;                       // chapter 2: beds catch and hold
@@ -370,6 +437,10 @@ namespace SleepyZoo
             int n=_lv.ents.Length;
             _pos=new Vector2Int[n]; _bed=new Vector2Int[n]; _pet=new string[n];
             _view=new Transform[n]; _target=new Vector3[n];
+            _moving=new bool[n]; _wasAsleep=new bool[n]; _travel=new int[n];
+            _squash=new float[n]; _phase=new float[n];
+            for(int i=0;i<n;i++) _phase[i]=i*1.7f;      // stagger the breathing
+            _landsThisMove=0; _hapticThisMove=false;
 
             SpawnBackground();
             BuildBoard();
@@ -404,8 +475,11 @@ namespace SleepyZoo
         private void SpawnBackground()
         {
             var go=new GameObject("BG"); go.transform.SetParent(transform);
-            var sr=go.AddComponent<SpriteRenderer>(); sr.sprite=BgGradient(); sr.sortingOrder=-20;
+            var sr=go.AddComponent<SpriteRenderer>(); sr.sprite=BgGradient(_chapter); sr.sortingOrder=-20;
             _bgTf=go.transform;
+            // the camera clears to the room's own horizon colour, so any sliver the
+            // background sprite doesn't cover still belongs to this room
+            if(_cam!=null) _cam.backgroundColor=RoomFor(_chapter).skyHorizon;
         }
 
         private void BuildBoard()
@@ -538,9 +612,35 @@ namespace SleepyZoo
                 var s=Pet(_pet[i]); float b=s!=null?0.86f/s.bounds.size.x:0.7f;
                 // a tucked-in sleeper settles a little smaller, so "this one is done"
                 // is readable without reading the board
-                if(_sticky && _pos[i]==_bed[i]) b*=0.86f;
+                bool asleep=_sticky && _pos[i]==_bed[i];
+                if(asleep) b*=0.86f;
                 _view[i].position=Vector3.Lerp(_view[i].position,_target[i],Time.deltaTime*16f);
-                _view[i].localScale=Vector3.Lerp(_view[i].localScale,new Vector3(b,b,1f),Time.deltaTime*12f);
+
+                // Landing: the moment an animal actually arrives it squashes, thumps and
+                // (in chapter 2) falls asleep. Doing it here rather than on the swipe means
+                // the sound lands with the animal, not before it.
+                if(_moving[i] && Vector3.Distance(_view[i].position,_target[i])<0.07f)
+                {
+                    _moving[i]=false;
+                    _squash[i]=1f;
+                    if(_landsThisMove<2){ Sfx.Land(_travel[i]); _landsThisMove++; }
+                    if(!_hapticThisMove){ Haptics.Light(); _hapticThisMove=true; }
+                    if(asleep && !_wasAsleep[i])
+                    {
+                        _wasAsleep[i]=true;
+                        Sfx.Sleep(); Haptics.Soft();
+                        StartCoroutine(SleepPuff(_target[i],PetCol(i)));
+                    }
+                }
+                if(!asleep) _wasAsleep[i]=false;              // undo can wake them again
+
+                // squash on impact, then a slow breath while they wait
+                _squash[i]=Mathf.Max(0f,_squash[i]-Time.deltaTime*3.4f);
+                float sq=_squash[i]*_squash[i];
+                float breathe=asleep ? 0.020f : 0.012f;      // sleepers breathe deeper
+                float pulse=1f+Mathf.Sin(Time.time*(asleep?1.1f:1.7f)+_phase[i])*breathe;
+                var want=new Vector3(b*(1f+sq*0.20f)*pulse, b*(1f-sq*0.24f)*pulse, 1f);
+                _view[i].localScale=Vector3.Lerp(_view[i].localScale,want,Time.deltaTime*18f);
             }
             PulseBeds();
             if (_solved){ DriveArrow(); return; }
@@ -656,10 +756,49 @@ namespace SleepyZoo
             if(!changed) return;
 
             PushUndo();
-            for(int i=0;i<np.Length;i++){ _pos[i]=np[i]; _target[i]=CellToWorld(np[i]); }
+            _landsThisMove=0; _hapticThisMove=false;
+            for(int i=0;i<np.Length;i++)
+            {
+                // remember how far this one is skidding: Update uses it to pitch the thump
+                _travel[i]=Mathf.Abs(np[i].x-_pos[i].x)+Mathf.Abs(np[i].y-_pos[i].y);
+                if(_travel[i]>0) _moving[i]=true;
+                _pos[i]=np[i]; _target[i]=CellToWorld(np[i]);
+            }
             _hintPath=null; _showHint=false; _arrowOn=false;  // any move clears shown guidance
             _tipTime=999f;             // hide the teaching tip once they act
-            _moves++; Sfx.Click(); CheckWin();
+            _moves++; Sfx.Swipe(); CheckWin();
+        }
+
+        /// Three soft motes drifting up off an animal that's just fallen asleep — the
+        /// visual half of chapter 2's payoff, so the moment reads even with sound off.
+        private System.Collections.IEnumerator SleepPuff(Vector3 at, Color col)
+        {
+            var motes=new Transform[3];
+            for(int i=0;i<motes.Length;i++)
+            {
+                var go=new GameObject("SleepPuff"); go.transform.SetParent(transform);
+                go.transform.position=at+new Vector3(0.06f+i*0.10f,0.16f+i*0.05f,-0.6f);
+                var sr=go.AddComponent<SpriteRenderer>();
+                sr.sprite=SoftDisc(); sr.sortingOrder=20;
+                sr.color=new Color(1f,1f,1f,0f);
+                float s=(0.16f-i*0.03f)/SoftDisc().bounds.size.x;
+                go.transform.localScale=new Vector3(s,s,1f);
+                motes[i]=go.transform;
+            }
+            for(float t=0;t<1f;t+=Time.deltaTime*0.85f)
+            {
+                for(int i=0;i<motes.Length;i++)
+                {
+                    if(motes[i]==null) continue;
+                    float lt=Mathf.Clamp01(t-i*0.18f);
+                    var sr=motes[i].GetComponent<SpriteRenderer>();
+                    sr.color=new Color(col.r*0.4f+0.6f,col.g*0.4f+0.6f,col.b*0.4f+0.6f,
+                                       Mathf.Sin(lt*Mathf.PI)*0.75f);
+                    motes[i].position+=new Vector3(0.06f,0.42f,0)*Time.deltaTime;
+                }
+                yield return null;
+            }
+            foreach(var m in motes) if(m!=null) Destroy(m.gameObject);
         }
 
         // ---- runtime hint solver: optimal remaining swipes from any position ----
@@ -712,8 +851,14 @@ namespace SleepyZoo
         {
             if(_undo.Count==0) return;
             var s=_undo.Pop();
-            for(int i=0;i<_pos.Length;i++){ _pos[i]=s[i]; _target[i]=CellToWorld(s[i]); }
-            if(_moves>0) _moves--; Sfx.Click();
+            _landsThisMove=2; _hapticThisMove=true;    // undo is a quiet rewind, not a landing
+            for(int i=0;i<_pos.Length;i++)
+            {
+                _travel[i]=Mathf.Abs(s[i].x-_pos[i].x)+Mathf.Abs(s[i].y-_pos[i].y);
+                if(_travel[i]>0) _moving[i]=true;
+                _pos[i]=s[i]; _target[i]=CellToWorld(s[i]);
+            }
+            if(_moves>0) _moves--; Sfx.Undo();
         }
 
         private void CheckWin()
@@ -729,7 +874,19 @@ namespace SleepyZoo
             int nextLv=Mathf.Min(_levelIndex+1,Levels.Length-1);
             if(nextLv>furthest) PlayerPrefs.SetInt("zoo_furthest",nextLv);
             PlayerPrefs.Save();
-            Sfx.Pop();
+            Haptics.Medium();
+            StartCoroutine(WinFanfare(_stars));
+        }
+
+        /// The win sound, told as a little sequence: the animals settle, then each
+        /// earned star rings a step higher, then the jingle. Rushing all of it into
+        /// one frame is what makes puzzle games feel like slot machines.
+        private System.Collections.IEnumerator WinFanfare(int stars)
+        {
+            yield return new WaitForSeconds(0.28f);
+            for(int i=0;i<stars;i++){ Sfx.Star(i); yield return new WaitForSeconds(0.16f); }
+            yield return new WaitForSeconds(0.10f);
+            Sfx.Win();
         }
 
         // ---- UI ----
@@ -910,6 +1067,19 @@ namespace SleepyZoo
             return _levelIndex;
         }
 
+        /// The same idea, for the level picker: the earliest unlocked level that still
+        /// has a star going spare. A locked gate should always be able to point at
+        /// somewhere to go, rather than just saying no.
+        public static int EasiestTopUpLevel()
+        {
+            for(int i=0;i<Levels.Length;i++)
+            {
+                if(!IsUnlocked(i)) break;
+                if(StarsFor(i)<3) return i;
+            }
+            return 0;
+        }
+
         private void DrawStars(float cx,float y,int count,float s)
         {
             float gap=s*0.22f, total=3*s+2*gap;
@@ -936,7 +1106,9 @@ namespace SleepyZoo
         }
 
         // ---- generated sprites / textures ----
-        private static Sprite _round, _bg;
+        private static Sprite _round;
+        // one painted sky per chapter, built once and kept (they're 360x720 each)
+        private static readonly Dictionary<int,Sprite> _bgRooms = new();
         private static Sprite RoundedTile()
         {
             if(_round!=null) return _round;
@@ -999,18 +1171,19 @@ namespace SleepyZoo
         // A painted-feeling bedtime sky: deep indigo up top warming to dusky plum at the
         // horizon, a scatter of twinkle-sized stars, a haloed moon, and three layers of
         // rolling hills that get lighter with distance. All generated, so it costs no art.
-        private static Sprite BgGradient()
+        private static Sprite BgGradient(int chapter)
         {
-            if(_bg!=null) return _bg;
+            if(_bgRooms.TryGetValue(chapter,out var cached) && cached!=null) return cached;
+            var room=RoomFor(chapter);
             int w=360,h=720;
             var tex=new Texture2D(w,h,TextureFormat.RGBA32,false){wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear};
             var px=new Color[w*h];
 
             // sky palette (y=0 is the BOTTOM of the texture in Unity)
-            var skyTop    = new Color(0.13f,0.11f,0.24f);
-            var skyMid    = new Color(0.26f,0.18f,0.33f);
-            var skyHorizon= new Color(0.47f,0.29f,0.38f);
-            Vector2 moon=new Vector2(0.76f,0.84f); float mr=0.052f;
+            var skyTop    = room.skyTop;
+            var skyMid    = room.skyMid;
+            var skyHorizon= room.skyHorizon;
+            Vector2 moon=room.moon; float mr=room.moonSize;
             var moonCol=new Color(1f,0.97f,0.88f);
 
             for(int y=0;y<h;y++)
@@ -1035,9 +1208,11 @@ namespace SleepyZoo
                 }
             }
 
-            // stars — deterministic scatter, denser and brighter high in the sky
-            var rng=new System.Random(20260726);
-            for(int i=0;i<170;i++)
+            // The sky's twinkle: stars in the nursery, fireflies in the meadow, snow in
+            // the cabin. Same loop, different colour and density per room — deterministic
+            // scatter, denser and brighter high in the sky.
+            var rng=new System.Random(20260726+chapter*977);
+            for(int i=0;i<room.glowCount;i++)
             {
                 float sx=(float)rng.NextDouble(), sy=0.38f+(float)rng.NextDouble()*0.62f;
                 float bright=0.35f+(float)rng.NextDouble()*0.65f;
@@ -1055,20 +1230,21 @@ namespace SleepyZoo
                     float dd=Mathf.Sqrt(ox*ox+oy*oy);
                     float a=Mathf.Clamp01(1f-dd/rad)*bright;
                     if(a<=0f) continue;
-                    px[ty*w+tx]=Color.Lerp(px[ty*w+tx],new Color(1f,0.98f,0.92f),a);
+                    px[ty*w+tx]=Color.Lerp(px[ty*w+tx],room.glow,a);
                 }
             }
 
             // three hill layers, far (lightest) to near (darkest silhouette)
-            DrawHills(px,w,h, 0.30f, 0.055f, 1.7f, 0.6f,  new Color(0.32f,0.22f,0.35f));
-            DrawHills(px,w,h, 0.21f, 0.05f,  2.6f, 2.1f,  new Color(0.24f,0.16f,0.29f));
-            DrawHills(px,w,h, 0.12f, 0.045f, 3.7f, 4.3f,  new Color(0.17f,0.11f,0.22f));
+            DrawHills(px,w,h, 0.30f, 0.055f, 1.7f, 0.6f,  room.hillFar);
+            DrawHills(px,w,h, 0.21f, 0.05f,  2.6f, 2.1f,  room.hillMid);
+            DrawHills(px,w,h, 0.12f, 0.045f, 3.7f, 4.3f,  room.hillNear);
 
             var out32=new Color32[w*h];
             for(int i=0;i<px.Length;i++) out32[i]=px[i];
             tex.SetPixels32(out32); tex.Apply();
-            _bg=Sprite.Create(tex,new Rect(0,0,w,h),new Vector2(0.5f,0.5f),1);
-            return _bg;
+            var sprite=Sprite.Create(tex,new Rect(0,0,w,h),new Vector2(0.5f,0.5f),1);
+            _bgRooms[chapter]=sprite;
+            return sprite;
         }
 
         // Fills everything below a soft sine-blended ridge line with `col`.
