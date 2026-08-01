@@ -886,10 +886,50 @@ namespace SleepyZoo
         private void Start()
         {
             SetupCamera();
+            // The menu's screenshot tour hands over to this scene so the store gets
+            // pictures of the actual game, not just its menus.
+            if(ShotArg("-shots")!=null){ StartCoroutine(ShotTour()); return; }
             bool wantDaily = PlayerPrefs.GetInt(DailyRequestKey,0)==1;
             if(wantDaily){ PlayerPrefs.SetInt(DailyRequestKey,0); PlayerPrefs.Save(); }
             if(wantDaily) LoadDaily();
             else LoadLevel(PlayerPrefs.GetInt("zoo_level",0));
+        }
+
+        // ---- screenshot tour (development only) ----
+        private static string ShotArg(string flag)
+        {
+            var a=System.Environment.GetCommandLineArgs();
+            for(int i=0;i<a.Length-1;i++) if(a[i]==flag) return a[i+1];
+            for(int i=0;i<a.Length;i++) if(a[i]==flag) return "";
+            return null;
+        }
+
+        /// One board per chapter, so the listing shows what each chapter's toy actually
+        /// looks like — a screenshot of seven plain levels sells a game with one idea.
+        private System.Collections.IEnumerator ShotTour()
+        {
+            string dir=ShotArg("-shots");
+            if(string.IsNullOrEmpty(dir)) dir=".";
+            // deliberately not the first level of any chapter: those run the guided
+            // tutorial, which covers the board with arrows and instructions
+            int[] picks   = { 2, 32, 47, 62, 78, 92, 108, 122 };
+            string[] names= { "08_basics","09_sticky_beds","10_musical_beds","11_rugs",
+                              "12_honey","13_burrows","14_heavy","15_long_night" };
+            for(int i=0;i<picks.Length && i<names.Length;i++)
+            {
+                LoadLevel(picks[i]);
+                yield return Shot(dir,names[i]);
+            }
+            LoadDaily();
+            yield return Shot(dir,"16_tonight");
+            System.Diagnostics.Process.GetCurrentProcess().Kill();
+        }
+
+        private System.Collections.IEnumerator Shot(string dir,string name)
+        {
+            for(int f=0;f<10;f++) yield return null;      // let the board settle and animate in
+            ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(dir,name+".png"),2);
+            for(int f=0;f<14;f++) yield return null;      // and let the file land
         }
 
         /// Re-solves every shipped level with the GAME'S OWN simulation and solver,
@@ -1143,16 +1183,24 @@ namespace SleepyZoo
             if(i==_lv.heavy) parentScale*=1.18f;
             go.transform.localScale=new Vector3(parentScale,parentScale,1f);
 
-            // The heavy sleeper is drawn bigger and sits on a dark ring, so "this one
+            // The heavy sleeper is drawn bigger and sits in a dark shadow, so "this one
             // isn't going anywhere on its own" is legible before you try to move it.
+            //
+            // The shadow MUST be wider than the signature glow below. The glow is drawn
+            // on top of it, so a shadow the same size or smaller is completely invisible
+            // — which is exactly what happened, and made the heavy animal look like
+            // every other animal on the board.
             if(i==_lv.heavy)
             {
                 var ring=new GameObject("HeavyRing"); ring.transform.SetParent(go.transform);
-                ring.transform.localPosition=new Vector3(0,-0.04f/parentScale,0.25f);
+                // Sat behind the animal it just blends into a grey animal's silhouette,
+                // so it's pushed down to the floor of the cell and squashed flat — a
+                // shadow something is standing on, not a halo it's wearing.
+                ring.transform.localPosition=new Vector3(0,-0.38f/parentScale,0.25f);
                 var rsr=ring.AddComponent<SpriteRenderer>(); rsr.sprite=SoftDisc(); rsr.sortingOrder=4;
-                rsr.color=new Color(0.30f,0.24f,0.30f,0.75f);
-                float rs=1.30f/(parentScale*SoftDisc().bounds.size.x);
-                ring.transform.localScale=new Vector3(rs,rs*0.72f,1f);
+                rsr.color=new Color(0.24f,0.17f,0.24f,0.58f);
+                float rs=1.34f/(parentScale*SoftDisc().bounds.size.x);
+                ring.transform.localScale=new Vector3(rs,rs*0.30f,1f);   // flat: it's weight, not a halo
             }
 
             // soft signature-colour glow that rides along under the animal. It's a child,

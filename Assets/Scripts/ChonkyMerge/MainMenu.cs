@@ -64,6 +64,10 @@ namespace ChonkyMerge
         {
             string dir = ShotArg("-shots");
             if (string.IsNullOrEmpty(dir)) dir = ".";
+            // Without this the player stops rendering the moment its window loses focus,
+            // the coroutine stops getting frames, and the tour silently stalls part-way
+            // through — leaving a folder of three screenshots and no error anywhere.
+            Application.runInBackground = true;
             string starArg = ShotArg("-shotstars");
             if (!string.IsNullOrEmpty(starArg) && int.TryParse(starArg, out int upto))
             {
@@ -92,14 +96,15 @@ namespace ChonkyMerge
             _zooScroll = new Vector2(620f, 0); yield return Shot(dir, "06_zoo_scrolled");
             _panel = Panel.Settings; yield return Shot(dir, "07_settings");
 
-            // hard-kill so Unity never flushes the faked PlayerPrefs to the registry
-            System.Diagnostics.Process.GetCurrentProcess().Kill();
+            // Hand over to the puzzle scene, which shoots one board per chapter and then
+            // hard-kills the process — so Unity never flushes the faked PlayerPrefs.
+            SceneManager.LoadScene("Puzzle");
         }
 
         private System.Collections.IEnumerator Shot(string dir, string name)
         {
             for (int f = 0; f < 6; f++) yield return null;      // let the panel settle
-            ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(dir, name + ".png"));
+            ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(dir, name + ".png"), 2);
             for (int f = 0; f < 12; f++) yield return null;     // and let the file land
         }
 

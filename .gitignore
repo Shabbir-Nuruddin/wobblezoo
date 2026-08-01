@@ -56,3 +56,10 @@ tools/levels_plan.json
 # Resumable generator caches (regenerable, and huge)
 tools/.ch*_partial.json
 tools/.dailies_partial.json
+
+# Signing keys — NEVER commit these. Losing control of the upload key means
+# losing the ability to publish updates to this app, permanently.
+*.keystore
+*.jks
+*.p12
+keystore.properties
