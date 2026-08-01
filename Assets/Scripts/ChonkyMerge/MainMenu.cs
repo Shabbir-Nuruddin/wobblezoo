@@ -24,6 +24,7 @@ namespace ChonkyMerge
         private float _levelsCenterY, _levelsW, _levelsH;   // world footprint of the big Levels button
         // the "this level is star-locked" helper strip: which gate was tapped, where to
         // send them for the missing stars, and how long the strip stays up
+        private bool _scrollToCurrent = true;
         private int _gateLevel, _topUpLevel;
         private float _gateTime;
 
@@ -72,12 +73,24 @@ namespace ChonkyMerge
                 PlayerPrefs.SetInt("zoo_furthest", upto);
             }
 
-            yield return Shot(dir, "01_home");
-            _panel = Panel.Levels;   yield return Shot(dir, "02_path");
-            _levelScroll = new Vector2(0, 900f); yield return Shot(dir, "03_path_scrolled");
-            _panel = Panel.Zoo;      yield return Shot(dir, "04_zoo");
-            _zooScroll = new Vector2(620f, 0); yield return Shot(dir, "05_zoo_scrolled");
-            _panel = Panel.Settings; yield return Shot(dir, "06_settings");
+            // Force the arrival card on. Unity can flush PlayerPrefs behind our back, so
+            // a previous tour's "mark everything seen" can survive into this one and
+            // silently turn this shot into a duplicate of the home screen — which is
+            // exactly what happened the first time.
+            PlayerPrefs.SetInt("zoo_seen", 0);
+            yield return Shot(dir, "01_arrival");
+            // The arrival card covers the home screen and hides the tabs behind it, so
+            // clear the pending arrivals and shoot home properly too.
+            PlayerPrefs.SetInt("zoo_seen", Zoo.UnlockedCount());
+            PlayerPrefs.SetInt("night_last", Nightly.Tonight - 1);   // a live streak to look at
+            PlayerPrefs.SetInt("night_streak", 6);
+            PlayerPrefs.SetInt("night_best", 6);
+            yield return Shot(dir, "02_home");
+            _panel = Panel.Levels;   yield return Shot(dir, "03_path");
+            _levelScroll = new Vector2(0, 900f); yield return Shot(dir, "04_path_scrolled");
+            _panel = Panel.Zoo;      yield return Shot(dir, "05_zoo");
+            _zooScroll = new Vector2(620f, 0); yield return Shot(dir, "06_zoo_scrolled");
+            _panel = Panel.Settings; yield return Shot(dir, "07_settings");
 
             // hard-kill so Unity never flushes the faked PlayerPrefs to the registry
             System.Diagnostics.Process.GetCurrentProcess().Kill();
@@ -294,7 +307,7 @@ namespace ChonkyMerge
                 Vector3 tl = _cam.WorldToScreenPoint(new Vector3(-_levelsW * 0.5f, _levelsCenterY + _levelsH * 0.5f, 0));
                 Vector3 br = _cam.WorldToScreenPoint(new Vector3(_levelsW * 0.5f, _levelsCenterY - _levelsH * 0.5f, 0));
                 var rLv = new Rect(tl.x, Screen.height - tl.y, br.x - tl.x, (Screen.height - br.y) - (Screen.height - tl.y));
-                if (GUI.Button(rLv, "Levels", _bigPill)) { Sfx.Click(); _panel = Panel.Levels; }
+                if (GUI.Button(rLv, "Levels", _bigPill)) { Sfx.Tap(); _panel = Panel.Levels; _scrollToCurrent = true; }
                 // live star total, tucked just under the button so stars feel worth chasing
                 GUI.Label(new Rect(0, rLv.yMax + 2, Screen.width, 30),
                     $"{SleepyZoo.PuzzleGame.TotalStars()} / {SleepyZoo.PuzzleGame.MaxStars} stars collected", _note);
@@ -308,6 +321,32 @@ namespace ChonkyMerge
                 var rZoo = new Rect(16, Screen.height - Screen.safeArea.height - Screen.safeArea.y + 20, 168, 62);
                 if (GUI.Button(rZoo, $"Zoo  {Zoo.UnlockedCount()}/{Zoo.Count}", _pill))
                 { Sfx.Tap(); _panel = Panel.Zoo; _zooScroll = Vector2.zero; }
+
+                // Tonight's Puzzle, mirrored top-right. One pill, no second map and no
+                // badge shouting at anyone — a daily thing that nags is a daily thing
+                // people turn off. It says what it is and waits.
+                if (Nightly.Available)
+                {
+                    // Sits BELOW the sound/share icons, not level with the Zoo tab — the
+                    // top-right corner already belongs to them, and a pill printed over
+                    // the speaker is what the first screenshot showed.
+                    float pw = 178f;
+                    var rNight = new Rect(Screen.width - pw - 16, rZoo.y + 92, pw, 62);
+                    if (GUI.Button(rNight, Nightly.DoneTonight ? "Tonight  ok" : "Tonight", _pill))
+                    {
+                        Sfx.Tap();
+                        PlayerPrefs.SetInt(SleepyZoo.PuzzleGame.DailyRequestKey, 1);
+                        PlayerPrefs.Save();
+                        SceneManager.LoadScene("Puzzle");
+                    }
+                    // Caption is right-aligned under the pill and kept short on purpose;
+                    // the full story is told on the win panel, not on the home screen.
+                    var cap = _note.alignment;
+                    _note.alignment = TextAnchor.UpperRight;
+                    GUI.Label(new Rect(rNight.xMax - 300, rNight.yMax + 4, 300, 28),
+                              Nightly.Line(), _note);
+                    _note.alignment = cap;
+                }
             }
 
             if (_panel == Panel.Levels) { DrawLevelsPanel(); return; }
@@ -385,7 +424,8 @@ namespace ChonkyMerge
             // to be — a half-empty card reads as "unfinished screen"
             float w = Mathf.Min(Screen.width * 0.94f, 760);
             float bedW0 = Mathf.Min(210f, (w - 44f) * 0.46f);
-            float h = Mathf.Min(Screen.height * 0.82f, 118f + bedW0 * 1.24f + 26f + 120f);
+            float h = Mathf.Min(Screen.height * 0.82f, 118f + bedW0 * 1.24f + 26f + 120f
+                                                      + (Nightly.Available ? 52f : 0f));
             var box = new Rect((Screen.width - w) / 2, (Screen.height - h) / 2, w, h);
             DrawPanelBox(box);
 
@@ -416,6 +456,35 @@ namespace ChonkyMerge
             if (dreaming >= 0)
                 GUI.Label(new Rect(box.x + pad, line.yMax + 4, w - pad * 2, 40),
                           $"{Zoo.Pals[dreaming].name} {Zoo.Pals[dreaming].dream}.", _cellSub3);
+
+            if (Nightly.Available) DrawLanterns(new Rect(box.x + pad, box.yMax - 56f, w - pad * 2, 40f));
+        }
+
+        /// The streak made visible: one lantern per milestone, lit ones warm and
+        /// glowing, the rest dark. This is what nights actually buy — the zoo getting
+        /// cosier — so it has to be something you can point at, not a number.
+        private void DrawLanterns(Rect r)
+        {
+            int lit = Nightly.Lanterns, n = Nightly.MaxLanterns;
+            float step = Mathf.Min(38f, r.width / (n + 1f));
+            float d = step * 0.62f;
+            float x = r.x + (r.width - step * (n - 1) - d) * 0.5f;
+            float y = r.y + 4f;
+            for (int i = 0; i < n; i++)
+            {
+                var c = i < lit ? new Color(1.00f, 0.80f, 0.42f, 0.95f)
+                                : new Color(1.00f, 1.00f, 1.00f, 0.13f);
+                if (i < lit)   // a soft halo, so a lit lantern actually reads as lit
+                {
+                    GUI.color = new Color(1.00f, 0.78f, 0.36f, 0.22f);
+                    GUI.DrawTexture(new Rect(x + i * step - d * 0.35f, y - d * 0.35f, d * 1.7f, d * 1.7f), _dotTex);
+                }
+                GUI.color = c;
+                GUI.DrawTexture(new Rect(x + i * step, y, d, d), _dotTex);
+            }
+            GUI.color = Color.white;
+            GUI.Label(new Rect(r.x, y + d + 2f, r.width, 26f),
+                      lit >= n ? "every lantern lit" : $"{lit} of {n} lanterns lit", _cellSub3);
         }
 
         // One animal, in bed. Built bottom-up from the pillow so nothing can drift
@@ -497,14 +566,23 @@ namespace ChonkyMerge
             GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), _dimTex);
             GUI.color = Color.white;
 
-            float w = Mathf.Min(Screen.width * 0.84f, 560), h = 470;
+            // Laid out top-down from one running cursor, and the panel is sized to fit
+            // it — a fixed height had the "Say hello" button printing straight through
+            // the line that says who moved in.
+            float w = Mathf.Min(Screen.width * 0.84f, 560);
+            float bw = w * 0.52f, artH = bw * 0.72f;
+            const float titleTop = 26f, titleH = 40f, gapArt = 44f, gapName = 10f,
+                        nameH = 50f, subH = 44f, gapBtn = 26f, btnH = 66f, botPad = 28f;
+            float h = titleTop + titleH + gapArt + artH + gapName + nameH + subH
+                      + gapBtn + btnH + botPad;
             var box = new Rect((Screen.width - w) / 2, (Screen.height - h) / 2, w, h);
             DrawPanelBox(box);
 
-            GUI.Label(new Rect(box.x, box.y + 26, box.width, 40), "Someone moved in!", _noteLight);
+            float y = box.y + titleTop;
+            GUI.Label(new Rect(box.x, y, box.width, titleH), "Someone moved in!", _noteLight);
+            y += titleH + gapArt;
 
-            float bw = w * 0.52f;
-            var blanket = new Rect(box.x + (w - bw) / 2f, box.y + 110, bw, bw * 0.72f);
+            var blanket = new Rect(box.x + (w - bw) / 2f, y, bw, artH);
             GUI.color = new Color(pal.col.r, pal.col.g, pal.col.b, 0.85f);
             GUI.DrawTexture(blanket, _dotTex);
             GUI.color = Color.white;
@@ -517,11 +595,14 @@ namespace ChonkyMerge
                 GUI.DrawTexture(new Rect(box.x + (w - aw) / 2f, blanket.y - ah * 0.30f + bob, aw, ah), art);
             }
 
-            GUI.Label(new Rect(box.x, blanket.yMax + 10, box.width, 50), pal.name, _big);
-            GUI.Label(new Rect(box.x + 30, blanket.yMax + 58, box.width - 60, 40),
+            y = blanket.yMax + gapName;
+            GUI.Label(new Rect(box.x, y, box.width, nameH), pal.name, _big);
+            y += nameH;
+            GUI.Label(new Rect(box.x + 30, y, box.width - 60, subH),
                       "has come to stay at your zoo", _cellSub3);
+            y += subH + gapBtn;
 
-            if (GUI.Button(new Rect(box.x + w / 2 - 130, box.yMax - 92, 260, 66), "Say hello", _pill))
+            if (GUI.Button(new Rect(box.x + w / 2 - 130, y, 260, btnH), "Say hello", _pill))
             {
                 Sfx.Win();
                 Zoo.MarkArrivalSeen();
@@ -576,6 +657,22 @@ namespace ChonkyMerge
             var view = new Rect(box.x + pad, box.y + 104, innerW, h - 132);
             var content = new Rect(0, 0, innerW - 16, contentH);
             _levelScroll = GUI.BeginScrollView(view, _levelScroll, content);
+
+            // 130 levels is a long scroll: open the picker where the player actually
+            // is, not at level 1 they cleared hours ago
+            if (_scrollToCurrent)
+            {
+                _scrollToCurrent = false;
+                int here = SleepyZoo.PuzzleGame.ResumeLevel();
+                float upto = 0f;
+                for (int ch = 0; ch < SleepyZoo.PuzzleGame.ChapterOf(here); ch++)
+                {
+                    int n = SleepyZoo.PuzzleGame.ChapterLastLevel(ch) - SleepyZoo.PuzzleGame.ChapterFirstLevel(ch) + 1;
+                    upto += headH + (n - 1) * step + pillow + chapGap;
+                }
+                int into = here - SleepyZoo.PuzzleGame.ChapterFirstLevel(SleepyZoo.PuzzleGame.ChapterOf(here));
+                _levelScroll = new Vector2(0, Mathf.Max(0f, upto + into * step - view.height * 0.42f));
+            }
 
             float cx = (innerW - 16) * 0.5f;
             float amp = Mathf.Min((innerW - 16) * 0.5f - pillow * 0.60f, pillow * 1.7f);

@@ -1,27 +1,37 @@
 """
 Level generator / verifier for Wobble Zoo ("Bedtime Shuffle").
 
-Mirrors PuzzleGame.SlideSim + SolveFrom exactly, for both stages:
+This is a second, independent implementation of the game's rules — it mirrors
+PuzzleGame.SlideSim + SolveFrom exactly. Every level's `par` is the true
+BFS-optimal move count, so a 3-star target is always achievable and never a
+designer's guess.
 
-  Stage 1 (classic)  - one swipe slides every animal until it hits a wall,
-                       a block, or another animal. Beds are just targets.
-  Stage 2 (sticky)   - the same swipe, but the moment an animal touches its
-                       OWN bed it snuggles in, stops there, and never moves
-                       again (it becomes a soft wall for everyone else).
+THE RULES, per chapter (see `Rules` in PuzzleGame.cs — the two tables must agree):
 
-Every emitted level's `par` is the true BFS-optimal move count, so 3 stars is
-always achievable and never a designer guess.
+    1 Bedtime Shuffle  one swipe slides every animal until something stops it
+    2 Sleepyheads      + sticky beds: touch your own bed and you're asleep for good
+    3 Musical Beds     + any animal may take any bed
+    4 Slippery Rugs    + silk you can cross but never stop on
+    5 Honey Puddles    + honey: touch it and you stop dead
+    6 Rabbit Holes     + burrows in pairs: in one, out the other, keep sliding
+    7 Heavy Sleepers   + one animal too heavy to slide unless it's pushed
+    8 The Long Night   no new toy: rugs, honey and burrows together
+
+Sticky beds stay on from chapter 2 onwards; everything after is a visible object
+on the board, so each chapter adds one thing you can point at.
 
 Usage:
-    python tools/gen_levels.py verifycs    # re-prove every par in PuzzleGame.cs
-    python tools/gen_levels.py verify      # prove this sim matches the C# one
-    python tools/gen_levels.py plan        # regenerate ALL 40 levels + write the C#
-    python tools/gen_levels.py plan1/plan2 # regenerate one chapter only (no write)
+    python tools/gen_levels.py audit         # re-prove every par in PuzzleGame.cs
+    python tools/gen_levels.py plan          # regenerate ALL chapters + write the C#
+    python tools/gen_levels.py plan 3 4 5    # regenerate only these chapters
+    python tools/gen_levels.py selftest      # sanity-check the sim's own rules
 
-The shipping ramp lives in CHAPTER1 / CHAPTER2 below. Par is capped at 12 by
-design: a level should be hard to think about, not long to play.
+`audit` (alias: `verifycs`) is the one to run after ANY edit to the Levels array.
+It only proves the file agrees with THIS file, though — for the real check that
+the C# and Python rules still agree, run the in-engine audit:
 
-`verifycs` is the one to run after ANY edit to the Levels array.
+    Unity.exe -batchmode -quit -nographics -projectPath . -logFile audit.log \
+              -executeMethod ChonkyMerge.EditorTools.LevelAudit.Run
 """
 
 import random
@@ -32,84 +42,159 @@ from collections import deque
 DIRS = [(1, 0), (-1, 0), (0, 1), (0, -1)]
 DIRNAME = {(1, 0): "Right", (-1, 0): "Left", (0, 1): "Up", (0, -1): "Down"}
 
+CS_PATH = "Assets/Scripts/SleepyZoo/PuzzleGame.cs"
+PLAN_JSON = "tools/levels_plan.json"
+
+# Chapter layout must match ChapterStart in PuzzleGame.cs.
+CHAPTER_START = [0, 20, 40, 55, 70, 85, 100, 115]
+CHAPTER_LEN = [20, 20, 15, 15, 15, 15, 15, 15]
+
+
+class Ctx:
+    """Everything a swipe needs to know: the board, and this chapter's toys."""
+
+    __slots__ = ("w", "h", "walls", "beds", "rugs", "honey", "holes",
+                 "heavy", "sticky", "anybed", "bedset", "holemap")
+
+    def __init__(self, w, h, walls, beds, rugs=(), honey=(), holes=(),
+                 heavy=-1, sticky=False, anybed=False):
+        self.w, self.h = w, h
+        self.walls = frozenset(walls)
+        self.beds = tuple(beds)
+        self.rugs = frozenset(rugs)
+        self.honey = frozenset(honey)
+        self.holes = tuple(holes)
+        self.heavy = heavy
+        self.sticky = sticky
+        self.anybed = anybed
+        self.bedset = frozenset(beds)
+        self.holemap = {}
+        for k in range(0, len(self.holes) - 1, 2):
+            a, b = self.holes[k], self.holes[k + 1]
+            self.holemap[a] = b
+            self.holemap[b] = a
+
+    def inb(self, c):
+        return 0 <= c[0] < self.w and 0 <= c[1] < self.h
+
+    def is_bed_for(self, i, c):
+        return c in self.bedset if self.anybed else c == self.beds[i]
+
+    def asleep(self, pos, i):
+        if not self.sticky:
+            return False
+        return pos[i] in self.bedset if self.anybed else pos[i] == self.beds[i]
+
+    def goal(self, pos):
+        if not self.anybed:
+            return tuple(pos) == self.beds
+        return self.bedset.issubset(set(pos))
+
 
 # ---------------------------------------------------------------- simulation
-def slide(pos, dirv, w, h, walls, beds=None):
-    """One swipe. `beds` non-None => sticky-bed (stage 2) rules."""
+def walk(ctx, i, frm, dirv, occ):
+    """One animal's skid — the mirror of PuzzleGame.Walk."""
     dx, dy = dirv
-    n = len(pos)
+    p = frm
+    trail = [p]
+    guard = ctx.w * ctx.h * 2 + 8
+    while guard > 0:
+        guard -= 1
+        q = (p[0] + dx, p[1] + dy)
+        if not ctx.inb(q) or q in ctx.walls or q in occ:
+            break
+        p = q
+        exit_ = ctx.holemap.get(p)
+        if exit_ is not None and exit_ not in occ and exit_ not in ctx.walls:
+            p = exit_
+            trail.append(p)
+            if ctx.sticky and ctx.is_bed_for(i, p):
+                break
+            if p in ctx.honey:
+                break
+            continue
+        trail.append(p)
+        if ctx.sticky and ctx.is_bed_for(i, p):
+            break
+        if p in ctx.honey:
+            break
+    # silk: you may cross a rug but never come to rest on one
+    while len(trail) > 1 and p in ctx.rugs:
+        trail.pop()
+        p = trail[-1]
+    return p
+
+
+def slide(ctx, pos, dirv):
+    """One swipe — the mirror of PuzzleGame.SlideSim."""
+    dx, dy = dirv
     np_ = list(pos)
-    order = sorted(range(n), key=lambda i: -(np_[i][0] * dx + np_[i][1] * dy))
+    order = sorted(range(len(np_)), key=lambda i: -(np_[i][0] * dx + np_[i][1] * dy))
     occ = set(np_)
     for i in order:
-        if beds is not None and np_[i] == beds[i]:
-            continue                       # already asleep: never moves again
+        if ctx.asleep(np_, i):
+            continue
+        if i == ctx.heavy:
+            continue                       # too heavy to move on its own
         occ.discard(np_[i])
-        p = np_[i]
-        while True:
-            q = (p[0] + dx, p[1] + dy)
-            if q[0] < 0 or q[0] >= w or q[1] < 0 or q[1] >= h:
+        p = walk(ctx, i, np_[i], dirv, occ)
+        guard = 0
+        while ctx.heavy >= 0 and guard < 8:
+            guard += 1
+            ahead = (p[0] + dx, p[1] + dy)
+            if not ctx.inb(ahead) or np_[ctx.heavy] != ahead or ctx.asleep(np_, ctx.heavy):
                 break
-            if q in walls or q in occ:
-                break
-            p = q
-            if beds is not None and p == beds[i]:
-                break                      # caught by its own bed mid-slide
+            occ.discard(ahead)
+            hp = walk(ctx, ctx.heavy, ahead, dirv, occ)
+            occ.add(hp)
+            np_[ctx.heavy] = hp
+            if hp == ahead:
+                break                      # it wouldn't budge, so neither can we
+            p = walk(ctx, i, p, dirv, occ)
         np_[i] = p
         occ.add(p)
     return tuple(np_)
 
 
-def bfs(start, goal, w, h, walls, beds=None, cap=400000):
-    """Shortest swipe count from start to goal. Returns (par, path) or (None, None)."""
-    if start == goal:
-        return 0, []
-    came = {start: (None, None)}
-    q = deque([start])
-    while q:
-        cur = q.popleft()
-        for d in DIRS:
-            ns = slide(cur, d, w, h, walls, beds)
-            if ns in came:
-                continue
-            came[ns] = (cur, d)
-            if ns == goal:
-                path = []
-                k = ns
-                while came[k][0] is not None:
-                    path.append(came[k][1])
-                    k = came[k][0]
-                path.reverse()
-                return len(path), path
-            q.append(ns)
-        if len(came) > cap:
-            return None, None
-    return None, None
+def explore(ctx, start, cap=200000):
+    """Whole reachable graph from `start`, in one pass.
 
-
-def explore(start, w, h, walls, beds=None, cap=120000):
-    """Full reachable graph from start, in one pass.
-
-    Returns (dist, came, rev) where `dist` is the true BFS optimal move count to
-    every reachable state (so no second search is ever needed to find a par),
-    `came` lets us replay the optimal swipe list, and `rev` is the reversed
-    graph used to measure how forgiving a level is."""
+    Returns (dist, came, rev, goals): BFS depth to every reachable state, the
+    parent links to replay an optimal line, the reversed graph (used to measure
+    how forgiving a level is), and every state that counts as solved."""
     dist = {start: 0}
     came = {start: (None, None)}
     rev = {}
+    goals = []
+    if ctx.goal(start):
+        goals.append(start)
     q = deque([start])
     while q:
         cur = q.popleft()
         for d in DIRS:
-            ns = slide(cur, d, w, h, walls, beds)
+            ns = slide(ctx, cur, d)
             rev.setdefault(ns, []).append(cur)
             if ns not in dist:
                 dist[ns] = dist[cur] + 1
                 came[ns] = (cur, d)
+                if ctx.goal(ns):
+                    goals.append(ns)
                 q.append(ns)
         if len(dist) > cap:
             return None
-    return dist, came, rev
+    return dist, came, rev, goals
+
+
+def solve(ctx, start, cap=200000):
+    """(par, path, goal_state) or (None, None, None)."""
+    ex = explore(ctx, start, cap)
+    if ex is None:
+        return None, None, None
+    dist, came, _, goals = ex
+    if not goals:
+        return None, None, None
+    best = min(goals, key=lambda g: dist[g])
+    return dist[best], path_to(came, best), best
 
 
 def path_to(came, goal):
@@ -122,11 +207,11 @@ def path_to(came, goal):
     return path
 
 
-def dead_fraction(dist, rev, goal):
-    """Share of reachable states from which the goal can no longer be reached.
+def dead_fraction(ctx, dist, rev, goals):
+    """Share of reachable states from which NO solved state can still be reached.
     Low = a forgiving, cozy level; high = easy to paint yourself into a corner."""
-    seen = {goal}
-    q = deque([goal])
+    seen = set(goals)
+    q = deque(goals)
     while q:
         cur = q.popleft()
         for p in rev.get(cur, ()):
@@ -136,424 +221,699 @@ def dead_fraction(dist, rev, goal):
     return 1.0 - len(seen) / len(dist)
 
 
-# ---------------------------------------------------------------- generation
-def random_board(rng, w, h, n_walls, n_ents):
-    cells = [(x, y) for x in range(w) for y in range(h)]
-    rng.shuffle(cells)
-    walls = set(cells[:n_walls])
-    free = [c for c in cells[n_walls:]]
-    rng.shuffle(free)
-    start = tuple(free[:n_ents])
-    return walls, start
+# ---------------------------------------------------------------- the ramp
+# DESIGN RULE: a level may be hard to *think* about but never long to *play*.
+# Par is capped at 12. Difficulty comes from the board and the number of animals,
+# never from a longer solution. Every chapter restarts the ramp at two animals,
+# because every chapter hands the player a new toy to learn.
+RAMP_ENTS  = [2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5]
+RAMP_PAR   = [3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 11, 12]
+RAMP_SIZE  = [4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7]
+RAMP_WALLS = [0, 1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6]
+RAMP_TOYS  = [1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4]
+RAMP_DEAD  = [.04, .06, .08, .10, .12, .14, .16, .18, .20, .22, .24, .26, .28, .30, .32]
+
+# chapter (1-based) -> which toy the generator scatters on the board.
+# Chapter 0 isn't a chapter: it's the nightly-puzzle pool, which uses chapter one's
+# rules and nothing else, so a daily puzzle can never lean on (or spoil) a twist the
+# player hasn't reached.
+TOY = {0: "none", 3: "anybed", 4: "rugs", 5: "honey", 6: "holes", 7: "heavy", 8: "mixed"}
 
 
-def gen_classic(rng, w, h, n_walls, n_ents, par_lo, par_hi, min_dirs, max_dead,
-                budget, good_dead=None):
-    """Stage 1: pick a random start, explore once, then take a BFS-reachable
-    state at the target depth as the bed layout. par is then exactly that depth.
+def spec_for(chapter, k):
+    """One slot's recipe: chapter is 1-based, k is 0..14 within the chapter."""
+    n = RAMP_SIZE[k]
+    ents = RAMP_ENTS[k]
+    # Heavy Sleepers spends one of its animals on the big one, which can't move by
+    # itself - so it needs an extra body on the board or there's nothing to push with.
+    if TOY[chapter] == "heavy":
+        ents = min(5, ents + 1)
+    return dict(w=n, h=n, walls=RAMP_WALLS[k], ents=ents, par=RAMP_PAR[k],
+                toys=RAMP_TOYS[k], dead=RAMP_DEAD[k], toy=TOY[chapter],
+                budget=25 + k * 7)
 
-    `good_dead` is an early-out: as soon as a candidate is this forgiving we take
-    it and stop burning the budget (we ask for exact pars now, so "best of many"
-    only ever tie-breaks on forgiveness anyway)."""
+
+def rules_for(chapter, toy_cells, heavy, beds, w, h, walls):
+    """Build the Ctx for a chapter (1-based), given a placement."""
+    kind = TOY[chapter]
+    return Ctx(w, h, walls, beds,
+               rugs=toy_cells if kind in ("rugs",) else
+                    (toy_cells[0::2] if kind == "mixed" else ()),
+               honey=toy_cells if kind in ("honey",) else
+                     (toy_cells[1::2] if kind == "mixed" else ()),
+               holes=toy_cells if kind == "holes" else (),
+               heavy=heavy,
+               sticky=(kind != "none"), anybed=(kind == "anybed"))
+
+
+def gen_level(rng, chapter, sp):
+    """Generate one level for a chapter, or None if the budget runs out.
+
+    Two things every level must earn:
+      * par is EXACTLY the target (no drifting to whatever the board happened to
+        give), so the ramp the player feels is the ramp that was designed;
+      * the chapter's toy must MATTER — take it away and the level has to become
+        impossible or strictly longer. A decorative rug is a lie.
+    """
+    kind = sp["toy"]
+    w, h, target = sp["w"], sp["h"], sp["par"]
+    n_ents, n_walls = sp["ents"], sp["walls"]
+    n_toys = sp["toys"]
+    if kind == "holes":
+        n_toys = max(2, (n_toys // 2) * 2)          # burrows only exist in pairs
+    if kind == "mixed":
+        n_toys = max(2, n_toys)
+    if kind == "none":
+        n_toys = 0                                  # nightly pool: a bare board
+    deadline = time.time() + sp["budget"]
     best = None
-    deadline = time.time() + budget
-    while time.time() < deadline:
-        if best is not None and good_dead is not None and best[1]["dead"] <= good_dead:
-            break
-        walls, start = random_board(rng, w, h, n_walls, n_ents)
-        ex = explore(start, w, h, walls)
-        if ex is None:
-            continue
-        dist, came, rev = ex
-        cands = [s for s, d in dist.items() if par_lo <= d <= par_hi]
-        rng.shuffle(cands)
-        for goal in cands[:12]:
-            if any(goal[i] == start[i] for i in range(n_ents)):
-                continue
-            path = path_to(came, goal)
-            if len(set(path)) < min_dirs:
-                continue
-            dead = dead_fraction(dist, rev, goal)
-            if dead > max_dead:
-                continue
-            score = (dist[goal], -dead)
-            if best is None or score > best[0]:
-                best = (score, dict(w=w, h=h, par=dist[goal], walls=sorted(walls),
-                                    start=start, beds=goal, dead=dead, path=path))
-    return best[1] if best else None
 
-
-def gen_sticky(rng, w, h, n_walls, n_ents, par_lo, par_hi, min_dirs, max_dead,
-               budget, good_dead=None):
-    """Stage 2: beds change the physics, so they must be chosen up front."""
-    best = None
-    deadline = time.time() + budget
     while time.time() < deadline:
-        if best is not None and good_dead is not None and best[1]["dead"] <= good_dead:
-            break
         cells = [(x, y) for x in range(w) for y in range(h)]
         rng.shuffle(cells)
-        walls = set(cells[:n_walls])
-        free = cells[n_walls:]
-        rng.shuffle(free)
-        if len(free) < n_ents * 2:
+        need = n_walls + n_ents * 2 + (n_toys if kind not in ("anybed", "heavy") else 0)
+        if len(cells) < need + 2:
+            return None
+        i = 0
+        walls = set(cells[i:i + n_walls]); i += n_walls
+        start = tuple(cells[i:i + n_ents]); i += n_ents
+        beds = tuple(cells[i:i + n_ents]); i += n_ents
+        toy_cells = ()
+        if kind not in ("anybed", "heavy"):
+            toy_cells = tuple(cells[i:i + n_toys]); i += n_toys
+        heavy = rng.randrange(n_ents) if kind == "heavy" else -1
+
+        ctx = rules_for(chapter, toy_cells, heavy, beds, w, h, walls)
+        if any(s == b for s, b in zip(start, beds)):
             continue
-        start = tuple(free[:n_ents])
-        beds = tuple(free[n_ents:n_ents * 2])
-        ex = explore(start, w, h, walls, beds)
+        if ctx.anybed and set(start) & ctx.bedset:
+            continue
+
+        ex = explore(ctx, start, cap=90000)
         if ex is None:
             continue
-        dist, came, rev = ex
-        if beds not in dist:
+        dist, came, rev, goals = ex
+        if not goals:
             continue
-        par = dist[beds]
-        if not (par_lo <= par <= par_hi):
+        goal = min(goals, key=lambda g: dist[g])
+        if dist[goal] != target:
             continue
-        path = path_to(came, beds)
-        if len(set(path)) < min_dirs:
+        path = path_to(came, goal)
+        if len(set(path)) < (2 if target <= 4 else 3):
+            continue                                 # must use real direction changes
+        dead = dead_fraction(ctx, dist, rev, goals)
+        if dead > sp["dead"]:
             continue
-        dead = dead_fraction(dist, rev, beds)
-        if dead > max_dead:
-            continue
-        # the twist must MATTER: the same board under stage-1 rules has to play
-        # differently (longer, or outright impossible)
-        cpar, _ = bfs(start, beds, w, h, walls, None, cap=120000)
-        if cpar is not None and cpar <= par:
-            continue
-        score = (par, -dead)
+
+        # ---- does the toy actually matter? ----
+        par2 = None
+        if kind == "none":
+            pass            # no toy to justify — the board is the whole puzzle
+        elif kind == "anybed":
+            # somebody has to end up in a bed that isn't "theirs", or the chapter's
+            # whole idea is doing nothing
+            if all(goal[j] == beds[j] for j in range(n_ents)):
+                continue
+            plain = Ctx(w, h, walls, beds, sticky=True)
+            par2, _, _ = solve(plain, start, cap=60000)
+            if par2 is not None and par2 <= target:
+                continue
+        elif kind == "heavy":
+            # A heavy animal ADDS a constraint, so "is it longer without?" is the
+            # wrong question - it would always be shorter. What has to be true is
+            # that the big one actually gets shoved: a heavy animal nobody ever
+            # pushes is just a wall wearing a costume.
+            pushed = False
+            cur = start
+            for d in path:
+                nxt = slide(ctx, cur, d)
+                if nxt[heavy] != cur[heavy]:
+                    pushed = True
+                cur = nxt
+            if not pushed:
+                continue
+            free = Ctx(w, h, walls, beds, sticky=True)      # the big one moving normally
+            par2, _, _ = solve(free, start, cap=60000)
+            if par2 == target:
+                continue                                    # weight changed nothing
+        else:
+            bare = Ctx(w, h, walls, beds, sticky=True)
+            par2, _, _ = solve(bare, start, cap=60000)
+            if par2 is not None and par2 <= target:
+                continue
+
+        score = -dead
         if best is None or score > best[0]:
-            best = (score, dict(w=w, h=h, par=par, walls=sorted(walls),
+            best = (score, dict(w=w, h=h, par=target, walls=sorted(walls),
                                 start=start, beds=beds, dead=dead, path=path,
-                                classic=cpar))
+                                rugs=sorted(ctx.rugs), honey=sorted(ctx.honey),
+                                holes=list(ctx.holes), heavy=heavy,
+                                without=par2, chapter=chapter))
+            if dead <= sp["dead"] * 0.4:
+                break                                # forgiving enough, take it
     return best[1] if best else None
 
 
 # ---------------------------------------------------------------- C# emission
+def cells_cs(cells):
+    return "new[]{ " + ",".join(f"W2({x},{y})" for x, y in cells) + " }"
+
+
 def emit(lv, hint):
-    walls = ",".join(f"W2({x},{y})" for x, y in lv["walls"])
-    walls = f"new[]{{ {walls} }}" if lv["walls"] else "new Vector2Int[0]"
+    walls = cells_cs(lv["walls"]) if lv["walls"] else "new Vector2Int[0]"
     ents = ", ".join(f"new EntDef({s[0]},{s[1]}, {b[0]},{b[1]})"
                      for s, b in zip(lv["start"], lv["beds"]))
+    extra = ""
+    if lv.get("rugs"):
+        extra += f",\n                rugs: {cells_cs(lv['rugs'])}"
+    if lv.get("honey"):
+        extra += f",\n                honey: {cells_cs(lv['honey'])}"
+    if lv.get("holes"):
+        extra += f",\n                holes: {cells_cs(lv['holes'])}"
+    if lv.get("heavy", -1) >= 0:
+        extra += f",\n                heavy: {lv['heavy']}"
     return (f'            new Lv({lv["w"]},{lv["h"]},{lv["par"]},"{hint}",\n'
             f'                {walls},\n'
-            f'                new[]{{ {ents} }}),')
+            f'                new[]{{ {ents} }}{extra}),')
 
 
-# ---------------------------------------------------------------- shipped set
-# The 16 levels already in PuzzleGame.cs, used to prove this simulator matches
-# the C# one before anything new is trusted.
-SHIPPED = [
-    (4, 4, 2, [], [(2, 1, 3, 3)]),
-    (4, 4, 3, [(0, 3)], [(0, 1, 1, 3)]),
-    (4, 4, 4, [(1, 0), (2, 2)], [(3, 3, 3, 1)]),
-    (4, 4, 5, [(2, 1)], [(3, 2, 0, 2), (0, 0, 0, 3)]),
-    (4, 4, 6, [(0, 3), (1, 3)], [(2, 0, 3, 2), (0, 0, 3, 1)]),
-    (5, 5, 5, [(1, 1), (1, 4)], [(4, 1, 3, 0), (0, 3, 2, 0)]),
-    (5, 5, 7, [(2, 3), (3, 0), (4, 1)], [(2, 4, 4, 3), (0, 2, 4, 4)]),
-    (5, 5, 9, [(1, 1), (3, 3), (4, 3)], [(2, 4, 2, 0), (2, 3, 4, 4)]),
-    (5, 5, 8, [(2, 0), (4, 1)], [(3, 1, 3, 4), (2, 1, 1, 4), (3, 3, 4, 0)]),
-    (5, 5, 10, [(1, 2), (2, 2), (4, 3)], [(0, 2, 4, 4), (2, 0, 3, 3), (3, 4, 4, 2)]),
-    (6, 6, 10, [(3, 0), (3, 2), (5, 3)], [(0, 4, 4, 5), (0, 3, 5, 5), (5, 0, 5, 4)]),
-    (6, 6, 11, [(1, 3), (2, 0), (3, 2), (4, 4)], [(3, 1, 5, 0), (0, 2, 5, 1), (3, 0, 4, 1)]),
-    (6, 6, 14, [(1, 4), (3, 2), (4, 1), (4, 3)], [(5, 5, 0, 0), (3, 0, 1, 5), (2, 5, 0, 5)]),
-    (6, 6, 14, [(1, 4), (2, 0), (4, 5)], [(1, 3, 4, 0), (2, 2, 3, 0), (0, 0, 0, 1), (0, 4, 1, 1)]),
-    (6, 6, 14, [(1, 0), (2, 3), (4, 0), (4, 3)], [(4, 4, 5, 4), (1, 4, 5, 2), (3, 4, 5, 0), (4, 1, 5, 1)]),
-    (6, 6, 17, [(1, 4), (2, 1), (3, 1), (4, 4), (5, 3)], [(4, 2, 5, 5), (3, 2, 4, 0), (2, 2, 5, 0), (0, 2, 5, 4)]),
-]
+# ---------------------------------------------------------------- hints
+# One line per level: teach the chapter's toy in the first few, then get out of
+# the way. Fifteen per chapter, matching the fifteen slots.
+HINTS = {
+    3: ["Sticky beds - but tonight nobody minds whose bed is whose.",
+        "Any animal, any bed. Just fill them all.",
+        "Two friends, two beds, either way round.",
+        "Sometimes the far bed is the easy one.",
+        "Fill the awkward bed first.",
+        "Swapping who goes where can save you three swipes.",
+        "Count the beds, not the animals.",
+        "One bed is harder to reach than the rest. Start there.",
+        "Whoever goes first decides the rest.",
+        "Any order you like - but only one order is short.",
+        "Leave the open bed for last.",
+        "Five beds, five friends, no name tags.",
+        "Look for the bed only one animal can reach.",
+        "Nearly there. Fill the corner first.",
+        "Every bed full, everybody asleep. That's the whole job."],
+    4: ["Silk is too slippery to sleep on - you always slide back off.",
+        "Cross the rug. Don't try to stop on it.",
+        "A rug can carry you straight past your own bed. Careful.",
+        "Use the rug to reach somewhere you couldn't stop before.",
+        "Rugs turn short slides into long ones.",
+        "Come at the bed from the other side.",
+        "The rug is a corridor, not a room.",
+        "Two rugs in a row is just a longer corridor.",
+        "Stop before the silk, not on it.",
+        "Sometimes the rug is the only way across.",
+        "A friend parked on the far side gives you something to stop against.",
+        "Plan where you'll land, not where you'll pass.",
+        "Silk never lets go until something solid does.",
+        "Almost the last of the rugs. Take it slowly.",
+        "One room, four rugs, five sleepy animals."],
+    5: ["Honey is sticky. Touch it and that's where you stay.",
+        "Honey stops you dead - useful, if you aim it.",
+        "Park someone in the honey on purpose.",
+        "Honey beats a long slide every time.",
+        "Use the honey to stop short of a bed.",
+        "The honey is a brake, not a wall.",
+        "Two puddles make a very short corridor.",
+        "Whoever reaches the honey first blocks everyone behind.",
+        "Send the wrong one into the honey and you're stuck.",
+        "Honey first, beds after.",
+        "A sleeper and a puddle make a pocket.",
+        "Think about who must NOT touch the honey.",
+        "The honey is doing half the work. Let it.",
+        "Nearly the last of the mess. Mind your step.",
+        "Five friends, and honey everywhere."],
+    6: ["Burrows come in pairs. In one, out the other, still sliding.",
+        "You keep your speed all the way through a burrow.",
+        "A burrow can put you where no swipe could reach.",
+        "Follow the colours - a pair shares one colour.",
+        "Sometimes the long way round is underground.",
+        "A friend standing on the far end blocks the burrow.",
+        "Go in the near one to come out of the far one.",
+        "Two pairs means two ways across.",
+        "Sometimes you want to miss the burrow.",
+        "The exit decides where you stop, not the entrance.",
+        "Line them up before you dive.",
+        "One burrow, one bed, one swipe - if you set it up right.",
+        "Watch what the burrow does to the animal behind you.",
+        "Nearly through. Where does that exit put you?",
+        "The whole warren, all at once."],
+    7: ["The big one is fast asleep. It only moves if somebody bumps it.",
+        "Push the big one - it slides until something stops it.",
+        "The big one makes an excellent wall.",
+        "Bump it once and it's somewhere new for good.",
+        "Push it out of the way before you need the space.",
+        "You always stop right behind whatever you push.",
+        "Line up behind the big one to move it a long way.",
+        "It can be pushed into its own bed, too.",
+        "Push it once too often and it's in the way.",
+        "The big one is blocking the beds behind it.",
+        "Decide where it has to end up first.",
+        "Two pushes, if you have room for two.",
+        "The big one never moves on its own. Ever.",
+        "One push, then everybody home.",
+        "The heaviest sleeper in the zoo, and four friends around it."],
+    8: ["No new rules tonight. Everything you already know.",
+        "Rug and honey in one room. Read the floor.",
+        "The silk carries, the honey stops.",
+        "Same rules, less room.",
+        "Take one animal at a time in your head.",
+        "The floor is telling you the answer.",
+        "You've solved harder than this - twice.",
+        "Slow down. Everything here is familiar.",
+        "One awkward friend, as always.",
+        "Set the room up, then send everyone home.",
+        "The last few nights are the quiet ones.",
+        "Nearly the end of the zoo.",
+        "Second to last. Enjoy it.",
+        "One more after this one.",
+        "Goodnight, everybody. Sleep well."],
+}
 
 
-def verify():
-    ok = True
-    for i, (w, h, par, walls, ents) in enumerate(SHIPPED):
-        start = tuple((e[0], e[1]) for e in ents)
-        beds = tuple((e[2], e[3]) for e in ents)
-        got, path = bfs(start, beds, w, h, set(walls))
-        flag = "OK " if got == par else "BAD"
-        if got != par:
-            ok = False
-        print(f"{flag} level {i+1:2d}: shipped par={par} solver par={got}")
-    print("simulator matches C#" if ok else "MISMATCH - do not trust generated levels")
-    return ok
-
-
-# ---------------------------------------------------------------- the ramp
-# DESIGN RULE (the one that matters): a level is allowed to be hard to *think*
-# about, but never long to *play*. Par is capped at 12 swipes, because a player
-# who needs 12 optimal moves will really take 20-25 with the exploring, undoing
-# and rethinking that a puzzle is supposed to involve. Difficulty comes from
-# board shape, blocks and the number of animals - never from making the
-# solution longer.
-#
-# Animal count ramps in plateaus, not jumps: a new animal count always gets
-# two or three levels at an easy par before the par starts climbing again, so
-# the player learns "how three animals behave" before being asked to be clever
-# with three animals. Chapter 2 restarts the whole ramp from two animals,
-# because sticky beds make it a new game.
-#
-# Columns: (w, h, walls, animals, par, min_dirs, max_dead, good_dead, seconds)
-#   par       - exact BFS-optimal swipe count (lo == hi; this IS the 3-star bar)
-#   min_dirs  - distinct swipe directions the optimal line must use (anti-trivial)
-#   max_dead  - hard cap on the share of states that can strand the player
-#   good_dead - stop searching early once a candidate is at least this forgiving
-#
-# Boards stay at 5 animals max: the C# StateKey packs positions in base 64, and
-# 6 animals on a 7x7 blows the solver's state budget (measured: >200k states).
-CHAPTER1 = [
-    # -- one animal: learn the slide (par 2-4) --
-    (4, 4, 0, 1,  2, 1, 0.02, 0.00, 10),
-    (4, 4, 1, 1,  3, 2, 0.02, 0.00, 10),
-    (4, 4, 2, 1,  4, 2, 0.04, 0.00, 12),
-    # -- two animals: learn that one swipe moves everyone (par 4-6) --
-    (4, 4, 1, 2,  4, 2, 0.06, 0.02, 15),
-    (4, 4, 2, 2,  5, 2, 0.08, 0.03, 18),
-    (5, 5, 2, 2,  5, 2, 0.08, 0.03, 18),
-    (5, 5, 3, 2,  6, 3, 0.10, 0.04, 20),
-    # -- three animals: learn to use each other as walls (par 6-8) --
-    (5, 5, 2, 3,  6, 2, 0.12, 0.05, 22),
-    (5, 5, 3, 3,  7, 3, 0.14, 0.06, 25),
-    (5, 5, 3, 3,  7, 3, 0.16, 0.07, 25),
-    (5, 5, 4, 3,  8, 3, 0.18, 0.08, 28),
-    (6, 6, 3, 3,  8, 3, 0.18, 0.08, 28),
-    # -- four animals: crowded rooms (par 8-10) --
-    (6, 6, 3, 4,  8, 3, 0.20, 0.10, 30),
-    (6, 6, 4, 4,  9, 3, 0.22, 0.10, 32),
-    (6, 6, 4, 4,  9, 3, 0.22, 0.10, 32),
-    (6, 6, 5, 4, 10, 3, 0.25, 0.12, 35),
-    (6, 6, 5, 4, 10, 4, 0.25, 0.12, 35),
-    # -- five animals: the full zoo (par 10-12) --
-    (6, 6, 4, 5, 10, 3, 0.28, 0.14, 40),
-    (7, 7, 5, 5, 11, 4, 0.30, 0.15, 45),
-    (7, 7, 5, 5, 12, 4, 0.30, 0.15, 50),
-]
-
-CHAPTER2 = [
-    # Sticky beds are a new game, so the ramp starts over at two animals and a
-    # 3-move par. The generator additionally proves every one of these is
-    # unsolvable (or strictly longer) under chapter-1 rules.
-    (4, 4, 0, 2,  3, 2, 0.04, 0.00, 15),
-    (4, 4, 1, 2,  4, 2, 0.06, 0.02, 18),
-    (4, 4, 2, 2,  4, 2, 0.08, 0.03, 20),
-    (5, 5, 1, 2,  5, 2, 0.10, 0.04, 22),
-    # -- three animals --
-    (5, 5, 2, 3,  5, 2, 0.12, 0.05, 25),
-    (5, 5, 2, 3,  6, 3, 0.14, 0.06, 25),
-    (5, 5, 3, 3,  6, 3, 0.16, 0.07, 28),
-    (5, 5, 3, 3,  7, 3, 0.18, 0.08, 30),
-    (6, 6, 3, 3,  7, 3, 0.18, 0.08, 30),
-    # -- four animals --
-    (6, 6, 3, 4,  8, 3, 0.20, 0.10, 35),
-    (6, 6, 4, 4,  8, 3, 0.22, 0.10, 35),
-    (6, 6, 4, 4,  9, 3, 0.24, 0.12, 40),
-    (6, 6, 4, 4,  9, 3, 0.24, 0.12, 40),
-    (6, 6, 5, 4, 10, 3, 0.26, 0.13, 45),
-    # -- five animals --
-    (6, 6, 4, 5, 10, 3, 0.28, 0.14, 50),
-    (7, 7, 4, 5, 10, 3, 0.30, 0.15, 50),
-    (7, 7, 5, 5, 11, 4, 0.32, 0.16, 55),
-    (7, 7, 5, 5, 11, 4, 0.32, 0.16, 55),
-    (7, 7, 6, 5, 12, 4, 0.34, 0.17, 60),
-    (7, 7, 6, 5, 12, 4, 0.34, 0.17, 60),
-]
-
-HINTS1 = [
-    "Swipe and your animal slides all the way to the wall.",
-    "A toy block stops the slide. Use it to park where you want.",
-    "Two blocks make a pocket. Slide in from the open side.",
-    "Two friends now - one swipe moves them both.",
-    "Line them up first, then send them home together.",
-    "More room. A wrong-way swipe often sets up the right one.",
-    "Bump one into a block to hold it while you place the other.",
-    "Three friends. Handle the trickiest one first.",
-    "Use one animal as a wall for another.",
-    "Corners hold an animal still. Park someone in one.",
-    "Think one move ahead before you swipe.",
-    "Bigger room, longer slides. Group them, then split them off.",
-    "A full den. Peel them off one at a time.",
-    "Plan the last move first, then work backwards.",
-    "Every swipe counts now. Look before you slide.",
-    "Break the line up before you try to place anyone.",
-    "Find the friend with only one way home.",
-    "Five friends. Sweep them together, then sort them out.",
-    "A bigger room. Decide the whole plan before the first swipe.",
-    "The whole zoo, one last time. Then something changes...",
-]
-
-HINTS2 = [
-    "Sticky beds tonight! Touch your own bed and you're in.",
-    "You don't have to stop on your bed - sliding across it is enough.",
-    "Blocks and sticky beds. Pick your approach carefully.",
-    "Choose who goes to bed first. It changes everything after.",
-    "A sleeping friend never gets up again - so they make a handy wall.",
-    "You can't slide past your own bed any more. Plan the approach.",
-    "Tuck the far ones in first - they leave the room emptier.",
-    "A sleeper in the middle splits the room in two.",
-    "Line them up and one long swipe can put two to bed.",
-    "Wrong one asleep? Undo - a sleeper never gets up.",
-    "Order matters more than direction here.",
-    "Build a wall of sleepers, then slide the last one along it.",
-    "Look for the animal whose bed is already in its path.",
-    "The awkward one usually needs a sleeper to stop against.",
-    "Five friends, five beds. Find the one that has to go last.",
-    "Crowded room. Clear the corner before it fills up.",
-    "Use the edges to line everyone up before you tuck anyone in.",
-    "Every sleeper you place is a new wall. Place them kindly.",
-    "Almost the last night. Take it slow.",
-    "The whole zoo, sticky beds and all. Sweet dreams.",
-]
-
-BANNER1 = """            // ============================ CHAPTER 1 ============================
-            // Beds are just destinations - land on one and the next swipe drags you
-            // right back off it. Twenty levels of that is what makes chapter 2 land.
-            // Pars run 2 -> 12: short enough to hold in your head, and the animal
-            // count climbs in plateaus (1, 1, 1, 2, 2, 2, 2, 3, 3, ...) so every new
-            // friend gets a couple of gentle levels before the thinking gets harder.
-"""
-
-BANNER2 = """
-            // ============================ CHAPTER 2 ============================
-            // STICKY BEDS. Touch your own bed - even mid-slide - and you're asleep
-            // for the night. Every level here is impossible (or strictly longer)
-            // under chapter 1's rules, so the twist isn't decoration: it's the only
-            // way through. The ramp restarts at two animals and a 3-move par,
-            // because sticky beds make this a new game to learn.
-"""
-
-
-def generate_plan(seed, chapters=(1, 2)):
-    """Generate the whole shipping ramp and rewrite the Levels array in
-    PuzzleGame.cs. Every par is exact and BFS-proven; nothing is hand-guessed."""
-    import json
-    rng = random.Random(seed)
-    out = {1: [], 2: []}
-    for chap, recipes, hints in ((1, CHAPTER1, HINTS1), (2, CHAPTER2, HINTS2)):
-        if chap not in chapters:
-            continue
-        for idx, (w, h, nw, ne, par, md, dead, good, budget) in enumerate(recipes):
-            gen = gen_sticky if chap == 2 else gen_classic
-            lv = None
-            for attempt in range(6):
-                lv = gen(rng, w, h, nw, ne, par, par, md, dead, budget, good)
-                if lv:
-                    break
-                # never widen the par: relax the shape instead, so the ramp holds
-                dead = min(0.55, dead + 0.05)
-                good = dead
-                md = max(2, md - 1) if attempt >= 2 else md
-            if not lv:
-                print(f"// FAILED ch{chap} slot {idx+1} "
-                      f"({w}x{h}, {ne} animals, par {par})", flush=True)
-                continue
-            lv["hint"] = hints[idx]
-            out[chap].append(lv)
-            print(f'// ch{chap} level {idx+1:2d}: {w}x{h} walls={nw} animals={ne} '
-                  f'par={lv["par"]} dead={lv["dead"]:.2f} '
-                  f'classic={lv.get("classic", "-")} '
-                  f'line={"".join(DIRNAME[d][0] for d in lv["path"])}', flush=True)
-    with open(PLAN_JSON, "w", encoding="utf-8") as f:
-        json.dump({str(k): v for k, v in out.items()}, f, default=list, indent=1)
-    if all(len(out[c]) == 20 for c in (1, 2)):
-        write_cs(out)
-        print(f"\nwrote 40 levels into {CS_PATH}")
-    else:
-        print(f"\nincomplete ({len(out[1])} + {len(out[2])}) - "
-              f"C# not touched, plan saved to {PLAN_JSON}")
-    return out
-
-
-def write_cs(out, path=None):
-    """Splice a fresh Levels array into PuzzleGame.cs, banners and all."""
-    path = path or CS_PATH
+def write_cs(chapters, path=CS_PATH):
+    """Splice regenerated chapters into the Levels array, leaving every chapter
+    we didn't touch byte-for-byte as it was."""
     src = open(path, encoding="utf-8").read()
     head, rest = src.split("        private static readonly Lv[] Levels =\n        {\n", 1)
-    tail = rest.split("\n        };\n", 1)[1]
-    body = BANNER1 + "\n".join(emit(lv, lv["hint"]) for lv in out[1])
-    body += "\n" + BANNER2 + "\n".join(emit(lv, lv["hint"]) for lv in out[2])
+    body, tail = rest.split("\n        };\n", 1)
+
+    chunks = body.split("            new Lv(")
+    preamble = chunks[0].rstrip("\n")
+    existing = ["            new Lv(" + c.rstrip() for c in chunks[1:]]
+
+    out = [preamble]
+    for ch in range(1, len(CHAPTER_START) + 1):
+        first, count = CHAPTER_START[ch - 1], CHAPTER_LEN[ch - 1]
+        if ch in chapters:
+            out.append(f"\n            // ===================== CHAPTER {ch} =====================")
+            for k, lv in enumerate(chapters[ch]):
+                out.append(emit(lv, HINTS[ch][k]))
+        else:
+            for i in range(first, first + count):
+                if i < len(existing):
+                    out.append(existing[i])
     new = (head + "        private static readonly Lv[] Levels =\n        {\n"
-           + body + "\n        };\n" + tail)
+           + "\n".join(out) + "\n        };\n" + tail)
     open(path, "w", encoding="utf-8", newline="\n").write(new)
 
 
-def run(recipes, sticky, seed):
+def gen_slot(args):
+    """One level. Top-level so a single chapter can spread its slots across cores —
+    the late 7x7 slots dominate the wall clock, and they're independent of each
+    other, so there's no reason to wait for them one at a time."""
+    ch, k, seed = args
+    made = gen_chapter((ch, seed, k, k + 1))[1]
+    return k, (made[0] if made else None)
+
+
+def gen_chapter(args):
+    """One whole chapter, or a slice of one. Top-level so it can run in its own
+    process. `args` is (chapter, seed) or (chapter, seed, first_slot, last_slot)."""
+    ch, seed = args[0], args[1]
+    lo = args[2] if len(args) > 2 else 0
+    hi = args[3] if len(args) > 3 else CHAPTER_LEN[ch - 1]
     rng = random.Random(seed)
-    out = []
-    for idx, (w, h, nw, ne, lo, hi, md, dead, budget) in enumerate(recipes):
-        gen = gen_sticky if sticky else gen_classic
+    made = []
+    for k in range(lo, hi):
+        base = spec_for(ch, k)
         lv = None
-        for attempt in range(4):
-            lv = gen(rng, w, h, nw, ne, lo, hi, md, dead, budget)
+        # A ladder of retries, each giving up something the player won't notice —
+        # never the par, which IS the ramp. The late 7x7 slots are the hard ones:
+        # an exact par on a big board with a toy that has to matter is a narrow
+        # target, so the last rungs shrink the room rather than abandoning a
+        # chapter that already has fourteen good levels in it.
+        ladder = [
+            dict(),
+            dict(dead=min(0.55, base["dead"] + 0.06), budget=base["budget"] + 20),
+            dict(dead=min(0.55, base["dead"] + 0.12), toys=base["toys"] + 1,
+                 budget=base["budget"] + 40),
+            dict(dead=min(0.55, base["dead"] + 0.12), walls=max(0, base["walls"] - 1),
+                 toys=base["toys"] + 1, budget=base["budget"] + 60),
+            dict(w=max(5, base["w"] - 1), h=max(5, base["h"] - 1),
+                 dead=min(0.55, base["dead"] + 0.18), budget=base["budget"] + 60),
+            dict(w=max(5, base["w"] - 1), h=max(5, base["h"] - 1),
+                 walls=max(0, base["walls"] - 1), toys=base["toys"] + 1,
+                 dead=0.55, budget=base["budget"] + 90),
+        ]
+        for rung in ladder:
+            lv = gen_level(rng, ch, dict(base, **rung))
             if lv:
                 break
-            lo = max(2, lo - 1)
-            hi += 2
-            dead = min(0.55, dead + 0.06)
         if not lv:
-            print(f"// FAILED to generate slot {idx+1} ({w}x{h}, {ne} animals)", flush=True)
-            continue
-        out.append(lv)
-        print(f'// slot {idx+1}: {w}x{h} walls={nw} animals={ne} '
-              f'par={lv["par"]} dead={lv["dead"]:.2f} '
-              f'classic={lv.get("classic", "-")} '
-              f'dirs={"".join(DIRNAME[d][0] for d in lv["path"])}', flush=True)
-        print(emit(lv, "TODO hint"), flush=True)
+            print(f"// FAILED ch{ch} slot {k+1} ({base['w']}x{base['h']}, "
+                  f"{base['ents']} animals, par {base['par']}) - keeping the "
+                  f"{len(made)} levels made so far", flush=True)
+            return ch, made
+        made.append(lv)
+        print(f"// ch{ch} lv{k+1:2d}: {lv['w']}x{lv['h']} "
+              f"animals={len(lv['start'])} par={lv['par']} dead={lv['dead']:.2f} "
+              f"without={lv['without']} "
+              f"line={''.join(DIRNAME[d][0] for d in lv['path'])}", flush=True)
+    return ch, made
+
+
+def generate_plan(seed, want):
+    import json
+    from concurrent.futures import ProcessPoolExecutor
+    chapters = {}
+    with ProcessPoolExecutor(max_workers=min(6, len(want))) as pool:
+        for ch, made in pool.map(gen_chapter, [(c, seed + c * 7919) for c in want]):
+            if len(made) == CHAPTER_LEN[ch - 1]:
+                chapters[ch] = made
+                # save after every chapter: a run this long shouldn't be all-or-nothing
+                with open(PLAN_JSON, "w", encoding="utf-8") as f:
+                    json.dump({str(k): v for k, v in chapters.items()}, f, default=list, indent=1)
+                print(f"// chapter {ch} done and saved", flush=True)
+            else:
+                print(f"// chapter {ch} incomplete ({len(made)}) - not written", flush=True)
+    if chapters:
+        with open(PLAN_JSON, "w", encoding="utf-8") as f:
+            json.dump({str(k): v for k, v in chapters.items()}, f, default=list, indent=1)
+        write_cs(chapters)
+        print(f"\nwrote chapters {sorted(chapters)} into {CS_PATH}")
+    return chapters
+
+
+# ---------------------------------------------------------------- verification
+def parse_levels(path=CS_PATH, array="Levels"):
+    import re
+    src = open(path, encoding="utf-8").read()
+    body = src.split(f"private static readonly Lv[] {array} =", 1)[1]
+    body = body.split("\n        };", 1)[0]
+    out = []
+    for chunk in body.split("new Lv(")[1:]:
+        head = re.match(r"\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,", chunk)
+        w, h, par = (int(g) for g in head.groups())
+        ents = [tuple(int(g) for g in m) for m in
+                re.findall(r"new EntDef\((\d+),(\d+),\s*(\d+),(\d+)\)", chunk)]
+
+        def named(tag):
+            m = re.search(tag + r":\s*new\[\]\{([^}]*)\}", chunk)
+            if not m:
+                return []
+            return [(int(a), int(b)) for a, b in re.findall(r"W2\((\d+),(\d+)\)", m.group(1))]
+
+        upto = len(chunk)
+        for tag in ("rugs:", "honey:", "holes:", "heavy:"):
+            k = chunk.find(tag)
+            if k >= 0:
+                upto = min(upto, k)
+        walls = [(int(a), int(b)) for a, b in re.findall(r"W2\((\d+),(\d+)\)", chunk[:upto])]
+        hv = re.search(r"heavy:\s*(\d+)", chunk)
+        out.append(dict(w=w, h=h, par=par, ents=ents, walls=walls,
+                        rugs=named("rugs"), honey=named("honey"),
+                        holes=named("holes"), heavy=int(hv.group(1)) if hv else -1))
     return out
 
 
-CS_PATH = "Assets/Scripts/SleepyZoo/PuzzleGame.cs"
-PLAN_JSON = "tools/levels_plan.json"
-CHAPTER_SIZE = 20
+def chapter_of(i):
+    for c in range(len(CHAPTER_START) - 1, -1, -1):
+        if i >= CHAPTER_START[c]:
+            return c + 1
+    return 1
 
 
-def verify_cs(path=CS_PATH):
-    """Parse the real Levels array out of PuzzleGame.cs and re-prove every par,
-    using chapter 1 rules for levels 1-20 and sticky-bed rules for 21+."""
-    import re
-    src = open(path, encoding="utf-8").read()
-    body = src.split("private static readonly Lv[] Levels =", 1)[1]
-    body = body.split("\n        };", 1)[0]
-    chunks = body.split("new Lv(")[1:]
+def ctx_for_level(lv, chapter):
+    beds = tuple((e[2], e[3]) for e in lv["ents"])
+    return Ctx(lv["w"], lv["h"], set(lv["walls"]), beds,
+               rugs=lv["rugs"], honey=lv["honey"], holes=lv["holes"],
+               heavy=lv["heavy"], sticky=chapter >= 2, anybed=(chapter == 3))
+
+
+def audit(path=CS_PATH):
+    levels = parse_levels(path)
     ok = True
-    for i, chunk in enumerate(chunks):
-        head = re.match(r"\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,", chunk)
-        w, h, par = (int(g) for g in head.groups())
-        walls = {(int(a), int(b)) for a, b in re.findall(r"W2\((\d+),(\d+)\)", chunk)}
-        ents = [tuple(int(g) for g in m) for m in
-                re.findall(r"new EntDef\((\d+),(\d+),\s*(\d+),(\d+)\)", chunk)]
-        start = tuple((e[0], e[1]) for e in ents)
-        beds = tuple((e[2], e[3]) for e in ents)
-        sticky = beds if i // CHAPTER_SIZE >= 1 else None
-        rule = "sticky " if sticky else "classic"
+    for i, lv in enumerate(levels):
+        ch = chapter_of(i)
+        ctx = ctx_for_level(lv, ch)
+        start = tuple((e[0], e[1]) for e in lv["ents"])
         problems = []
-        if len(set(start)) != len(start) or len(set(beds)) != len(beds):
-            problems.append("duplicate cell")
-        if walls & (set(start) | set(beds)):
-            problems.append("entity on a wall")
-        if any(s == b for s, b in zip(start, beds)):
-            problems.append("starts on its own bed")
-        got, _ = bfs(start, beds, w, h, walls, sticky)
-        if got != par:
-            problems.append(f"par is {got}, file says {par}")
+        if len(set(start)) != len(start):
+            problems.append("two animals on one cell")
+        if set(lv["walls"]) & (set(start) | set(ctx.beds)):
+            problems.append("something standing on a wall")
+        toy = set(lv["rugs"]) | set(lv["honey"]) | set(lv["holes"])
+        if toy & (set(start) | set(ctx.beds) | set(lv["walls"])):
+            problems.append("a toy sharing a cell with a bed, an animal or a wall")
+        got, _, _ = solve(ctx, start, cap=200000)
+        if got != lv["par"]:
+            problems.append(f"par is {got}, file says {lv['par']}")
         if problems:
             ok = False
-        print(f'{"OK " if not problems else "BAD"} level {i+1:2d} '
-              f'[{rule}] {w}x{h} {len(ents)} animals par={par}'
+        print(f'{"OK " if not problems else "BAD"} level {i+1:3d} [ch{ch}] '
+              f'{lv["w"]}x{lv["h"]} {len(lv["ents"])} animals par={lv["par"]}'
               + (("  <-- " + "; ".join(problems)) if problems else ""))
-    print(f"\n{len(chunks)} levels checked - "
+    print(f"\n{len(levels)} levels checked - "
           + ("all pars are BFS-optimal" if ok else "PROBLEMS FOUND"))
     return ok
 
 
+def selftest():
+    """Tiny hand-checked boards, one per rule, so a mistake in the simulation
+    shows up here instead of buried in ninety generated levels."""
+    fails = []
+
+    def check(name, got, want):
+        if got != want:
+            fails.append(f"{name}: got {got}, expected {want}")
+
+    # plain slide: everyone runs to the wall, in order
+    c = Ctx(4, 4, set(), ((0, 0), (0, 1)))
+    check("plain right", slide(c, ((0, 0), (2, 0)), (1, 0)), ((2, 0), (3, 0)))
+    # sticky: caught by its own bed in passing
+    c = Ctx(4, 4, set(), ((2, 0),), sticky=True)
+    check("sticky catch", slide(c, ((0, 0),), (1, 0)), ((2, 0),))
+    # chapter 1: no stickiness, so it slides straight past the bed
+    c = Ctx(4, 4, set(), ((2, 0),))
+    check("not sticky", slide(c, ((0, 0),), (1, 0)), ((3, 0),))
+    # rug: can't come to rest on silk, so it backs up to the last solid floor
+    c = Ctx(4, 4, set(), ((0, 3),), rugs={(3, 0)}, sticky=True)
+    check("rug backs up", slide(c, ((0, 0),), (1, 0)), ((2, 0),))
+    # honey: stops the instant it's touched
+    c = Ctx(4, 4, set(), ((0, 3),), honey={(2, 0)}, sticky=True)
+    check("honey stops", slide(c, ((0, 0),), (1, 0)), ((2, 0),))
+    # burrow: in at (1,0), out at (3,3), then keeps sliding to the wall
+    c = Ctx(4, 4, set(), ((0, 3),), holes=((1, 0), (3, 3)), sticky=True)
+    check("burrow", slide(c, ((0, 0),), (1, 0)), ((3, 3),))
+    # heavy: nothing touching it, so it doesn't move at all
+    c = Ctx(4, 4, set(), ((0, 3), (1, 3)), heavy=1, sticky=True)
+    check("heavy stays put", slide(c, ((0, 0), (2, 0)), (1, 0)), ((2, 0), (3, 0)))
+    # ...but pushed, it slides on, and the pusher stops right behind it
+    check("heavy gets pushed", slide(c, ((0, 0), (1, 0)), (1, 0)), ((2, 0), (3, 0)))
+    # any bed: an animal is caught by ANY bed, and the goal is "every bed filled"
+    c = Ctx(4, 4, set(), ((2, 0), (0, 3)), sticky=True, anybed=True)
+    check("any bed catches", slide(c, ((0, 0),), (1, 0)), ((2, 0),))
+    c = Ctx(4, 4, set(), ((3, 0), (0, 0)), sticky=True, anybed=True)
+    check("any bed goal", c.goal(((0, 0), (3, 0))), True)
+    check("any bed not done", c.goal(((0, 0), (1, 0))), False)
+
+    for f in fails:
+        print("FAIL", f)
+    print("selftest: every rule behaves" if not fails else f"selftest: {len(fails)} FAILURES")
+    return not fails
+
+
+def gen_round(ch, slots, seed, workers=7):
+    """Generate the given slots of a chapter, one per core. Returns {slot: level}
+    for whichever ones came out — never all-or-nothing."""
+    from concurrent.futures import ProcessPoolExecutor
+    jobs = [(ch, k, seed + k * 104729) for k in slots]
+    out = {}
+    with ProcessPoolExecutor(max_workers=min(workers, len(jobs))) as pool:
+        for k, lv in pool.map(gen_slot, jobs):
+            if lv is None:
+                print(f"// FAILED ch{ch} slot {k+1}", flush=True)
+            else:
+                out[k] = lv
+                print(f"// ch{ch} lv{k+1:2d}: {lv['w']}x{lv['h']} "
+                      f"animals={len(lv['start'])} par={lv['par']} "
+                      f"dead={lv['dead']:.2f} without={lv['without']}", flush=True)
+    return out
+
+
+def fill_chapter(ch, seed=20260801, rounds=8, workers=7):
+    """Generate one missing chapter and merge it into the saved plan.
+
+    Resumable on purpose. Every finished level is checkpointed to disk the moment
+    its round ends, and later rounds re-roll ONLY the slots still missing, each
+    with a fresh seed. Throwing away thirteen good levels because the fourteenth
+    was stubborn is exactly how the chapter-5 hole happened; it can't happen twice.
+    """
+    import json
+    import os
+    n = CHAPTER_LEN[ch - 1]
+    cache = os.path.join(os.path.dirname(PLAN_JSON) or ".", f".ch{ch}_partial.json")
+    done = {}
+    if os.path.exists(cache):
+        done = {int(k): v for k, v in json.load(open(cache, encoding="utf-8")).items()}
+        print(f"// resuming chapter {ch}: {len(done)}/{n} already made", flush=True)
+
+    for r in range(rounds):
+        missing = [k for k in range(n) if k not in done]
+        if not missing:
+            break
+        print(f"// ch{ch} round {r+1}: {len(missing)} slot(s) to go "
+              f"({', '.join(str(k+1) for k in missing)})", flush=True)
+        done.update(gen_round(ch, missing, seed + ch * 7919 + r * 1000003, workers))
+        with open(cache, "w", encoding="utf-8") as f:
+            json.dump({str(k): v for k, v in done.items()}, f, default=list)
+
+    if len(done) < n:
+        print(f"chapter {ch} still incomplete ({len(done)}/{n})")
+        return False
+    plan = {}
+    if os.path.exists(PLAN_JSON):
+        plan = json.load(open(PLAN_JSON, encoding="utf-8"))
+    plan[str(ch)] = [done[k] for k in sorted(done)]
+    with open(PLAN_JSON, "w", encoding="utf-8") as f:
+        json.dump(plan, f, default=list, indent=1)
+    os.remove(cache)
+    print(f"chapter {ch} complete and merged into the plan")
+    return True
+
+
+# ------------------------------------------------------------- nightly puzzles
+# The pool Tonight's Puzzle draws from. Chapter one's rules ONLY (chapter 0 in the
+# TOY table), because a daily puzzle is the one level a brand-new player might tap
+# first, and it must never rely on — or give away — a twist they haven't reached.
+#
+# Pars stop at 9, below the campaign's 12. A nightly puzzle is a nightcap, not a
+# project: it has to fit in the last few minutes before somebody puts the phone down.
+DAILY_PATH = "Assets/Scripts/SleepyZoo/DailyLevels.cs"
+# board, animals, par, walls.
+#
+# Capped at THREE animals on purpose. Chapter one has no sticky beds, so every
+# animal has to be on its own bed at the same instant — nothing stays put. Four
+# animals makes that a coincidence the generator can almost never manufacture at an
+# exact par, which is why the first pass produced nothing above three. Difficulty
+# here comes from the board and the par, the same rule the campaign follows.
+DAILY_ROWS = [
+    (5, 2, 4, 1), (5, 2, 5, 1), (5, 2, 6, 2), (5, 3, 5, 2),
+    (5, 3, 6, 2), (5, 3, 7, 2), (6, 2, 5, 2), (6, 3, 6, 3),
+    (6, 3, 7, 3), (6, 3, 8, 3), (7, 3, 7, 4), (6, 2, 6, 2),
+]
+
+DAILY_HINTS = [
+    "Tonight's puzzle. Same one for everybody.",
+    "One board, one bedtime.",
+    "A quiet one to end the day on.",
+    "Everyone gets this exact puzzle tonight.",
+    "Take your time. It'll keep.",
+    "A small one before lights out.",
+]
+
+
+def gen_daily_one(args):
+    """One nightly level. Top-level so the pool can be built across cores."""
+    k, seed = args
+    n, ents, par, walls = DAILY_ROWS[k % len(DAILY_ROWS)]
+    sp = dict(w=n, h=n, walls=walls, ents=ents, par=par, toys=0,
+              # Forgiving on purpose: a daily puzzle you can wedge into an unwinnable
+              # state is a daily puzzle people stop opening.
+              dead=0.10, toy="none", budget=60)
+    return k, gen_level(random.Random(seed), 0, sp)
+
+
+DAILY_CACHE = "tools/.dailies_partial.json"
+
+
+def gen_dailies(count=72, seed=20260801, workers=7, rounds=6):
+    """Build the nightly pool and write DailyLevels.cs.
+
+    Resumable, and happy with less than it asked for: a pool of 50 good nightly
+    puzzles is a better product than a crash, and the pool cycles anyway."""
+    import json
+    import os
+    from concurrent.futures import ProcessPoolExecutor
+    made = {}
+    if os.path.exists(DAILY_CACHE):
+        made = {int(k): v for k, v in json.load(open(DAILY_CACHE, encoding="utf-8")).items()}
+        print(f"// resuming with {len(made)} nightly puzzles already made", flush=True)
+
+    for r in range(rounds):
+        missing = [k for k in range(count) if k not in made]
+        if not missing:
+            break
+        print(f"// dailies round {r+1}: {len(missing)} to go", flush=True)
+        jobs = [(k, seed + k * 104729 + r * 7919) for k in missing]
+        got = 0
+        with ProcessPoolExecutor(max_workers=min(workers, len(jobs))) as pool:
+            for k, lv in pool.map(gen_daily_one, jobs):
+                if lv:
+                    made[k] = lv; got += 1
+                    print(f"// daily {k+1:3d}: {lv['w']}x{lv['h']} "
+                          f"animals={len(lv['start'])} par={lv['par']} "
+                          f"dead={lv['dead']:.2f}", flush=True)
+        with open(DAILY_CACHE, "w", encoding="utf-8") as f:
+            json.dump({str(k): v for k, v in made.items()}, f, default=list)
+        if got == 0:
+            print("// a whole round produced nothing — taking the pool as it stands",
+                  flush=True)
+            break
+
+    pool_levels = [made[k] for k in sorted(made)]
+    if len(pool_levels) < 20:
+        sys.exit(f"only {len(pool_levels)} nightly levels — not enough for a pool")
+
+    for lv in pool_levels:
+        lv["start"] = [tuple(s) for s in lv["start"]]
+        lv["beds"] = [tuple(b) for b in lv["beds"]]
+        lv["walls"] = [tuple(c) for c in lv.get("walls") or []]
+    body = "\n".join(emit(lv, DAILY_HINTS[i % len(DAILY_HINTS)])
+                     for i, lv in enumerate(pool_levels))
+
+    # Replace whatever sits between the array's `{` and its closing `};` — matching
+    # on the exact whitespace of an EMPTY array is how this crashed the first time.
+    src = open(DAILY_PATH, encoding="utf-8").read()
+    opener = "        private static readonly Lv[] Dailies =\n        {\n"
+    head, rest = src.split(opener, 1)
+    close = rest.index("        };\n")
+    tail = rest[close + len("        };\n"):]
+    open(DAILY_PATH, "w", encoding="utf-8", newline="\n").write(
+        head + opener + body + "\n        };\n" + tail)
+    print(f"\nwrote {len(pool_levels)} nightly puzzles to {DAILY_PATH}")
+    return len(pool_levels)
+
+
+def audit_dailies():
+    """Re-solve every nightly puzzle. Same guarantee as the campaign: par is the
+    true optimum, so 3 stars is always actually reachable."""
+    levels = parse_levels(DAILY_PATH, array="Dailies")
+    bad = 0
+    for i, lv in enumerate(levels):
+        start = tuple((e[0], e[1]) for e in lv["ents"])
+        beds = tuple((e[2], e[3]) for e in lv["ents"])
+        # chapter one's rules, deliberately: no sticky beds, no toys
+        ctx = Ctx(lv["w"], lv["h"], set(lv["walls"]), beds, sticky=False)
+        par, _, _ = solve(ctx, start, cap=200000)
+        if par != lv["par"]:
+            bad += 1
+            print(f"BAD nightly {i+1}: stored par={lv['par']} but solver says {par}")
+    print(f"\n{len(levels)} nightly puzzles checked - "
+          + ("all pars are BFS-optimal" if not bad else f"{bad} DISAGREE"))
+    return bad == 0
+
+
 if __name__ == "__main__":
-    cmd = sys.argv[1] if len(sys.argv) > 1 else "verify"
-    seed = int(sys.argv[2]) if len(sys.argv) > 2 else 20260727
-    if cmd == "verify":
-        verify()
-    elif cmd == "verifycs":
-        sys.exit(0 if verify_cs() else 1)
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "audit"
+    if cmd in ("audit", "verifycs"):
+        sys.exit(0 if audit() else 1)
+    elif cmd == "selftest":
+        sys.exit(0 if selftest() else 1)
+    elif cmd == "dailies":
+        gen_dailies(int(sys.argv[2]) if len(sys.argv) > 2 else 72)
+    elif cmd == "auditdailies":
+        sys.exit(0 if audit_dailies() else 1)
+    elif cmd == "fill":
+        sys.exit(0 if fill_chapter(int(sys.argv[2])) else 1)
     elif cmd == "plan":
-        generate_plan(seed)
-    elif cmd == "plan1":
-        generate_plan(seed, chapters=(1,))
-    elif cmd == "plan2":
-        generate_plan(seed, chapters=(2,))
+        rest = [int(a) for a in sys.argv[2:]]
+        seed = next((a for a in rest if a > 100), 20260801)
+        chs = [a for a in rest if a <= 8] or [3, 4, 5, 6, 7, 8]
+        generate_plan(seed, chs)
     else:
         print(__doc__)

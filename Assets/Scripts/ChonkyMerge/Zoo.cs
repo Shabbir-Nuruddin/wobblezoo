@@ -19,6 +19,10 @@ namespace ChonkyMerge
     ///
     /// Animals settle in as you keep playing: Visiting -> Snuggled -> Dreaming.
     /// That's a picture of your progress, not a second currency.
+    ///
+    /// The schedule is one friend per chapter, plus two early ones so a new player
+    /// meets somebody in the first hour. Ten friends across eight chapters means the
+    /// zoo is never finished and never empty.
     /// </summary>
     public static class Zoo
     {
@@ -49,23 +53,23 @@ namespace ChonkyMerge
         {
             new Pal("dog","Pip",       How.AtHome,        0,   0, Tier.Friend,  C(0.42f,0.62f,0.96f),
                     "dreams of a garden with no fences"),
-            new Pal("rabbit","Clover", How.Stars,         8,   8, Tier.Friend,  C(0.98f,0.55f,0.68f),
+            new Pal("rabbit","Clover", How.Stars,        10,  10, Tier.Friend,  C(0.98f,0.55f,0.68f),
                     "dreams of a very long carrot"),
-            new Pal("frog","Puddle",   How.Stars,        20,  20, Tier.Friend,  C(0.62f,0.84f,0.40f),
+            new Pal("frog","Puddle",   How.ChapterCleared,0,  36, Tier.Friend,  C(0.62f,0.84f,0.40f),
                     "dreams of warm rain on a lilypad"),
-            new Pal("duck","Biscuit",  How.ChapterCleared,0,  40, Tier.Friend,  C(0.98f,0.84f,0.36f),
+            new Pal("duck","Biscuit",  How.ChapterCleared,1,  72, Tier.Friend,  C(0.98f,0.84f,0.36f),
                     "dreams of a pond that's all his"),
-            new Pal("owl","Professor", How.Stars,        40,  40, Tier.Special, C(0.99f,0.72f,0.36f),
+            new Pal("owl","Professor", How.ChapterCleared,2, 100, Tier.Special, C(0.99f,0.72f,0.36f),
                     "dreams in questions, and answers them too"),
-            new Pal("pig","Marzipan",  How.Stars,        56,  56, Tier.Friend,  C(0.86f,0.52f,0.93f),
+            new Pal("pig","Marzipan",  How.ChapterCleared,3, 128, Tier.Friend,  C(0.86f,0.52f,0.93f),
                     "dreams of a blanket fresh from the dryer"),
-            new Pal("penguin","Sprout",How.Stars,        72,  72, Tier.Special, C(0.42f,0.80f,0.94f),
+            new Pal("penguin","Sprout",How.ChapterCleared,4, 156, Tier.Special, C(0.42f,0.80f,0.94f),
                     "dreams of sliding downhill forever"),
-            new Pal("bear","Marlow",   How.Stars,        88,  88, Tier.Special, C(0.93f,0.60f,0.42f),
+            new Pal("bear","Marlow",   How.ChapterCleared,5, 184, Tier.Special, C(0.93f,0.60f,0.42f),
                     "dreams of honey, obviously"),
-            new Pal("cow","Nutmeg",    How.Stars,       104, 104, Tier.Friend,  C(0.70f,0.62f,0.95f),
+            new Pal("cow","Nutmeg",    How.ChapterCleared,6, 212, Tier.Friend,  C(0.70f,0.62f,0.95f),
                     "dreams of a field at four in the afternoon"),
-            new Pal("panda","Momo",    How.ChapterCleared,1, 110, Tier.Guest,   C(0.36f,0.80f,0.68f),
+            new Pal("panda","Momo",    How.ChapterCleared,7, 240, Tier.Guest,   C(0.36f,0.80f,0.68f),
                     "dreams of the quietest bamboo grove there is"),
         };
 
@@ -85,6 +89,8 @@ namespace ChonkyMerge
         }
 
         /// A chapter counts as cleared when its last level has at least one star.
+        /// One friend per chapter is the backbone of the whole schedule: finish a
+        /// chapter, somebody new is waiting at home.
         private static bool ChapterCleared(int chapter)
         {
             int last = SleepyZoo.PuzzleGame.ChapterLastLevel(chapter);

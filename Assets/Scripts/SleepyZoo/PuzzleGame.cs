@@ -36,13 +36,74 @@ namespace SleepyZoo
     /// SlideSim exactly: par is the true optimal move count, so 3 stars is always
     /// achievable and never a designer's guess.
     /// </summary>
-    public class PuzzleGame : MonoBehaviour
+    // `partial` so the nightly puzzle pool can live in its own generated file
+    // (DailyLevels.cs) without a tool ever having to splice two arrays in here.
+    public partial class PuzzleGame : MonoBehaviour
     {
         // A level entity: where an animal starts (x,y) and which bed it belongs to (bx,by).
         private struct EntDef { public int x, y, bx, by;
             public EntDef(int x, int y, int bx, int by){ this.x=x; this.y=y; this.bx=bx; this.by=by; } }
-        private class Lv { public int w, h, par; public string hint; public Vector2Int[] walls; public EntDef[] ents;
-            public Lv(int w,int h,int par,string hint,Vector2Int[] walls,EntDef[] e){this.w=w;this.h=h;this.par=par;this.hint=hint;this.walls=walls;this.ents=e;} }
+
+        /// One level. The last four fields are the chapter "toys" — a level only ever
+        /// carries the toy belonging to its own chapter (see Rules), so a board never
+        /// asks the player to hold more than one new idea at a time.
+        ///   rugs   - silk you can cross but never stop on
+        ///   honey  - touch it and you stop dead, right there
+        ///   holes  - burrows in pairs: slide into one, come out of the other
+        ///   heavy  - index of the one animal too heavy to slide on its own
+        private class Lv
+        {
+            public int w, h, par; public string hint;
+            public Vector2Int[] walls; public EntDef[] ents;
+            public Vector2Int[] rugs, honey, holes; public int heavy;
+            public Lv(int w,int h,int par,string hint,Vector2Int[] walls,EntDef[] e,
+                      Vector2Int[] rugs=null, Vector2Int[] honey=null, Vector2Int[] holes=null, int heavy=-1)
+            { this.w=w; this.h=h; this.par=par; this.hint=hint; this.walls=walls; this.ents=e;
+              this.rugs=rugs??System.Array.Empty<Vector2Int>();
+              this.honey=honey??System.Array.Empty<Vector2Int>();
+              this.holes=holes??System.Array.Empty<Vector2Int>();
+              this.heavy=heavy; }
+        }
+
+        /// What's switched on in each chapter. Sticky beds arrive in chapter 2 and
+        /// never leave (they fixed chapter 1's one real frustration — taking that back
+        /// would be a punishment). Everything after that is a visible object on the
+        /// board, so "what's new" is something you can point at rather than a rule you
+        /// have to be told. Chapter 8 adds nothing new: it's the exam.
+        private class Rule
+        {
+            public string name, blurb, tease, taught;
+            public bool sticky, anyBed;
+            public Rule(string name,string blurb,string tease,string taught,bool sticky,bool anyBed)
+            { this.name=name; this.blurb=blurb; this.tease=tease; this.taught=taught;
+              this.sticky=sticky; this.anyBed=anyBed; }
+        }
+        private static readonly Rule[] Rules =
+        {
+            new Rule("Bedtime Shuffle","Swipe - everyone slides at once.",
+                     "Where it all begins.","Swipe any way you like. Everybody moves.",false,false),
+            new Rule("Sleepyheads","Touch your own bed and you're asleep for good.",
+                     "One bedtime rule you know by heart is about to change.",
+                     "Touch your own bed - even in passing - and you're in for the night.",true,false),
+            new Rule("Musical Beds","Tonight nobody minds whose bed is whose.",
+                     "Something about these beds is different tonight.",
+                     "Any animal, any bed. Just fill them all.",true,true),
+            new Rule("Slippery Rugs","You can cross a silk rug, but you can't stop on one.",
+                     "The floor is not going to help you.",
+                     "Silk is too slippery to sleep on - you'll always slide back off.",true,false),
+            new Rule("Honey Puddles","Touch the honey and you stop dead.",
+                     "Someone has been careless in the pantry.",
+                     "Honey is sticky. Touch it and that's where you stay.",true,false),
+            new Rule("Rabbit Holes","Slide into one burrow, pop out of the other.",
+                     "There are new ways through this room.",
+                     "Burrows come in pairs. Go in one, come out the other, keep sliding.",true,false),
+            new Rule("Heavy Sleepers","The big one won't slide on its own - it has to be pushed.",
+                     "Not everyone here is a light sleeper.",
+                     "The big one is fast asleep. It only moves when somebody bumps it.",true,false),
+            new Rule("The Long Night","Everything you've learned, in one room.",
+                     "One last night. Everything at once.",
+                     "No new rules tonight. Just everything you already know.",true,false),
+        };
 
         private static Vector2Int W2(int x,int y)=>new Vector2Int(x,y);
 
@@ -74,12 +135,6 @@ namespace SleepyZoo
         // Levels 21-40 = chapter 2, sticky beds (see StickyBeds / SlideSim).
         private static readonly Lv[] Levels =
         {
-            // ============================ CHAPTER 1 ============================
-            // Beds are just destinations - land on one and the next swipe drags you
-            // right back off it. Twenty levels of that is what makes chapter 2 land.
-            // Pars run 2 -> 12: short enough to hold in your head, and the animal
-            // count climbs in plateaus (1, 1, 1, 2, 2, 2, 2, 3, 3, ...) so every new
-            // friend gets a couple of gentle levels before the thinking gets harder.
             new Lv(4,4,2,"Swipe and your animal slides all the way to the wall.",
                 new Vector2Int[0],
                 new[]{ new EntDef(2,0, 0,3) }),
@@ -207,6 +262,378 @@ namespace SleepyZoo
             new Lv(7,7,12,"The whole zoo, sticky beds and all. Sweet dreams.",
                 new[]{ W2(0,3),W2(1,2),W2(1,3),W2(2,3),W2(3,2),W2(5,1) },
                 new[]{ new EntDef(6,2, 3,5), new EntDef(1,1, 2,4), new EntDef(2,1, 2,5), new EntDef(6,1, 1,5), new EntDef(5,2, 4,4) }),
+
+            // ===================== CHAPTER 3 =====================  (anybed)
+            new Lv(4,4,3,"Sticky beds - but tonight nobody minds whose bed is whose.",
+                new Vector2Int[0],
+                new[]{ new EntDef(1,0, 2,3), new EntDef(3,2, 2,0) }),
+            new Lv(4,4,4,"Any animal, any bed. Just fill them all.",
+                new[]{ W2(0,0) },
+                new[]{ new EntDef(1,0, 3,1), new EntDef(2,0, 0,1) }),
+            new Lv(5,5,4,"Two friends, two beds, either way round.",
+                new[]{ W2(3,2) },
+                new[]{ new EntDef(0,4, 3,0), new EntDef(3,4, 2,0) }),
+            new Lv(5,5,5,"Sometimes the far bed is the easy one.",
+                new[]{ W2(1,0),W2(3,2) },
+                new[]{ new EntDef(2,4, 3,3), new EntDef(2,3, 0,2), new EntDef(1,3, 3,0) }),
+            new Lv(5,5,5,"Fill the awkward bed first.",
+                new[]{ W2(1,2),W2(2,0) },
+                new[]{ new EntDef(3,3, 0,0), new EntDef(4,0, 1,1), new EntDef(4,3, 3,2) }),
+            new Lv(5,5,6,"Swapping who goes where can save you three swipes.",
+                new[]{ W2(1,1),W2(2,0),W2(3,2) },
+                new[]{ new EntDef(0,4, 3,1), new EntDef(1,3, 3,4), new EntDef(1,4, 0,1) }),
+            new Lv(6,6,7,"Count the beds, not the animals.",
+                new[]{ W2(0,3),W2(2,0),W2(4,5) },
+                new[]{ new EntDef(2,3, 5,3), new EntDef(3,2, 1,4), new EntDef(4,3, 5,5) }),
+            new Lv(6,6,7,"One bed is harder to reach than the rest. Start there.",
+                new[]{ W2(1,1),W2(4,1),W2(4,3) },
+                new[]{ new EntDef(4,5, 3,0), new EntDef(0,5, 4,2), new EntDef(5,4, 5,2), new EntDef(0,0, 2,3) }),
+            new Lv(6,6,8,"Whoever goes first decides the rest.",
+                new[]{ W2(0,3),W2(2,1),W2(2,5),W2(3,0) },
+                new[]{ new EntDef(4,5, 3,5), new EntDef(2,4, 3,4), new EntDef(1,5, 2,2), new EntDef(1,0, 3,3) }),
+            new Lv(6,6,8,"Any order you like - but only one order is short.",
+                new[]{ W2(1,3),W2(2,5),W2(3,1),W2(4,2) },
+                new[]{ new EntDef(3,0, 5,1), new EntDef(0,3, 0,2), new EntDef(0,5, 3,2), new EntDef(3,4, 2,2) }),
+            new Lv(6,6,9,"Leave the open bed for last.",
+                new[]{ W2(1,2),W2(2,0),W2(3,3),W2(4,0) },
+                new[]{ new EntDef(5,0, 3,0), new EntDef(4,5, 3,5), new EntDef(1,5, 4,1), new EntDef(5,4, 2,3) }),
+            new Lv(7,7,9,"Five beds, five friends, no name tags.",
+                new[]{ W2(2,6),W2(3,0),W2(4,0),W2(5,6),W2(6,3) },
+                new[]{ new EntDef(0,0, 5,0), new EntDef(4,5, 3,2), new EntDef(5,4, 2,3), new EntDef(3,1, 5,3), new EntDef(4,3, 2,2) }),
+            new Lv(7,7,10,"Look for the bed only one animal can reach.",
+                new[]{ W2(0,5),W2(2,6),W2(3,2),W2(3,6),W2(6,1) },
+                new[]{ new EntDef(0,1, 3,5), new EntDef(5,1, 4,0), new EntDef(0,6, 4,2), new EntDef(1,6, 3,4), new EntDef(2,3, 5,5) }),
+            new Lv(7,7,11,"Nearly there. Fill the corner first.",
+                new[]{ W2(0,3),W2(1,3),W2(3,6),W2(4,0),W2(5,6) },
+                new[]{ new EntDef(5,4, 4,6), new EntDef(2,4, 0,1), new EntDef(3,0, 6,5), new EntDef(1,5, 6,0), new EntDef(5,0, 6,2) }),
+            new Lv(7,7,12,"Every bed full, everybody asleep. That's the whole job.",
+                new[]{ W2(1,2),W2(1,6),W2(3,4),W2(4,2),W2(5,0),W2(6,3) },
+                new[]{ new EntDef(0,5, 2,0), new EntDef(5,2, 2,3), new EntDef(3,3, 2,4), new EntDef(5,3, 3,0), new EntDef(2,6, 1,3) }),
+
+            // ===================== CHAPTER 4 =====================  (rugs)
+            new Lv(4,4,3,"Silk is too slippery to sleep on - you always slide back off.",
+                new Vector2Int[0],
+                new[]{ new EntDef(2,0, 1,2), new EntDef(3,3, 3,0) },
+                rugs: new[]{ W2(2,3) }),
+            new Lv(4,4,4,"Cross the rug. Don't try to stop on it.",
+                new[]{ W2(3,0) },
+                new[]{ new EntDef(2,2, 0,3), new EntDef(0,0, 1,3) },
+                rugs: new[]{ W2(3,3) }),
+            new Lv(5,5,4,"A rug can carry you straight past your own bed. Careful.",
+                new[]{ W2(4,0) },
+                new[]{ new EntDef(4,2, 3,3), new EntDef(0,0, 2,1) },
+                rugs: new[]{ W2(0,2),W2(2,3) }),
+            new Lv(5,5,5,"Use the rug to reach somewhere you couldn't stop before.",
+                new[]{ W2(1,1),W2(2,3) },
+                new[]{ new EntDef(1,4, 1,3), new EntDef(2,0, 3,0), new EntDef(4,0, 3,2) },
+                rugs: new[]{ W2(0,2),W2(4,1) }),
+            new Lv(5,5,5,"Rugs turn short slides into long ones.",
+                new[]{ W2(2,3),W2(4,1) },
+                new[]{ new EntDef(1,3, 1,0), new EntDef(3,3, 2,1), new EntDef(3,2, 1,4) },
+                rugs: new[]{ W2(0,3),W2(4,0) }),
+            new Lv(5,5,6,"Come at the bed from the other side.",
+                new[]{ W2(0,1),W2(1,2),W2(4,2) },
+                new[]{ new EntDef(2,4, 4,3), new EntDef(3,1, 3,2), new EntDef(4,0, 4,4) },
+                rugs: new[]{ W2(0,0),W2(1,0) }),
+            new Lv(6,6,7,"The rug is a corridor, not a room.",
+                new[]{ W2(1,4),W2(2,4),W2(4,5) },
+                new[]{ new EntDef(5,4, 2,1), new EntDef(4,1, 3,3), new EntDef(5,3, 3,2) },
+                rugs: new[]{ W2(2,5),W2(5,0) }),
+            new Lv(6,6,7,"Two rugs in a row is just a longer corridor.",
+                new[]{ W2(0,3),W2(2,2),W2(4,4) },
+                new[]{ new EntDef(3,1, 4,1), new EntDef(3,3, 5,5), new EntDef(4,2, 0,1), new EntDef(1,2, 4,0) },
+                rugs: new[]{ W2(2,0),W2(2,1),W2(5,2) }),
+            new Lv(6,6,8,"Stop before the silk, not on it.",
+                new[]{ W2(2,0),W2(3,2),W2(4,4),W2(5,2) },
+                new[]{ new EntDef(1,0, 0,5), new EntDef(5,0, 0,2), new EntDef(0,0, 4,0), new EntDef(2,4, 3,5) },
+                rugs: new[]{ W2(1,4),W2(2,1),W2(2,2) }),
+            new Lv(6,6,8,"Sometimes the rug is the only way across.",
+                new[]{ W2(2,2),W2(3,3),W2(4,4),W2(5,0) },
+                new[]{ new EntDef(1,0, 5,3), new EntDef(0,0, 5,1), new EntDef(0,1, 4,3), new EntDef(2,3, 1,1) },
+                rugs: new[]{ W2(0,3),W2(3,2),W2(3,4) }),
+            new Lv(6,6,9,"A friend parked on the far side gives you something to stop against.",
+                new[]{ W2(0,3),W2(2,2),W2(4,0),W2(5,3) },
+                new[]{ new EntDef(0,1, 2,3), new EntDef(3,1, 5,2), new EntDef(2,4, 5,5), new EntDef(3,5, 1,2) },
+                rugs: new[]{ W2(0,5),W2(1,4),W2(4,2) }),
+            new Lv(7,7,9,"Plan where you'll land, not where you'll pass.",
+                new[]{ W2(2,6),W2(3,2),W2(4,5),W2(5,1),W2(6,3) },
+                new[]{ new EntDef(3,3, 2,2), new EntDef(5,6, 6,4), new EntDef(0,1, 5,5), new EntDef(3,0, 6,0), new EntDef(4,1, 0,4) },
+                rugs: new[]{ W2(1,0),W2(2,1),W2(3,5),W2(6,5) }),
+            new Lv(7,7,10,"Silk never lets go until something solid does.",
+                new[]{ W2(2,3),W2(2,5),W2(3,3),W2(5,5),W2(6,6) },
+                new[]{ new EntDef(4,5, 6,2), new EntDef(2,0, 6,3), new EntDef(0,6, 1,3), new EntDef(5,0, 3,1), new EntDef(6,4, 2,6) },
+                rugs: new[]{ W2(0,3),W2(2,1),W2(5,1),W2(5,6) }),
+            new Lv(7,7,11,"Almost the last of the rugs. Take it slowly.",
+                new[]{ W2(0,1),W2(0,6),W2(2,1),W2(2,2),W2(6,6) },
+                new[]{ new EntDef(5,3, 2,4), new EntDef(3,0, 6,4), new EntDef(4,4, 1,6), new EntDef(2,5, 4,0), new EntDef(4,2, 0,4) },
+                rugs: new[]{ W2(2,3),W2(5,2),W2(5,5),W2(6,5) }),
+            new Lv(7,7,12,"One room, four rugs, five sleepy animals.",
+                new[]{ W2(0,6),W2(1,3),W2(2,2),W2(2,4),W2(5,1),W2(6,0) },
+                new[]{ new EntDef(3,3, 5,4), new EntDef(6,5, 0,0), new EntDef(5,0, 4,1), new EntDef(0,2, 3,5), new EntDef(2,1, 4,2) },
+                rugs: new[]{ W2(1,0),W2(1,4),W2(3,0),W2(5,5) }),
+
+            // ===================== CHAPTER 5 =====================  (honey)
+            new Lv(4,4,3,"Honey is sticky. Touch it and that's where you stay.",
+                new Vector2Int[0],
+                new[]{ new EntDef(2,1, 1,2), new EntDef(2,0, 0,0) },
+                honey: new[]{ W2(1,3) }),
+            new Lv(4,4,4,"Honey stops you dead - useful, if you aim it.",
+                new[]{ W2(2,1) },
+                new[]{ new EntDef(1,3, 0,1), new EntDef(0,3, 3,3) },
+                honey: new[]{ W2(0,2) }),
+            new Lv(5,5,4,"Park someone in the honey on purpose.",
+                new[]{ W2(3,3) },
+                new[]{ new EntDef(2,2, 4,3), new EntDef(1,2, 2,1) },
+                honey: new[]{ W2(2,0),W2(4,2) }),
+            new Lv(5,5,5,"Honey beats a long slide every time.",
+                new[]{ W2(2,2),W2(4,4) },
+                new[]{ new EntDef(4,0, 0,3), new EntDef(0,0, 4,1), new EntDef(4,3, 1,2) },
+                honey: new[]{ W2(0,1),W2(2,4) }),
+            new Lv(5,5,5,"Use the honey to stop short of a bed.",
+                new[]{ W2(2,2),W2(4,0) },
+                new[]{ new EntDef(3,3, 4,3), new EntDef(0,4, 4,2), new EntDef(1,2, 2,4) },
+                honey: new[]{ W2(0,3),W2(2,1) }),
+            new Lv(5,5,6,"The honey is a brake, not a wall.",
+                new[]{ W2(0,2),W2(0,4),W2(4,1) },
+                new[]{ new EntDef(2,2, 4,4), new EntDef(0,0, 4,2), new EntDef(3,1, 2,4) },
+                honey: new[]{ W2(3,2),W2(4,0) }),
+            new Lv(6,6,7,"Two puddles make a very short corridor.",
+                new[]{ W2(2,5),W2(3,4),W2(5,5) },
+                new[]{ new EntDef(0,4, 4,2), new EntDef(1,2, 0,5), new EntDef(4,1, 1,3) },
+                honey: new[]{ W2(3,1),W2(5,3) }),
+            new Lv(6,6,7,"Whoever reaches the honey first blocks everyone behind.",
+                new[]{ W2(1,3),W2(3,0),W2(5,0) },
+                new[]{ new EntDef(5,2, 2,5), new EntDef(4,0, 3,5), new EntDef(1,1, 3,3), new EntDef(2,2, 1,2) },
+                honey: new[]{ W2(0,1),W2(0,5),W2(4,1) }),
+            new Lv(6,6,8,"Send the wrong one into the honey and you're stuck.",
+                new[]{ W2(0,2),W2(1,4),W2(3,1),W2(5,0) },
+                new[]{ new EntDef(4,1, 3,5), new EntDef(0,1, 2,2), new EntDef(4,5, 1,2), new EntDef(3,2, 2,5) },
+                honey: new[]{ W2(1,3),W2(2,3),W2(4,0) }),
+            new Lv(6,6,8,"Honey first, beds after.",
+                new[]{ W2(0,3),W2(2,1),W2(2,5),W2(5,5) },
+                new[]{ new EntDef(0,5, 3,2), new EntDef(1,5, 4,1), new EntDef(4,5, 0,0), new EntDef(2,3, 3,3) },
+                honey: new[]{ W2(1,2),W2(3,1),W2(4,4) }),
+            new Lv(6,6,9,"A sleeper and a puddle make a pocket.",
+                new[]{ W2(0,4),W2(1,0),W2(3,4),W2(4,4) },
+                new[]{ new EntDef(2,1, 2,5), new EntDef(5,1, 5,0), new EntDef(2,0, 5,4), new EntDef(3,0, 2,4) },
+                honey: new[]{ W2(0,0),W2(1,4),W2(3,3) }),
+            new Lv(7,7,9,"Think about who must NOT touch the honey.",
+                new[]{ W2(0,6),W2(2,4),W2(2,6),W2(3,3) },
+                new[]{ new EntDef(6,2, 3,2), new EntDef(3,1, 5,6), new EntDef(3,0, 4,0), new EntDef(1,3, 1,4), new EntDef(2,3, 3,6) },
+                honey: new[]{ W2(0,1),W2(0,4),W2(5,3),W2(6,5),W2(6,6) }),
+            new Lv(7,7,10,"The honey is doing half the work. Let it.",
+                new[]{ W2(0,2),W2(1,1),W2(1,6),W2(3,5),W2(6,4) },
+                new[]{ new EntDef(4,2, 1,2), new EntDef(3,4, 3,1), new EntDef(6,3, 2,4), new EntDef(6,2, 1,3), new EntDef(0,1, 0,0) },
+                honey: new[]{ W2(3,6),W2(4,5),W2(5,4),W2(5,6) }),
+            new Lv(7,7,11,"Nearly the last of the mess. Mind your step.",
+                new[]{ W2(0,6),W2(2,2),W2(5,0),W2(6,0),W2(6,2) },
+                new[]{ new EntDef(2,6, 5,1), new EntDef(4,6, 2,3), new EntDef(5,6, 3,1), new EntDef(4,3, 6,4), new EntDef(6,6, 3,2) },
+                honey: new[]{ W2(0,0),W2(0,5),W2(1,0),W2(4,1) }),
+            new Lv(6,6,12,"Five friends, and honey everywhere.",
+                new[]{ W2(0,0),W2(0,2),W2(2,2),W2(4,3),W2(5,2),W2(5,3) },
+                new[]{ new EntDef(3,0, 1,1), new EntDef(1,0, 3,2), new EntDef(4,4, 2,0), new EntDef(1,2, 4,0), new EntDef(0,1, 3,4) },
+                honey: new[]{ W2(0,5),W2(2,3),W2(4,1),W2(5,0) }),
+
+            // ===================== CHAPTER 6 =====================  (holes)
+            new Lv(4,4,3,"Burrows come in pairs. In one, out the other, still sliding.",
+                new Vector2Int[0],
+                new[]{ new EntDef(1,0, 2,1), new EntDef(2,3, 0,0) },
+                holes: new[]{ W2(2,2),W2(0,3) }),
+            new Lv(4,4,4,"You keep your speed all the way through a burrow.",
+                new[]{ W2(2,3) },
+                new[]{ new EntDef(1,1, 2,2), new EntDef(0,3, 0,2) },
+                holes: new[]{ W2(2,0),W2(3,3) }),
+            new Lv(5,5,4,"A burrow can put you where no swipe could reach.",
+                new[]{ W2(3,2) },
+                new[]{ new EntDef(4,0, 0,1), new EntDef(2,3, 0,0) },
+                holes: new[]{ W2(4,2),W2(2,4) }),
+            new Lv(5,5,5,"Follow the colours - a pair shares one colour.",
+                new[]{ W2(0,0),W2(0,2) },
+                new[]{ new EntDef(4,4, 3,1), new EntDef(1,2, 4,1), new EntDef(4,2, 1,3) },
+                holes: new[]{ W2(0,1),W2(0,4) }),
+            new Lv(5,5,5,"Sometimes the long way round is underground.",
+                new[]{ W2(2,3),W2(3,1) },
+                new[]{ new EntDef(1,0, 1,2), new EntDef(4,1, 0,0), new EntDef(4,2, 2,2) },
+                holes: new[]{ W2(1,1),W2(4,4) }),
+            new Lv(5,5,6,"A friend standing on the far end blocks the burrow.",
+                new[]{ W2(0,4),W2(4,1),W2(4,2) },
+                new[]{ new EntDef(3,2, 2,1), new EntDef(0,0, 2,2), new EntDef(4,4, 3,4) },
+                holes: new[]{ W2(0,3),W2(0,2) }),
+            new Lv(6,6,7,"Go in the near one to come out of the far one.",
+                new[]{ W2(2,2),W2(4,2),W2(4,3) },
+                new[]{ new EntDef(1,0, 3,4), new EntDef(4,5, 3,1), new EntDef(5,1, 1,2) },
+                holes: new[]{ W2(1,3),W2(5,3) }),
+            new Lv(6,6,7,"Two pairs means two ways across.",
+                new[]{ W2(2,2),W2(2,4),W2(4,4) },
+                new[]{ new EntDef(3,5, 3,1), new EntDef(5,3, 1,5), new EntDef(4,0, 0,1), new EntDef(1,3, 4,5) },
+                holes: new[]{ W2(4,2),W2(5,1) }),
+            new Lv(6,6,8,"Sometimes you want to miss the burrow.",
+                new[]{ W2(0,0),W2(1,2),W2(3,0),W2(4,5) },
+                new[]{ new EntDef(0,5, 4,3), new EntDef(1,1, 2,5), new EntDef(0,1, 4,4), new EntDef(0,3, 3,1) },
+                holes: new[]{ W2(4,2),W2(4,0) }),
+            new Lv(6,6,8,"The exit decides where you stop, not the entrance.",
+                new[]{ W2(0,4),W2(0,5),W2(3,3),W2(4,4) },
+                new[]{ new EntDef(2,4, 5,0), new EntDef(5,3, 3,4), new EntDef(2,0, 5,1), new EntDef(1,5, 4,0) },
+                holes: new[]{ W2(0,3),W2(1,2) }),
+            new Lv(6,6,9,"Line them up before you dive.",
+                new[]{ W2(2,2),W2(4,2),W2(4,4),W2(5,2) },
+                new[]{ new EntDef(5,1, 0,3), new EntDef(2,5, 3,2), new EntDef(0,5, 1,3), new EntDef(1,2, 4,1) },
+                holes: new[]{ W2(1,4),W2(0,0) }),
+            new Lv(7,7,9,"One burrow, one bed, one swipe - if you set it up right.",
+                new[]{ W2(0,2),W2(2,4),W2(3,3),W2(4,3),W2(6,4) },
+                new[]{ new EntDef(1,1, 2,1), new EntDef(1,0, 5,3), new EntDef(5,1, 0,6), new EntDef(3,6, 4,5), new EntDef(2,6, 0,1) },
+                holes: new[]{ W2(4,0),W2(2,5),W2(5,0),W2(0,4) }),
+            new Lv(7,7,10,"Watch what the burrow does to the animal behind you.",
+                new[]{ W2(0,5),W2(0,6),W2(1,1),W2(3,6),W2(4,2) },
+                new[]{ new EntDef(6,4, 1,2), new EntDef(1,0, 4,1), new EntDef(5,1, 5,5), new EntDef(3,2, 4,6), new EntDef(1,5, 0,4) },
+                holes: new[]{ W2(3,1),W2(2,4),W2(6,3),W2(3,0) }),
+            new Lv(7,7,11,"Nearly through. Where does that exit put you?",
+                new[]{ W2(1,1),W2(2,2),W2(4,6),W2(6,2),W2(6,5) },
+                new[]{ new EntDef(3,3, 4,2), new EntDef(0,1, 3,2), new EntDef(3,5, 1,2), new EntDef(0,3, 3,4), new EntDef(6,1, 4,0) },
+                holes: new[]{ W2(1,4),W2(5,4),W2(1,5),W2(2,4) }),
+            new Lv(7,7,12,"The whole warren, all at once.",
+                new[]{ W2(0,4),W2(2,0),W2(4,0),W2(4,4),W2(6,2),W2(6,3) },
+                new[]{ new EntDef(1,0, 2,4), new EntDef(5,6, 1,2), new EntDef(5,5, 4,3), new EntDef(4,5, 1,3), new EntDef(5,2, 2,2) },
+                holes: new[]{ W2(5,0),W2(3,4),W2(1,5),W2(6,4) }),
+
+            // ===================== CHAPTER 7 =====================  (heavy)
+            new Lv(4,4,3,"The big one is fast asleep. It only moves if somebody bumps it.",
+                new Vector2Int[0],
+                new[]{ new EntDef(3,3, 3,2), new EntDef(1,0, 3,0), new EntDef(0,2, 2,2) },
+                heavy: 1),
+            new Lv(4,4,4,"Push the big one - it slides until something stops it.",
+                new[]{ W2(1,1) },
+                new[]{ new EntDef(3,2, 2,2), new EntDef(1,2, 0,1), new EntDef(3,1, 3,0) },
+                heavy: 2),
+            new Lv(5,5,4,"The big one makes an excellent wall.",
+                new[]{ W2(0,3) },
+                new[]{ new EntDef(2,2, 3,2), new EntDef(1,0, 2,1), new EntDef(0,4, 3,4) },
+                heavy: 0),
+            new Lv(5,5,5,"Bump it once and it's somewhere new for good.",
+                new[]{ W2(0,1),W2(0,4) },
+                new[]{ new EntDef(1,3, 4,3), new EntDef(1,0, 0,0), new EntDef(2,2, 2,4), new EntDef(4,1, 3,3) },
+                heavy: 1),
+            new Lv(5,5,5,"Push it out of the way before you need the space.",
+                new[]{ W2(0,2),W2(2,4) },
+                new[]{ new EntDef(1,1, 3,2), new EntDef(0,3, 3,3), new EntDef(2,3, 4,3), new EntDef(3,1, 2,1) },
+                heavy: 2),
+            new Lv(5,5,6,"You always stop right behind whatever you push.",
+                new[]{ W2(0,0),W2(3,3),W2(4,1) },
+                new[]{ new EntDef(3,0, 4,0), new EntDef(1,4, 1,1), new EntDef(2,4, 2,2), new EntDef(4,2, 4,4) },
+                heavy: 0),
+            new Lv(6,6,7,"Line up behind the big one to move it a long way.",
+                new[]{ W2(0,3),W2(2,0),W2(5,4) },
+                new[]{ new EntDef(3,2, 1,3), new EntDef(2,5, 1,5), new EntDef(2,2, 4,1), new EntDef(0,4, 5,2) },
+                heavy: 1),
+            new Lv(6,6,7,"It can be pushed into its own bed, too.",
+                new[]{ W2(0,2),W2(3,2),W2(4,4) },
+                new[]{ new EntDef(3,0, 1,3), new EntDef(3,1, 5,0), new EntDef(2,0, 4,0), new EntDef(1,1, 0,0), new EntDef(0,1, 2,1) },
+                heavy: 1),
+            new Lv(6,6,8,"Push it once too often and it's in the way.",
+                new[]{ W2(0,0),W2(2,1),W2(5,2) },
+                new[]{ new EntDef(2,5, 0,5), new EntDef(3,1, 4,1), new EntDef(2,2, 2,4), new EntDef(0,1, 1,2), new EntDef(3,5, 5,0) },
+                heavy: 0),
+            new Lv(6,6,8,"The big one is blocking the beds behind it.",
+                new[]{ W2(2,1),W2(3,4),W2(4,1),W2(4,2) },
+                new[]{ new EntDef(2,3, 0,4), new EntDef(5,4, 5,5), new EntDef(4,4, 1,4), new EntDef(4,0, 3,5), new EntDef(0,0, 2,0) },
+                heavy: 1),
+            new Lv(6,6,9,"Decide where it has to end up first.",
+                new[]{ W2(0,4),W2(1,0),W2(1,2),W2(2,3) },
+                new[]{ new EntDef(4,0, 2,4), new EntDef(3,5, 5,5), new EntDef(4,4, 5,3), new EntDef(0,5, 2,1), new EntDef(1,1, 5,0) },
+                heavy: 1),
+            new Lv(7,7,9,"Two pushes, if you have room for two.",
+                new[]{ W2(3,3),W2(4,3),W2(5,5),W2(6,2),W2(6,3) },
+                new[]{ new EntDef(1,0, 5,0), new EntDef(4,5, 2,0), new EntDef(0,3, 2,6), new EntDef(6,0, 2,3), new EntDef(0,0, 1,2) },
+                heavy: 0),
+            new Lv(7,7,10,"The big one never moves on its own. Ever.",
+                new[]{ W2(1,4),W2(1,6),W2(2,2),W2(3,4),W2(5,0) },
+                new[]{ new EntDef(5,6, 4,0), new EntDef(6,5, 1,1), new EntDef(1,3, 1,5), new EntDef(0,5, 0,6), new EntDef(6,2, 5,3) },
+                heavy: 3),
+            new Lv(7,7,11,"One push, then everybody home.",
+                new[]{ W2(1,0),W2(2,6),W2(3,2),W2(6,4),W2(6,6) },
+                new[]{ new EntDef(5,4, 0,3), new EntDef(6,5, 1,3), new EntDef(2,5, 1,1), new EntDef(0,2, 0,1), new EntDef(4,5, 3,4) },
+                heavy: 3),
+            new Lv(7,7,12,"The heaviest sleeper in the zoo, and four friends around it.",
+                new[]{ W2(5,0),W2(5,5),W2(6,5),W2(6,6) },
+                new[]{ new EntDef(2,1, 0,5), new EntDef(3,6, 2,6), new EntDef(2,2, 3,0), new EntDef(3,5, 5,4), new EntDef(6,2, 0,2) },
+                heavy: 1),
+
+            // ===================== CHAPTER 8 =====================  (mixed)
+            new Lv(4,4,3,"No new rules tonight. Everything you already know.",
+                new Vector2Int[0],
+                new[]{ new EntDef(1,0, 3,3), new EntDef(2,1, 1,2) },
+                rugs: new[]{ W2(2,3) },
+                honey: new[]{ W2(1,3) }),
+            new Lv(4,4,4,"Rug and honey in one room. Read the floor.",
+                new[]{ W2(0,2) },
+                new[]{ new EntDef(1,2, 3,0), new EntDef(1,3, 1,0) },
+                rugs: new[]{ W2(0,1) },
+                honey: new[]{ W2(2,2) }),
+            new Lv(5,5,4,"The silk carries, the honey stops.",
+                new[]{ W2(2,4) },
+                new[]{ new EntDef(3,4, 1,4), new EntDef(2,3, 1,0) },
+                rugs: new[]{ W2(1,2) },
+                honey: new[]{ W2(3,2) }),
+            new Lv(5,5,5,"Same rules, less room.",
+                new[]{ W2(0,0),W2(2,1) },
+                new[]{ new EntDef(2,2, 3,4), new EntDef(3,3, 2,4), new EntDef(1,4, 4,4) },
+                rugs: new[]{ W2(4,0) },
+                honey: new[]{ W2(0,2) }),
+            new Lv(5,5,5,"Take one animal at a time in your head.",
+                new[]{ W2(0,0),W2(3,3) },
+                new[]{ new EntDef(2,2, 3,1), new EntDef(4,3, 2,4), new EntDef(2,3, 3,0) },
+                rugs: new[]{ W2(2,0) },
+                honey: new[]{ W2(4,0) }),
+            new Lv(5,5,6,"The floor is telling you the answer.",
+                new[]{ W2(2,0),W2(3,4),W2(4,3) },
+                new[]{ new EntDef(3,3, 3,1), new EntDef(1,3, 1,1), new EntDef(2,3, 4,0) },
+                rugs: new[]{ W2(0,4) },
+                honey: new[]{ W2(0,3) }),
+            new Lv(6,6,7,"You've solved harder than this - twice.",
+                new[]{ W2(3,2),W2(3,4),W2(5,4) },
+                new[]{ new EntDef(4,0, 0,5), new EntDef(2,0, 3,0), new EntDef(0,0, 1,2) },
+                rugs: new[]{ W2(4,1) },
+                honey: new[]{ W2(1,3) }),
+            new Lv(6,6,7,"Slow down. Everything here is familiar.",
+                new[]{ W2(0,3),W2(2,3),W2(4,5) },
+                new[]{ new EntDef(5,0, 2,4), new EntDef(4,0, 4,4), new EntDef(1,3, 1,1), new EntDef(0,5, 3,5) },
+                rugs: new[]{ W2(1,0),W2(2,0) },
+                honey: new[]{ W2(4,2) }),
+            new Lv(6,6,8,"One awkward friend, as always.",
+                new[]{ W2(0,0),W2(1,4),W2(3,3),W2(3,4) },
+                new[]{ new EntDef(2,2, 4,5), new EntDef(2,5, 1,2), new EntDef(5,4, 1,0), new EntDef(1,3, 0,1) },
+                rugs: new[]{ W2(3,0),W2(5,1) },
+                honey: new[]{ W2(5,2) }),
+            new Lv(6,6,8,"Set the room up, then send everyone home.",
+                new[]{ W2(2,0),W2(2,2),W2(3,4),W2(5,0) },
+                new[]{ new EntDef(4,2, 4,3), new EntDef(3,0, 4,1), new EntDef(3,2, 3,3), new EntDef(1,0, 2,3) },
+                rugs: new[]{ W2(5,1),W2(5,4) },
+                honey: new[]{ W2(1,1) }),
+            new Lv(6,6,9,"The last few nights are the quiet ones.",
+                new[]{ W2(1,4),W2(2,2),W2(3,2),W2(5,2) },
+                new[]{ new EntDef(1,2, 0,0), new EntDef(0,3, 4,5), new EntDef(5,3, 1,0), new EntDef(4,3, 2,5) },
+                rugs: new[]{ W2(1,5),W2(4,1) },
+                honey: new[]{ W2(3,0) }),
+            new Lv(7,7,9,"Nearly the end of the zoo.",
+                new[]{ W2(0,1),W2(0,5),W2(4,1),W2(4,2),W2(5,4) },
+                new[]{ new EntDef(0,4, 3,4), new EntDef(1,1, 2,5), new EntDef(0,2, 6,6), new EntDef(5,0, 1,4), new EntDef(6,0, 6,5) },
+                rugs: new[]{ W2(3,0),W2(5,3) },
+                honey: new[]{ W2(2,0),W2(5,2) }),
+            new Lv(7,7,10,"Second to last. Enjoy it.",
+                new[]{ W2(0,6),W2(3,0),W2(4,6),W2(5,2),W2(5,5) },
+                new[]{ new EntDef(2,5, 3,3), new EntDef(2,6, 2,4), new EntDef(0,1, 4,4), new EntDef(6,4, 5,3), new EntDef(1,6, 6,6) },
+                rugs: new[]{ W2(4,5),W2(5,1) },
+                honey: new[]{ W2(0,4),W2(5,0) }),
+            new Lv(7,7,11,"One more after this one.",
+                new[]{ W2(0,4),W2(0,5),W2(2,6),W2(4,5),W2(5,2) },
+                new[]{ new EntDef(3,3, 5,0), new EntDef(5,1, 1,1), new EntDef(2,4, 1,6), new EntDef(5,4, 4,0), new EntDef(2,5, 1,5) },
+                rugs: new[]{ W2(3,2),W2(6,1) },
+                honey: new[]{ W2(0,6),W2(3,5) }),
+            new Lv(7,7,12,"Goodnight, everybody. Sleep well.",
+                new[]{ W2(1,0),W2(1,1),W2(2,1),W2(2,6),W2(4,4),W2(6,4) },
+                new[]{ new EntDef(2,0, 3,3), new EntDef(0,6, 5,4), new EntDef(6,5, 0,2), new EntDef(6,0, 5,2), new EntDef(4,0, 3,6) },
+                rugs: new[]{ W2(0,0),W2(6,2) },
+                honey: new[]{ W2(0,5),W2(1,2) }),
         };
 
         // ---- warm, flat cozy palette (everything sits in the same family) ----
@@ -278,9 +705,20 @@ namespace SleepyZoo
         private static readonly Color BedNest     = new Color(0.95f,0.87f,0.73f);
         private static readonly Color BedRing     = new Color(0.86f,0.74f,0.56f);
         private static readonly Color Brown       = new Color(0.36f,0.22f,0.12f);
+        // the chapter toys, each a different material so they never read as the same thing
+        private static readonly Color RugSilk     = new Color(0.62f,0.70f,0.92f);
+        private static readonly Color HoneyDark   = new Color(0.78f,0.52f,0.16f);
+        private static readonly Color HoneyGold   = new Color(0.99f,0.78f,0.30f);
+        private static readonly Color HoleDark    = new Color(0.16f,0.12f,0.18f);
+        private static readonly Color[] HolePair  =
+        { new Color(0.60f,0.86f,0.72f), new Color(0.86f,0.70f,0.95f), new Color(0.95f,0.78f,0.55f) };
 
         // ---- runtime ----
         private int _levelIndex;
+        // Tonight's Puzzle runs on the same board, the same solver and the same feel —
+        // it just isn't part of the map. While this is true the level index means
+        // nothing, so every line that saves progress has to check it first.
+        private bool _daily;
         private Lv _lv;
         private Camera _cam;
         private readonly HashSet<Vector2Int> _walls = new();
@@ -298,7 +736,8 @@ namespace SleepyZoo
         private bool _hapticThisMove;
         private readonly Stack<Vector2Int[]> _undo = new();
         private Transform _bgTf;
-        private bool _sticky;                       // chapter 2: beds catch and hold
+        private bool _sticky;                       // chapter 2 on: beds catch and hold
+        private bool _anyBed;                       // chapter 3: any animal, any bed
         private readonly List<SpriteRenderer> _bedGlow = new();  // pulsed while sticky
 
         private int _moves, _stars;
@@ -335,23 +774,33 @@ namespace SleepyZoo
         // ---- chapters ----
         // Chapter 2 rewrites the sliding rule. Everything the menu shows about it
         // stays vague until it's unlocked — the surprise IS the reward.
-        public const int ChapterSize = 20;
-        public static int ChapterCount => Mathf.CeilToInt(Levels.Length / (float)ChapterSize);
-        public static int ChapterOf(int level) => Mathf.Clamp(level / ChapterSize, 0, ChapterCount - 1);
-        public static int ChapterFirstLevel(int chapter) => chapter * ChapterSize;
-        public static int ChapterLastLevel(int chapter) =>
-            Mathf.Min((chapter + 1) * ChapterSize - 1, Levels.Length - 1);
-        public static string ChapterName(int chapter) => chapter == 0 ? "Bedtime Shuffle" : "Sleepyheads";
+        // Chapters aren't all the same length. The first two run 20 levels because
+        // they were built that way and they earn it; every chapter after them is 15,
+        // which is about as long as one new idea stays interesting.
+        private static readonly int[] ChapterStart = { 0, 20, 40, 55, 70, 85, 100, 115 };
+        public static int ChapterCount => ChapterStart.Length;
+        public static int ChapterOf(int level)
+        {
+            for (int c = ChapterStart.Length - 1; c >= 0; c--) if (level >= ChapterStart[c]) return c;
+            return 0;
+        }
+        public static int ChapterFirstLevel(int chapter) =>
+            ChapterStart[Mathf.Clamp(chapter, 0, ChapterStart.Length - 1)];
+        public static int ChapterLastLevel(int chapter)
+        {
+            chapter = Mathf.Clamp(chapter, 0, ChapterStart.Length - 1);
+            int end = chapter + 1 < ChapterStart.Length ? ChapterStart[chapter + 1] - 1 : Levels.Length - 1;
+            return Mathf.Min(end, Levels.Length - 1);
+        }
+        private static Rule RuleFor(int chapter) => Rules[Mathf.Clamp(chapter, 0, Rules.Length - 1)];
+        public static string ChapterName(int chapter) => RuleFor(chapter).name;
         // Shown on the locked chapter card. Teases the change without spoiling it.
-        public static string ChapterTease(int chapter) =>
-            chapter == 0 ? "Swipe — everyone slides at once."
-                         : "One bedtime rule you know by heart is about to change.";
-        public static string ChapterBlurb(int chapter) =>
-            chapter == 0 ? "Swipe — everyone slides at once."
-                         : "Sticky beds! Touch your own bed and you're in for the night.";
-        // Chapter 2 = sticky beds. Kept as a single question so the rule, the
-        // solver and the UI can never drift apart.
-        public static bool StickyBeds(int level) => ChapterOf(level) >= 1;
+        public static string ChapterTease(int chapter) => RuleFor(chapter).tease;
+        public static string ChapterBlurb(int chapter) => RuleFor(chapter).blurb;
+        // Every rule question routes through the table, so the game, the solver, the
+        // hints and the UI can never drift apart about what tonight's rules are.
+        public static bool StickyBeds(int level) => RuleFor(ChapterOf(level)).sticky;
+        public static bool AnyBed(int level) => RuleFor(ChapterOf(level)).anyBed;
 
         // 3 stars is always the BFS-optimal par. The 2-star window is deliberately
         // generous - half the par again, minimum 3 spare swipes - because pars are
@@ -383,8 +832,34 @@ namespace SleepyZoo
         // a small one; the big one is the chapter door at level 21. The curve sits
         // just under 2 stars per cleared level, so a player averaging 2 stars walks
         // straight through and a player scraping 1s replays a couple of favourites.
-        private static readonly int[] Gates =
-            { 4, 6, 8, 13, 12, 20, 16, 28, 20, 36, 24, 44, 28, 52, 32, 60, 36, 68 };
+        // Total stars needed to step past each checkpoint, built rather than typed:
+        // a small gate every 4 levels, and a bigger one on each chapter door. The
+        // curve sits at ~1.6 stars per level already cleared, so a player averaging
+        // two walks straight through and a player scraping ones replays a couple.
+        private static readonly int[] Gates = BuildGates();
+        private static int[] BuildGates()
+        {
+            // one gate every 4 levels, plus a heavier one on every chapter door
+            var need = new SortedDictionary<int, int>();
+            for (int i = 4; i < 200; i += 4) need[i] = Mathf.RoundToInt(i * 1.55f);
+            for (int c = 1; c < ChapterStart.Length; c++)
+            {
+                int i = ChapterStart[c];
+                need[i] = Mathf.Max(need.TryGetValue(i, out var v) ? v : 0,
+                                    Mathf.RoundToInt(i * 1.8f));
+            }
+            // never let a later gate ask for less than an earlier one — a checkpoint
+            // that goes backwards reads as a bug even when it's harmless
+            var g = new List<int>();
+            int running = 0;
+            foreach (var kv in need)
+            {
+                running = Mathf.Max(running, kv.Value);
+                g.Add(kv.Key); g.Add(running);
+            }
+            return g.ToArray();
+        }
+
         public static int RequiredStars(int i)
         {
             int need = 0;
@@ -403,7 +878,62 @@ namespace SleepyZoo
             return TotalStars() >= RequiredStars(i);       // …and clear the checkpoint
         }
 
-        private void Start(){ SetupCamera(); LoadLevel(PlayerPrefs.GetInt("zoo_level",0)); }
+        /// The menu sets this to ask for Tonight's Puzzle instead of the map. It's
+        /// cleared the moment it's read, so backing out and hitting Play lands on the
+        /// campaign, not last night's puzzle.
+        public const string DailyRequestKey = "zoo_want_daily";
+
+        private void Start()
+        {
+            SetupCamera();
+            bool wantDaily = PlayerPrefs.GetInt(DailyRequestKey,0)==1;
+            if(wantDaily){ PlayerPrefs.SetInt(DailyRequestKey,0); PlayerPrefs.Save(); }
+            if(wantDaily) LoadDaily();
+            else LoadLevel(PlayerPrefs.GetInt("zoo_level",0));
+        }
+
+        /// Re-solves every shipped level with the GAME'S OWN simulation and solver,
+        /// and reports any level whose stored par doesn't match.
+        ///
+        /// This matters because levels are generated by tools/gen_levels.py, which is
+        /// a second, independent implementation of these rules. Checking the file
+        /// against the Python sim only proves Python agrees with itself. This is the
+        /// check that actually catches the two implementations drifting apart — run it
+        /// from the editor (see Assets/Editor/LevelAudit.cs) after ANY rule change.
+        public static string AuditAllLevels()
+        {
+            var probe=new GameObject("LevelAudit").AddComponent<PuzzleGame>();
+            var report=new System.Text.StringBuilder();
+            int bad=0;
+            for(int i=0;i<Levels.Length;i++)
+            {
+                var lv=Levels[i];
+                probe._lv=lv;
+                probe._levelIndex=i;
+                probe._sticky=StickyBeds(i);
+                probe._anyBed=AnyBed(i);
+                probe._walls.Clear(); foreach(var w in lv.walls) probe._walls.Add(w);
+                int n=lv.ents.Length;
+                probe._pos=new Vector2Int[n]; probe._bed=new Vector2Int[n];
+                for(int e=0;e<n;e++)
+                {
+                    probe._pos[e]=new Vector2Int(lv.ents[e].x,lv.ents[e].y);
+                    probe._bed[e]=new Vector2Int(lv.ents[e].bx,lv.ents[e].by);
+                }
+                var path=probe.SolveFrom(probe._pos);
+                int got=path?.Count ?? -1;
+                if(got!=lv.par)
+                {
+                    bad++;
+                    report.AppendLine($"BAD level {i+1}: file says par {lv.par}, the game's own solver says {(got<0?"unsolvable":got.ToString())}");
+                }
+            }
+            Destroy(probe.gameObject);
+            report.AppendLine(bad==0
+                ? $"OK - all {Levels.Length} levels re-solved by the game's own solver, every par matches."
+                : $"{bad} of {Levels.Length} levels DISAGREE - the C# and Python rules have drifted apart.");
+            return report.ToString();
+        }
 
         private void SetupCamera()
         {
@@ -413,25 +943,51 @@ namespace SleepyZoo
             _cam.clearFlags=CameraClearFlags.SolidColor; _cam.backgroundColor=NightBottom;
         }
 
-        private void LoadLevel(int index)
+        /// Which nightly puzzle tonight is. The pool is walked in order so consecutive
+        /// nights never repeat, and it's driven purely by the date — so every player
+        /// gets the same board without anything having to be fetched or agreed on.
+        private static int TonightsIndex =>
+            DailyCount==0 ? -1 : ((Nightly.Tonight % DailyCount) + DailyCount) % DailyCount;
+
+        private void LoadDaily()
+        {
+            if(DailyCount==0){ LoadLevel(ResumeLevel()); return; }
+            LoadBoard(Dailies[TonightsIndex], -1, true);
+        }
+
+        private void LoadLevel(int index) =>
+            LoadBoard(Levels[Mathf.Clamp(index,0,Levels.Length-1)],
+                      Mathf.Clamp(index,0,Levels.Length-1), false);
+
+        private void LoadBoard(Lv lv, int index, bool daily)
         {
             foreach (Transform c in transform) Destroy(c.gameObject);
             _walls.Clear(); _undo.Clear();
             _moves=0; _solved=false; _stars=0; _levelTime=0f; _showHint=false; _swiping=false;
             _arrowTf=null; _arrowSr=null; _arrowOn=false; _hintPath=null;
 
-            _levelIndex=Mathf.Clamp(index,0,Levels.Length-1);
-            _sticky=StickyBeds(_levelIndex);
+            _daily=daily;
+            _levelIndex=index;
             _bedGlow.Clear();
-            // The full "how to play" walkthrough shows on the FIRST level of each
-            // chapter until it's been cleared once — chapter 2 changes the rule, so
-            // it earns the same guided first swipe that level 1 gets.
-            _chapter=ChapterOf(_levelIndex);
-            _isTutorial=(_levelIndex==ChapterFirstLevel(_chapter)
-                         && PlayerPrefs.GetInt(TaughtKey(_chapter),0)==0);
+            if(daily)
+            {
+                // Chapter one's rules, always. See Nightly for why that isn't negotiable.
+                _sticky=false; _anyBed=false; _chapter=0; _isTutorial=false;
+            }
+            else
+            {
+                _sticky=StickyBeds(_levelIndex);
+                _anyBed=AnyBed(_levelIndex);
+                // The full "how to play" walkthrough shows on the FIRST level of each
+                // chapter until it's been cleared once — chapter 2 changes the rule, so
+                // it earns the same guided first swipe that level 1 gets.
+                _chapter=ChapterOf(_levelIndex);
+                _isTutorial=(_levelIndex==ChapterFirstLevel(_chapter)
+                             && PlayerPrefs.GetInt(TaughtKey(_chapter),0)==0);
+                PlayerPrefs.SetInt("zoo_level",_levelIndex); PlayerPrefs.Save();
+            }
             _tipTime=0f;
-            PlayerPrefs.SetInt("zoo_level",_levelIndex); PlayerPrefs.Save();
-            _lv=Levels[_levelIndex];
+            _lv=lv;
             foreach (var w in _lv.walls) _walls.Add(w);
 
             int n=_lv.ents.Length;
@@ -508,6 +1064,32 @@ namespace SleepyZoo
                     Tile(CellToWorld(cell),0,TileCream,RoundedTile(),0.92f);
                 }
             }
+
+            // ---- this chapter's toy, drawn on top of the plain floor ----
+            // Each reads as a different material so you can tell them apart at a
+            // glance without a legend: silk shines, honey is thick and round, a
+            // burrow is a hole with a dark middle.
+            foreach(var c in _lv.rugs)
+            {
+                var t=Tile(CellToWorld(c)+new Vector3(0,0,-0.01f),1,RugSilk,RoundedTile(),0.86f);
+                var sheen=Tile(CellToWorld(c)+new Vector3(0,0.06f,-0.02f),2,Color.white,SoftDisc(),0.52f);
+                sheen.GetComponent<SpriteRenderer>().color=new Color(1f,1f,1f,0.34f);
+            }
+            foreach(var c in _lv.honey)
+            {
+                Tile(CellToWorld(c)+new Vector3(0,0,-0.01f),1,HoneyDark,SoftDisc(),0.94f);
+                var top=Tile(CellToWorld(c)+new Vector3(0,0.03f,-0.02f),2,HoneyGold,SoftDisc(),0.74f);
+                top.GetComponent<SpriteRenderer>().color=HoneyGold;
+            }
+            for(int k=0;k<_lv.holes.Length;k++)
+            {
+                var c=_lv.holes[k];
+                // the two ends of a pair share a colour, so which goes where is obvious
+                Color rim=HolePair[(k/2)%HolePair.Length];
+                Tile(CellToWorld(c)+new Vector3(0,0,-0.01f),1,rim,SoftDisc(),0.90f);
+                var mouth=Tile(CellToWorld(c)+new Vector3(0,-0.02f,-0.02f),2,HoleDark,SoftDisc(),0.60f);
+                mouth.GetComponent<SpriteRenderer>().color=HoleDark;
+            }
         }
 
         private Transform Tile(Vector3 pos,int order,Color col,Sprite sprite,float worldSize)
@@ -558,7 +1140,20 @@ namespace SleepyZoo
             float parentScale;
             if(s!=null){ sr.sprite=s; parentScale=0.86f/s.bounds.size.x; }
             else { sr.sprite=RoundedTile(); sr.color=new Color(0.9f,0.7f,0.55f); parentScale=0.7f; }
+            if(i==_lv.heavy) parentScale*=1.18f;
             go.transform.localScale=new Vector3(parentScale,parentScale,1f);
+
+            // The heavy sleeper is drawn bigger and sits on a dark ring, so "this one
+            // isn't going anywhere on its own" is legible before you try to move it.
+            if(i==_lv.heavy)
+            {
+                var ring=new GameObject("HeavyRing"); ring.transform.SetParent(go.transform);
+                ring.transform.localPosition=new Vector3(0,-0.04f/parentScale,0.25f);
+                var rsr=ring.AddComponent<SpriteRenderer>(); rsr.sprite=SoftDisc(); rsr.sortingOrder=4;
+                rsr.color=new Color(0.30f,0.24f,0.30f,0.75f);
+                float rs=1.30f/(parentScale*SoftDisc().bounds.size.x);
+                ring.transform.localScale=new Vector3(rs,rs*0.72f,1f);
+            }
 
             // soft signature-colour glow that rides along under the animal. It's a child,
             // so its local scale is divided back out of the parent's scale to land at ~1 cell.
@@ -610,9 +1205,10 @@ namespace SleepyZoo
             for (int i=0;i<_view.Length;i++)
             {
                 var s=Pet(_pet[i]); float b=s!=null?0.86f/s.bounds.size.x:0.7f;
+                if(i==_lv.heavy) b*=1.18f;               // the big one really is bigger
                 // a tucked-in sleeper settles a little smaller, so "this one is done"
                 // is readable without reading the board
-                bool asleep=_sticky && _pos[i]==_bed[i];
+                bool asleep=Asleep(_pos,i);
                 if(asleep) b*=0.86f;
                 _view[i].position=Vector3.Lerp(_view[i].position,_target[i],Time.deltaTime*16f);
 
@@ -680,7 +1276,7 @@ namespace SleepyZoo
             {
                 var sr=_bedGlow[i]; if(sr==null) continue;
                 var c=sr.color;
-                float a = _pos[i]==_bed[i] ? 1f : 0.62f+0.30f*pulse;
+                float a = Asleep(_pos,i) ? 1f : 0.62f+0.30f*pulse;
                 sr.color=new Color(c.r,c.g,c.b,a);
             }
         }
@@ -733,19 +1329,92 @@ namespace SleepyZoo
             var occ=new HashSet<Vector2Int>(np);
             foreach(int i in order)
             {
-                if(_sticky && np[i]==_bed[i]) continue;   // fast asleep — a soft wall now
+                if(Asleep(np,i)) continue;                // tucked in — a soft wall now
+                if(i==_lv.heavy) continue;                // too heavy to move on its own
                 occ.Remove(np[i]);
-                var p=np[i];
-                while(true)
+                var p=Walk(np, i, np[i], dir, occ);
+                // Heavy sleeper: if we stopped because the big one is in the way, shove
+                // it along first and then keep going into the space it left.
+                int guard=0;
+                while(_lv.heavy>=0 && guard++<8)
                 {
-                    var q=p+dir;
-                    if(q.x<0||q.x>=_lv.w||q.y<0||q.y>=_lv.h||_walls.Contains(q)||occ.Contains(q)) break;
-                    p=q;
-                    if(_sticky && p==_bed[i]) break;      // caught by its own bed
+                    var ahead=p+dir;
+                    if(!InBounds(ahead) || np[_lv.heavy]!=ahead || Asleep(np,_lv.heavy)) break;
+                    occ.Remove(ahead);
+                    var hp=Walk(np, _lv.heavy, ahead, dir, occ);
+                    occ.Add(hp);
+                    np[_lv.heavy]=hp;
+                    if(hp==ahead) break;                  // it couldn't budge, so neither can we
+                    p=Walk(np, i, p, dir, occ);
                 }
                 np[i]=p; occ.Add(p);
             }
             return np;
+        }
+
+        // Is entity i already tucked in? Under Musical Beds any bed will do, so an
+        // animal is asleep if it's sitting on ANY bed; otherwise only its own counts.
+        private bool Asleep(Vector2Int[] p, int i)
+        {
+            if(!_sticky) return false;
+            if(!_anyBed) return p[i]==_bed[i];
+            for(int b=0;b<_bed.Length;b++) if(p[i]==_bed[b]) return true;
+            return false;
+        }
+        private bool IsBedFor(int i, Vector2Int c)
+        {
+            if(!_anyBed) return c==_bed[i];
+            for(int b=0;b<_bed.Length;b++) if(c==_bed[b]) return true;
+            return false;
+        }
+        private bool InBounds(Vector2Int c)=>c.x>=0&&c.x<_lv.w&&c.y>=0&&c.y<_lv.h;
+
+        /// One animal's skid, from `from` until something stops it. This is the only
+        /// place the board's toys are interpreted, so the game, the hint solver and
+        /// the level generator can't disagree about what a swipe does.
+        private Vector2Int Walk(Vector2Int[] np, int i, Vector2Int from, Vector2Int dir, HashSet<Vector2Int> occ)
+        {
+            var p=from;
+            _trail.Clear(); _trail.Add(p);
+            int guard=_lv.w*_lv.h*2+8;
+            while(guard-->0)
+            {
+                var q=p+dir;
+                if(!InBounds(q)||_walls.Contains(q)||occ.Contains(q)) break;
+                p=q;
+                // burrow: drop in one end, pop out of the other and keep going
+                var exit=HoleExit(p);
+                if(exit.HasValue && !occ.Contains(exit.Value) && !_walls.Contains(exit.Value))
+                {
+                    p=exit.Value;
+                    _trail.Add(p);
+                    if(_sticky && IsBedFor(i,p)) break;
+                    if(IsHoney(p)) break;
+                    continue;
+                }
+                _trail.Add(p);
+                if(_sticky && IsBedFor(i,p)) break;        // caught by a bed
+                if(IsHoney(p)) break;                      // stuck in the honey
+            }
+            // silk: you can cross a rug but never come to rest on one, so back up
+            // along the way you came until the floor is solid again
+            while(_trail.Count>1 && IsRug(p)) { _trail.RemoveAt(_trail.Count-1); p=_trail[_trail.Count-1]; }
+            return p;
+        }
+
+        private readonly List<Vector2Int> _trail = new();
+        private bool IsRug(Vector2Int c){ foreach(var r in _lv.rugs) if(r==c) return true; return false; }
+        private bool IsHoney(Vector2Int c){ foreach(var r in _lv.honey) if(r==c) return true; return false; }
+        // Burrows are stored in pairs: 0<->1, 2<->3, ...
+        private Vector2Int? HoleExit(Vector2Int c)
+        {
+            var hs=_lv.holes;
+            for(int k=0;k+1<hs.Length;k+=2)
+            {
+                if(hs[k]==c) return hs[k+1];
+                if(hs[k+1]==c) return hs[k];
+            }
+            return null;
         }
 
         private void DoMove(Vector2Int dir)
@@ -811,7 +1480,20 @@ namespace SleepyZoo
         }
         private bool IsGoal(Vector2Int[] s)
         {
-            for(int i=0;i<s.Length;i++) if(s[i]!=_bed[i]) return false; return true;
+            if(!_anyBed)
+            {
+                for(int i=0;i<s.Length;i++) if(s[i]!=_bed[i]) return false;
+                return true;
+            }
+            // Musical Beds: nobody minds whose bed is whose, so the level is done
+            // when every bed has somebody in it.
+            for(int b=0;b<_bed.Length;b++)
+            {
+                bool filled=false;
+                for(int i=0;i<s.Length;i++) if(s[i]==_bed[b]){ filled=true; break; }
+                if(!filled) return false;
+            }
+            return true;
         }
 
         // Breadth-first search back to the beds; returns the shortest swipe sequence.
@@ -863,9 +1545,19 @@ namespace SleepyZoo
 
         private void CheckWin()
         {
-            for(int i=0;i<_pos.Length;i++) if(_pos[i]!=_bed[i]) return;
+            if(!IsGoal(_pos)) return;
             _solved=true;
             _stars = _moves<=_lv.par ? 3 : (_moves<=TwoStarMoves(_lv.par) ? 2 : 1);
+            if(_daily)
+            {
+                // Tonight's Puzzle pays nights, never stars. Stars open chapters, and a
+                // daily puzzle that opened chapters would drag anyone who plays it past
+                // the levels that teach the rules — and punish anyone who doesn't.
+                Nightly.MarkDone();
+                Haptics.Medium();
+                StartCoroutine(WinFanfare(_stars));
+                return;
+            }
             int key=PlayerPrefs.GetInt("zoo_stars_"+_levelIndex,0);
             if(_stars>key) PlayerPrefs.SetInt("zoo_stars_"+_levelIndex,_stars);
             if(_isTutorial) PlayerPrefs.SetInt(TaughtKey(_chapter),1);     // never re-teach
@@ -874,6 +1566,7 @@ namespace SleepyZoo
             int nextLv=Mathf.Min(_levelIndex+1,Levels.Length-1);
             if(nextLv>furthest) PlayerPrefs.SetInt("zoo_furthest",nextLv);
             PlayerPrefs.Save();
+            SaveGuard.Mirror();          // keep the backup copy level with the real save
             Haptics.Medium();
             StartCoroutine(WinFanfare(_stars));
         }
@@ -903,7 +1596,9 @@ namespace SleepyZoo
             // Header text sits BELOW the Menu button's row, centred full-width, so the
             // Menu pill can never overlap the title (even the long "Welcome!").
             float hy = top + 64f;
-            string heading = _isTutorial ? (_chapter==0?"Welcome!":"Sticky beds!") : $"Level {_levelIndex+1}";
+            string heading = _daily ? "Tonight's Puzzle"
+                           : _isTutorial ? (_chapter==0?"Welcome!":ChapterName(_chapter))
+                           : $"Level {_levelIndex+1}";
             GUI.Label(new Rect(0,hy,Screen.width,46), heading, _title);
 
             if(!_solved)
@@ -916,23 +1611,18 @@ namespace SleepyZoo
                 // on the next few levels — both fade the moment the player acts.
                 if(_isTutorial && _moves==0)
                 {
-                    if(_chapter==0)
-                    {
-                        GUI.Label(new Rect(16,hy+48,Screen.width-32,28),"Swipe any way — everyone slides at once.",_sub);
-                        GUI.Label(new Rect(16,hy+78,Screen.width-32,28),"Follow the arrow to the glowing bed.",_sub);
-                    }
-                    else
-                    {
-                        GUI.Label(new Rect(16,hy+48,Screen.width-32,28),"Tonight the beds hold on to you.",_sub);
-                        GUI.Label(new Rect(16,hy+78,Screen.width-32,28),"Brush past your own bed and you're in for good.",_sub);
-                    }
+                    // one line per chapter, from the same table the menu reads, so the
+                    // rule is only ever written down in one place
+                    GUI.Label(new Rect(16,hy+48,Screen.width-32,28),RuleFor(_chapter).taught,_sub);
+                    GUI.Label(new Rect(16,hy+78,Screen.width-32,28),
+                              _chapter==0?"Follow the arrow to the glowing bed.":"Follow the arrow.",_sub);
                 }
                 else if(!_isTutorial)
                 {
                     GUI.Label(new Rect(0,hy+48,Screen.width,28), $"3 stars in {_lv.par} moves   -   {_moves} so far", _sub);
                     // teaching tip on the first few levels of EACH chapter, on its own
                     // soft strip so it stays legible over the board
-                    int intoChapter=_levelIndex-ChapterFirstLevel(_chapter);
+                    int intoChapter=_daily?1:_levelIndex-ChapterFirstLevel(_chapter);
                     if(intoChapter>=1 && intoChapter<=4 && _moves==0 && _tipTime<6f)
                     {
                         float tw=Screen.width-56f;
@@ -952,7 +1642,7 @@ namespace SleepyZoo
                 var rUndo=new Rect(cx-bw-gap/2, by, bw, bh); _uiRects.Add(rUndo);
                 var rReset=new Rect(cx+gap/2, by, bw, bh); _uiRects.Add(rReset);
                 if(CozyButton(rUndo,"Undo",_btn)) Undo();
-                if(CozyButton(rReset,"Reset",_btn)){ Sfx.Click(); LoadLevel(_levelIndex); }
+                if(CozyButton(rReset,"Reset",_btn)){ Sfx.Click(); if(_daily) LoadDaily(); else LoadLevel(_levelIndex); }
 
                 // Hint is always here to help; it pulses and speaks up after a struggle.
                 // Tapping it drops a glowing arrow on the board showing the very next
@@ -1005,6 +1695,8 @@ namespace SleepyZoo
             var box=new Rect(cx-w/2,(Screen.height-h)/2,w,h);
             if(_panelTex!=null) GUI.DrawTexture(box,_panelTex);
 
+            if(_daily){ DrawDailyWin(box,cx,w,h); return; }
+
             bool last=_levelIndex>=Levels.Length-1;
             int next=_levelIndex+1;
             bool nextOpen = !last && IsUnlocked(next);
@@ -1029,14 +1721,14 @@ namespace SleepyZoo
             {
                 int need=RequiredStars(next)-TotalStars();
                 string what = chapterDone
-                    ? $"Chapter {ChapterOf(next)+1} opens at {RequiredStars(next)} stars — {need} to go.\nOne bedtime rule is about to change."
+                    ? $"Chapter {ChapterOf(next)+1} opens at {RequiredStars(next)} stars — {need} to go.\n{ChapterTease(ChapterOf(next))}"
                     : $"Level {next+1} opens at {RequiredStars(next)} stars.\n{need} more to go — replay for stars!";
                 GUI.Label(new Rect(box.x+22,infoY,w-44,infoH), what,_panelSub);
             }
             else if(chapterDone)
             {
                 GUI.Label(new Rect(box.x+22,infoY,w-44,infoH),
-                    $"Chapter {ChapterOf(next)+1}: {ChapterName(ChapterOf(next))}\nSomething about bedtime is different from here on.",_panelSub);
+                    $"Chapter {ChapterOf(next)+1}: {ChapterName(ChapterOf(next))}\n{ChapterBlurb(ChapterOf(next))}",_panelSub);
             }
             else
             {
@@ -1062,6 +1754,43 @@ namespace SleepyZoo
             }
             else if(CozyButton(rAct, last?"Play again":(chapterDone?"See what changed":"Next level"),_btn))
             { Sfx.Click(); LoadLevel(last?0:next); }
+        }
+
+        /// The end of Tonight's Puzzle. Deliberately a dead end: there is no "next",
+        /// because the whole point is that tonight is finished and tomorrow is a
+        /// separate, small pleasure. A daily puzzle with a "play another" button is
+        /// just a level pack that resets your streak for fun.
+        private void DrawDailyWin(Rect box, float cx, float w, float h)
+        {
+            GUI.Label(new Rect(box.x,box.y+h*0.11f,w,52), "Goodnight.", _win);
+            DrawStars(cx, box.y+h*0.31f, _stars, Mathf.Min(h*0.16f, w*0.13f));
+
+            int streak=Nightly.Streak;
+            string nights = streak==1 ? "1 night in a row" : $"{streak} nights in a row";
+            GUI.Label(new Rect(box.x,box.y+h*0.49f,w,30),
+                      $"{_moves} moves   -   {nights}", _panelBody);
+
+            float bh=Mathf.Min(92f, h*0.20f);
+            float by=box.yMax - bh - h*0.07f;
+            float infoY=box.y+h*0.545f, infoH=by-infoY-4f;
+
+            int lit=Nightly.Lanterns;
+            string lanterns = lit>=Nightly.MaxLanterns
+                ? "Every lantern in the zoo is lit."
+                : $"{lit} of {Nightly.MaxLanterns} lanterns lit in the zoo.";
+            string best = streak>=Nightly.BestStreak && streak>1
+                ? "That's your longest run yet."
+                : "A new puzzle arrives tomorrow night.";
+            GUI.Label(new Rect(box.x+22,infoY,w-44,infoH), $"{lanterns}\n{best}", _panelSub);
+
+            float gap=16f;
+            float menuW=Mathf.Min(150f, w*0.32f);
+            float actW=Mathf.Min(330f, w*0.52f);
+            float rowW=menuW+gap+actW, sx=cx-rowW/2f;
+            var rMenu=new Rect(sx, by, menuW, bh); _uiRects.Add(rMenu);
+            if(CozyButton(rMenu,"Menu",_btnMenu)){ Sfx.Click(); SceneManager.LoadScene("MainMenu"); }
+            var rAct=new Rect(sx+menuW+gap, by, actW, bh); _uiRects.Add(rAct);
+            if(CozyButton(rAct,"Back to the zoo",_btn)){ Sfx.Click(); LoadLevel(ResumeLevel()); }
         }
 
         // When a checkpoint blocks the next level, send the player to the earliest

@@ -15,7 +15,7 @@ namespace ChonkyMerge.EditorTools
         {
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
-            PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel24; // Android 7.0+
+            PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel25; // Android 7.1+ (Unity's floor)
             PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, "com.wobblegames.wobblezoo");
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.Portrait;
             EditorUserBuildSettings.buildAppBundle = false; // .apk, not .aab
