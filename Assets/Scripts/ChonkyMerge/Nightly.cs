@@ -45,7 +45,12 @@ namespace ChonkyMerge
         private static int RawStreak => PlayerPrefs.GetInt(KStreak, 0);
 
         /// True once tonight's puzzle has been solved.
-        public static bool DoneTonight => LastPlayed == Tonight;
+        ///
+        /// `>=` rather than `==` on purpose: if the device clock moves backwards — a
+        /// timezone change, a manual clock edit, a phone that boots with a bad date —
+        /// then "tonight" is a night we've already played, and the puzzle stays done.
+        /// With `==` you could wind the clock back and collect the same night forever.
+        public static bool DoneTonight => LastPlayed >= Tonight;
 
         /// The streak as it stands right now, already cooled for any nights missed.
         /// Deliberately a live calculation rather than a stored number: nothing has to

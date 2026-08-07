@@ -223,34 +223,71 @@ def dead_fraction(ctx, dist, rev, goals):
 
 # ---------------------------------------------------------------- the ramp
 # DESIGN RULE: a level may be hard to *think* about but never long to *play*.
-# Par is capped at 12. Difficulty comes from the board and the number of animals,
-# never from a longer solution. Every chapter restarts the ramp at two animals,
-# because every chapter hands the player a new toy to learn.
-RAMP_ENTS  = [2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5]
-RAMP_PAR   = [3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 11, 12]
-RAMP_SIZE  = [4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7]
-RAMP_WALLS = [0, 1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6]
-RAMP_TOYS  = [1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4]
-RAMP_DEAD  = [.04, .06, .08, .10, .12, .14, .16, .18, .20, .22, .24, .26, .28, .30, .32]
+#
+# This curve was rebuilt after play-testing on a phone. The old one reached FOUR
+# animals and par 9 by level 15, and five animals at par 12 by level 20 — the
+# hardest content in the game arrived inside the first twenty levels, in the
+# chapter that is supposed to be teaching you to swipe. For a game people open in
+# bed that isn't "challenging", it's work.
+#
+# Now: chapter one never goes past three animals or par 7, chapter two ends where
+# chapter one used to *start* getting hard, and par is capped at 9 across the whole
+# game instead of 12. Difficulty comes from board shape and the chapter's toy —
+# never from making you hold a longer plan in your head.
+CH1_ENTS  = [1, 1, 2, 2, 2, 2, 2, 2, 2, 2,  3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+CH1_PAR   = [2, 3, 3, 3, 4, 4, 4, 5, 5, 5,  4, 5, 5, 5, 6, 6, 6, 6, 7, 7]
+CH1_SIZE  = [4, 4, 4, 4, 4, 5, 5, 5, 5, 5,  5, 5, 5, 5, 6, 6, 6, 6, 6, 6]
+# At least one block from level 2 onward. A bare 4x4 with one animal has almost no
+# reachable states — every swipe just pins it to an edge — so an EXACT par of 3 is
+# very often impossible and the generator grinds forever on it. One block is what
+# makes a tiny board a puzzle at all.
+CH1_WALLS = [0, 1, 1, 1, 1, 1, 2, 2, 2, 2,  1, 2, 2, 2, 2, 3, 3, 3, 3, 4]
+
+CH2_ENTS  = [2, 2, 2, 2, 2, 2,  3, 3, 3, 3, 3, 3, 3,  4, 4, 4, 4, 4, 4, 4]
+CH2_PAR   = [3, 3, 4, 4, 4, 5,  5, 5, 6, 6, 6, 7, 7,  6, 7, 7, 8, 8, 8, 9]
+CH2_SIZE  = [4, 4, 5, 5, 5, 5,  5, 5, 5, 6, 6, 6, 6,  6, 6, 6, 6, 7, 7, 7]
+CH2_WALLS = [0, 1, 1, 1, 2, 2,  2, 2, 3, 3, 3, 3, 4,  3, 3, 4, 4, 4, 4, 5]
+
+# Chapters 3-8, fifteen slots each. Every chapter restarts at two animals, because
+# every chapter hands the player a new toy to learn.
+RAMP_ENTS  = [2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4]
+RAMP_PAR   = [3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 9]
+RAMP_SIZE  = [4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 7, 7]
+RAMP_WALLS = [0, 1, 1, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5]
+RAMP_TOYS  = [1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4]
+RAMP_DEAD  = [.02, .03, .05, .07, .09, .11, .13, .15, .17, .19, .21, .23, .25, .27, .29]
 
 # chapter (1-based) -> which toy the generator scatters on the board.
 # Chapter 0 isn't a chapter: it's the nightly-puzzle pool, which uses chapter one's
 # rules and nothing else, so a daily puzzle can never lean on (or spoil) a twist the
-# player hasn't reached.
-TOY = {0: "none", 3: "anybed", 4: "rugs", 5: "honey", 6: "holes", 7: "heavy", 8: "mixed"}
+# player hasn't reached. Chapters 1 and 2 have no scattered object at all — chapter
+# one is the bare rule, chapter two adds sticky beds and nothing else.
+TOY = {0: "none", 1: "none", 2: "sticky",
+       3: "anybed", 4: "rugs", 5: "honey", 6: "holes", 7: "heavy", 8: "mixed"}
+
+# The gentler chapters get their own tables; everything after shares the ramp.
+CH_TABLES = {1: (CH1_SIZE, CH1_ENTS, CH1_PAR, CH1_WALLS),
+             2: (CH2_SIZE, CH2_ENTS, CH2_PAR, CH2_WALLS)}
 
 
 def spec_for(chapter, k):
-    """One slot's recipe: chapter is 1-based, k is 0..14 within the chapter."""
-    n = RAMP_SIZE[k]
-    ents = RAMP_ENTS[k]
+    """One slot's recipe: chapter is 1-based, k is the slot within the chapter."""
+    if chapter in CH_TABLES:
+        sizes, ents_t, pars, walls_t = CH_TABLES[chapter]
+        n, ents, par, walls = sizes[k], ents_t[k], pars[k], walls_t[k]
+        # the teaching chapters stay forgiving: almost nothing can be wedged
+        dead = min(0.14, 0.02 + k * 0.007)
+        toys = 0
+    else:
+        n, ents, par = RAMP_SIZE[k], RAMP_ENTS[k], RAMP_PAR[k]
+        walls, toys, dead = RAMP_WALLS[k], RAMP_TOYS[k], RAMP_DEAD[k]
     # Heavy Sleepers spends one of its animals on the big one, which can't move by
     # itself - so it needs an extra body on the board or there's nothing to push with.
     if TOY[chapter] == "heavy":
         ents = min(5, ents + 1)
-    return dict(w=n, h=n, walls=RAMP_WALLS[k], ents=ents, par=RAMP_PAR[k],
-                toys=RAMP_TOYS[k], dead=RAMP_DEAD[k], toy=TOY[chapter],
-                budget=25 + k * 7)
+    return dict(w=n, h=n, walls=walls, ents=ents, par=par,
+                toys=toys, dead=dead, toy=TOY[chapter],
+                budget=25 + k * 6)
 
 
 def rules_for(chapter, toy_cells, heavy, beds, w, h, walls):
@@ -283,8 +320,8 @@ def gen_level(rng, chapter, sp):
         n_toys = max(2, (n_toys // 2) * 2)          # burrows only exist in pairs
     if kind == "mixed":
         n_toys = max(2, n_toys)
-    if kind == "none":
-        n_toys = 0                                  # nightly pool: a bare board
+    if kind in ("none", "sticky"):
+        n_toys = 0                                  # bare board: the rule IS the level
     deadline = time.time() + sp["budget"]
     best = None
 
@@ -329,6 +366,13 @@ def gen_level(rng, chapter, sp):
         par2 = None
         if kind == "none":
             pass            # no toy to justify — the board is the whole puzzle
+        elif kind == "sticky":
+            # Chapter two's twist has to be load-bearing: the level must be
+            # impossible, or strictly longer, if beds DIDN'T catch and hold.
+            loose = Ctx(w, h, walls, beds, sticky=False)
+            par2, _, _ = solve(loose, start, cap=60000)
+            if par2 is not None and par2 <= target:
+                continue
         elif kind == "anybed":
             # somebody has to end up in a bed that isn't "theirs", or the chapter's
             # whole idea is doing nothing
@@ -401,6 +445,46 @@ def emit(lv, hint):
 # One line per level: teach the chapter's toy in the first few, then get out of
 # the way. Fifteen per chapter, matching the fifteen slots.
 HINTS = {
+    1: ["Swipe any direction. Everyone slides until something stops them.",
+        "Walls stop you. So does the edge of the room.",
+        "Two friends now. One swipe moves them both.",
+        "Line them up, then send them home.",
+        "Animals stop each other too - use that.",
+        "A bigger room. Same one rule.",
+        "Sometimes the long way round is the short way.",
+        "Blocks are just walls you can plan around.",
+        "Send the far one first.",
+        "Corners are good places to park somebody.",
+        "Three friends. Nobody gets left out.",
+        "One swipe, three animals. Watch where they all end up.",
+        "Use a friend as a wall for another friend.",
+        "The order they stop in is the whole puzzle.",
+        "Take your time. Nothing here is in a hurry.",
+        "If it looks stuck, undo and try the other way.",
+        "Get one home, then work on the rest.",
+        "Every bed wants its own animal.",
+        "Almost the end of the first room.",
+        "Last one here. Then something changes."],
+    2: ["Beds are sticky now. Touch yours and you're asleep for good.",
+        "An animal that's asleep never moves again.",
+        "A sleeping friend is a wall. That's useful.",
+        "Park somebody in their bed, then use them.",
+        "Who should fall asleep first?",
+        "Sometimes you want to NOT land on your bed yet.",
+        "Three friends and sticky beds.",
+        "Wake nobody. Once they're in, they're in.",
+        "Build a wall out of sleepers.",
+        "The first one to bed changes everything after.",
+        "Try it the other way round.",
+        "Slow is fine. Undo is free.",
+        "Nearly there.",
+        "Four friends now. Same idea.",
+        "One at a time, in the right order.",
+        "The awkward one usually goes first.",
+        "A sleeper in the right spot solves the rest.",
+        "Think about who blocks who.",
+        "Second-to-last in this room.",
+        "Last one. Then the rules move again."],
     3: ["Sticky beds - but tonight nobody minds whose bed is whose.",
         "Any animal, any bed. Just fill them all.",
         "Two friends, two beds, either way round.",
@@ -546,18 +630,34 @@ def gen_chapter(args):
         # an exact par on a big board with a toy that has to matter is a narrow
         # target, so the last rungs shrink the room rather than abandoning a
         # chapter that already has fourteen good levels in it.
+        # It goes BOTH ways. The original ladder only ever removed walls and shrank
+        # the board, which is the right medicine for a crowded 7x7 and exactly the
+        # wrong medicine for a bare 4x4 — a tiny empty board has so few reachable
+        # states that an exact par is often unreachable, and the fix is more
+        # structure, not less. Chapter one ground to a halt on that.
         ladder = [
             dict(),
             dict(dead=min(0.55, base["dead"] + 0.06), budget=base["budget"] + 20),
+            dict(walls=base["walls"] + 1, dead=min(0.55, base["dead"] + 0.08),
+                 budget=base["budget"] + 30),
             dict(dead=min(0.55, base["dead"] + 0.12), toys=base["toys"] + 1,
                  budget=base["budget"] + 40),
+            dict(w=base["w"] + 1, h=base["h"] + 1, walls=base["walls"] + 1,
+                 dead=min(0.55, base["dead"] + 0.14), budget=base["budget"] + 60),
             dict(dead=min(0.55, base["dead"] + 0.12), walls=max(0, base["walls"] - 1),
                  toys=base["toys"] + 1, budget=base["budget"] + 60),
-            dict(w=max(5, base["w"] - 1), h=max(5, base["h"] - 1),
+            dict(w=max(4, base["w"] - 1), h=max(4, base["h"] - 1),
                  dead=min(0.55, base["dead"] + 0.18), budget=base["budget"] + 60),
-            dict(w=max(5, base["w"] - 1), h=max(5, base["h"] - 1),
-                 walls=max(0, base["walls"] - 1), toys=base["toys"] + 1,
-                 dead=0.55, budget=base["budget"] + 90),
+            dict(w=base["w"] + 1, h=base["h"] + 1, walls=base["walls"] + 2,
+                 toys=base["toys"] + 1, dead=0.55, budget=base["budget"] + 90),
+            # Last resort: one fewer animal. It's the thing a player is least likely to
+            # notice between two neighbouring levels, and it widens the target enormously
+            # — an exact par with five animals AND a heavy one that must actually get
+            # pushed is a very narrow needle, and chapter seven kept missing it.
+            dict(ents=max(2, base["ents"] - 1), dead=min(0.55, base["dead"] + 0.14),
+                 budget=base["budget"] + 90),
+            dict(ents=max(2, base["ents"] - 1), walls=base["walls"] + 1,
+                 w=base["w"] + 1, h=base["h"] + 1, dead=0.55, budget=base["budget"] + 120),
         ]
         for rung in ladder:
             lv = gen_level(rng, ch, dict(base, **rung))

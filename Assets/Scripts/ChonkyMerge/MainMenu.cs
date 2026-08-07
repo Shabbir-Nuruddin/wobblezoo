@@ -15,7 +15,6 @@ namespace ChonkyMerge
         private enum Panel { None, HighScore, Settings, Levels, Zoo }
         private Panel _panel = Panel.None;
 
-        private SpriteRenderer _soundIcon;
         private readonly System.Collections.Generic.List<Transform> _floaters = new();
         private readonly System.Collections.Generic.List<Vector3> _floaterBase = new();
         private GUIStyle _title, _big, _big2, _mid, _btn, _cellNum, _pill, _bigPill, _note, _noteLight, _cellSub, _cellSub2, _cellSub3, _chapTitle;
@@ -30,6 +29,7 @@ namespace ChonkyMerge
 
         private void Start()
         {
+            SleepyZoo.PuzzleGame.ReloadProgress();
             SetupCamera();
             H = _cam.orthographicSize;
             W = H * _cam.aspect;
@@ -39,7 +39,6 @@ namespace ChonkyMerge
             BuildFloaters();
             BuildLogo();
             BuildButtons();
-            BuildCornerIcons();
 
             if (ShotArg("-shots") != null) StartCoroutine(ShotTour());
         }
@@ -75,6 +74,7 @@ namespace ChonkyMerge
                 // and a few zoo arrivals all have something to show
                 for (int i = 0; i < upto; i++) PlayerPrefs.SetInt("zoo_stars_" + i, i % 3 == 0 ? 3 : 2);
                 PlayerPrefs.SetInt("zoo_furthest", upto);
+                SleepyZoo.PuzzleGame.ReloadProgress();   // written behind the star cache's back
             }
 
             // Force the arrival card on. Unity can flush PlayerPrefs behind our back, so
@@ -93,7 +93,7 @@ namespace ChonkyMerge
             _panel = Panel.Levels;   yield return Shot(dir, "03_path");
             _levelScroll = new Vector2(0, 900f); yield return Shot(dir, "04_path_scrolled");
             _panel = Panel.Zoo;      yield return Shot(dir, "05_zoo");
-            _zooScroll = new Vector2(620f, 0); yield return Shot(dir, "06_zoo_scrolled");
+            _zooScroll = new Vector2(0, 620f); yield return Shot(dir, "06_zoo_scrolled");
             _panel = Panel.Settings; yield return Shot(dir, "07_settings");
 
             // Hand over to the puzzle scene, which shoots one board per chapter and then
@@ -214,21 +214,12 @@ namespace ChonkyMerge
             return centerY - hgt * 0.5f; // bottom edge for next button
         }
 
-        private void BuildCornerIcons()
-        {
-            float m = H * 0.12f;
-            // Both corner icons live on the RIGHT so they never sit under the
-            // top-left "Levels" tab (which is drawn in OnGUI).
-            string snd = Sfx.SoundOn ? "btn_sound_on" : "btn_sound_off";
-            var sGo = FitWidth(snd, new Vector2(W - m - ContentW * 0.20f, H - m), 11, ContentW * 0.14f, out _);
-            _soundIcon = sGo.GetComponent<SpriteRenderer>();
-            var sc = sGo.AddComponent<BoxCollider2D>(); sc.isTrigger = true;
-            sGo.AddComponent<MenuButton>().Setup(ButtonId.SoundToggle, sGo.transform.localScale);
-
-            var shGo = FitWidth("btn_share", new Vector2(W - m, H - m), 11, ContentW * 0.14f, out _);
-            var shc = shGo.AddComponent<BoxCollider2D>(); shc.isTrigger = true;
-            shGo.AddComponent<MenuButton>().Setup(ButtonId.Share, shGo.transform.localScale);
-        }
+        // The floating sound and share sprites used to live here. They're gone on
+        // purpose: the source art has the glyph and its circle misaligned, so both
+        // buttons visibly spilled outside their own rims on a real phone — and they
+        // crowded the top-right corner that the Tonight pill needs. Sound already had
+        // a switch in Settings, and Share has moved there too, so the landing page is
+        // now just a title, three buttons, and the two tabs that lead somewhere.
 
         // ---- interaction ----
         private void Update()
@@ -241,6 +232,12 @@ namespace ChonkyMerge
                 else Application.Quit();
                 return;
             }
+
+            // Flick scrolling is driven from Update, not OnGUI, because IMGUI never
+            // delivers drag events for a scroll view's body.
+            if (_panel == Panel.Levels) UpdateFlickScroll(ref _levelScroll);
+            else if (_panel == Panel.Zoo) UpdateFlickScroll(ref _zooScroll);
+            else { _dragging = false; _dragVel = 0f; _dragDist = 0f; }
 
             if (_panel != Panel.None) return; // panel taps handled by OnGUI
 
@@ -288,16 +285,11 @@ namespace ChonkyMerge
                 case ButtonId.HighScore: _panel = Panel.HighScore; break;
                 case ButtonId.Settings: _panel = Panel.Settings; break;
                 case ButtonId.Share:
-                    NativeShare.ShareText("I'm playing Wobble Zoo 🐾 — a cozy bedtime puzzle where you swipe to tuck every sleepy animal into bed. So relaxing!");
+                    NativeShare.ShareText(ShareMessage);
                     break;
-                case ButtonId.SoundToggle:
-                    Sfx.SoundOn = !Sfx.SoundOn;
-                    _soundIcon.sprite = Resources.Load<Sprite>("Art/" + (Sfx.SoundOn ? "btn_sound_on" : "btn_sound_off"));
-                    break;
+                case ButtonId.SoundToggle: Sfx.SoundOn = !Sfx.SoundOn; break;
             }
         }
-
-        private static int Best() => PlayerPrefs.GetInt("chonky_best", 0);
 
         // ---- HUD / panels ----
         private void OnGUI()
@@ -323,32 +315,34 @@ namespace ChonkyMerge
             // Hidden while an arrival card is up, so nothing is tappable behind it.
             if (_panel == Panel.None && Zoo.PendingArrival() < 0)
             {
-                var rZoo = new Rect(16, Screen.height - Screen.safeArea.height - Screen.safeArea.y + 20, 168, 62);
+                // One honest top bar: two tabs, same size, one at each end, both sized
+                // for a thumb. They used to be a small pill on the left and a pill on
+                // the right that printed straight over the share icon.
+                float barY = Screen.height - Screen.safeArea.height - Screen.safeArea.y + 18;
+                float tabW = Mathf.Min(230f, Screen.width * 0.40f), tabH = 76f;
+
+                var rZoo = new Rect(18, barY, tabW, tabH);
                 if (GUI.Button(rZoo, $"Zoo  {Zoo.UnlockedCount()}/{Zoo.Count}", _pill))
                 { Sfx.Tap(); _panel = Panel.Zoo; _zooScroll = Vector2.zero; }
 
-                // Tonight's Puzzle, mirrored top-right. One pill, no second map and no
+                // Tonight's Puzzle, mirrored on the right. One tab, no second map and no
                 // badge shouting at anyone — a daily thing that nags is a daily thing
                 // people turn off. It says what it is and waits.
                 if (Nightly.Available)
                 {
-                    // Sits BELOW the sound/share icons, not level with the Zoo tab — the
-                    // top-right corner already belongs to them, and a pill printed over
-                    // the speaker is what the first screenshot showed.
-                    float pw = 178f;
-                    var rNight = new Rect(Screen.width - pw - 16, rZoo.y + 92, pw, 62);
-                    if (GUI.Button(rNight, Nightly.DoneTonight ? "Tonight  ok" : "Tonight", _pill))
+                    var rNight = new Rect(Screen.width - tabW - 18, barY, tabW, tabH);
+                    if (GUI.Button(rNight, Nightly.DoneTonight ? "Tonight  done" : "Tonight", _pill))
                     {
                         Sfx.Tap();
                         PlayerPrefs.SetInt(SleepyZoo.PuzzleGame.DailyRequestKey, 1);
                         PlayerPrefs.Save();
                         SceneManager.LoadScene("Puzzle");
                     }
-                    // Caption is right-aligned under the pill and kept short on purpose;
-                    // the full story is told on the win panel, not on the home screen.
+                    // Caption sits under the tab, right-aligned, and is kept short — the
+                    // full story is told on the win panel, not on the home screen.
                     var cap = _note.alignment;
                     _note.alignment = TextAnchor.UpperRight;
-                    GUI.Label(new Rect(rNight.xMax - 300, rNight.yMax + 4, 300, 28),
+                    GUI.Label(new Rect(rNight.xMax - 320, rNight.yMax + 4, 320, 28),
                               Nightly.Line(), _note);
                     _note.alignment = cap;
                 }
@@ -360,48 +354,47 @@ namespace ChonkyMerge
 
             if (_panel == Panel.None) return;
 
-            // dim
-            GUI.color = new Color(0, 0, 0, 0.55f);
-            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
-            GUI.color = Color.white;
+            // Settings. The old "High Score" panel and its "Reset high score" button are
+            // gone: they belonged to the merge game this project used to be, read from a
+            // score this game never writes, and were unreachable from the menu anyway.
+            var body = FullScreenPanel("Settings", out bool close);
+            if (close) { Sfx.Click(); _panel = Panel.None; return; }
 
-            float w = Mathf.Min(Screen.width * 0.82f, 560);
-            float h = 360;
-            var box = new Rect((Screen.width - w) / 2, (Screen.height - h) / 2, w, h);
-            DrawPanelBox(box);
+            float bw = Mathf.Min(460f, Screen.width * 0.82f);
+            float bh = 84f, gap = 18f;
+            float bx = (Screen.width - bw) * 0.5f;
+            float y = body.y + 40f;
 
-            if (_panel == Panel.HighScore)
+            if (GUI.Button(new Rect(bx, y, bw, bh), Sfx.SoundOn ? "Sound:  ON" : "Sound:  OFF", _pill))
+            { Sfx.SoundOn = !Sfx.SoundOn; Sfx.Click(); }
+            y += bh + gap;
+
+            // Vibration is its own switch, not part of Sound: playing muted with
+            // the animals still landing in your hand is a real way people play.
+            if (GUI.Button(new Rect(bx, y, bw, bh), Haptics.Enabled ? "Vibration:  ON" : "Vibration:  OFF", _pill))
             {
-                GUI.Label(new Rect(box.x, box.y + 24, box.width, 50), "High Score", _big);
-                GUI.Label(new Rect(box.x, box.y + 110, box.width, 90), Best().ToString(), _title);
-                if (GUI.Button(new Rect(box.x + box.width / 2 - 150, box.y + 230, 300, 60), "Share my score", _btn))
-                { Sfx.Click(); NativeShare.ShareText($"My Wobble Zoo best is {Best()} 🐾 can you beat it?"); }
+                Haptics.Enabled = !Haptics.Enabled;
+                Sfx.Tap();
+                if (Haptics.Enabled) Haptics.Soft();     // let them feel what they just turned on
             }
-            else // Settings
-            {
-                GUI.Label(new Rect(box.x, box.y + 24, box.width, 50), "Settings", _big);
-                if (GUI.Button(new Rect(box.x + box.width / 2 - 150, box.y + 110, 300, 60),
-                        Sfx.SoundOn ? "Sound:  ON" : "Sound:  OFF", _btn))
-                {
-                    Sfx.SoundOn = !Sfx.SoundOn; Sfx.Click();
-                    if (_soundIcon) _soundIcon.sprite = Resources.Load<Sprite>("Art/" + (Sfx.SoundOn ? "btn_sound_on" : "btn_sound_off"));
-                }
-                // Vibration is its own switch, not part of Sound: playing muted with
-                // the animals still landing in your hand is a real way people play.
-                if (GUI.Button(new Rect(box.x + box.width / 2 - 150, box.y + 185, 300, 60),
-                        Haptics.Enabled ? "Vibration:  ON" : "Vibration:  OFF", _btn))
-                {
-                    Haptics.Enabled = !Haptics.Enabled;
-                    Sfx.Tap();
-                    if (Haptics.Enabled) Haptics.Soft();     // let them feel what they just turned on
-                }
-                if (GUI.Button(new Rect(box.x + box.width / 2 - 150, box.y + 260, 300, 60), "Reset high score", _btn))
-                { Sfx.Click(); PlayerPrefs.SetInt("chonky_best", 0); PlayerPrefs.Save(); }
-            }
+            y += bh + gap;
 
-            if (GUI.Button(new Rect(box.x + box.width - 64, box.y + 12, 48, 48), "X", _btn))
-            { Sfx.Click(); _panel = Panel.None; }
+            // Share used to be a floating icon in the corner whose glyph spilled out of
+            // its own circle. It's a button with a word on it now.
+            if (GUI.Button(new Rect(bx, y, bw, bh), "Tell a friend", _pill))
+            { Sfx.Click(); NativeShare.ShareText(ShareMessage); }
+            y += bh + gap * 2f;
+
+            GUI.Label(new Rect(0, y, Screen.width, 30),
+                      $"Wobble Zoo  {Application.version}", _cellSub3);
         }
+
+        // Plain sentences only. The old copy used an em dash and it came through as a
+        // stray glyph in the share sheet on a real phone.
+        private const string ShareMessage =
+            "I'm playing Wobble Zoo, a cozy bedtime puzzle where one swipe slides every "
+            + "animal until something stops them. You just tuck them all into bed. "
+            + "It's very relaxing.";
 
         // ---- the zoo ----
         // A single wide bedroom you scroll sideways: a bed per animal, filled in as
@@ -419,50 +412,129 @@ namespace ChonkyMerge
             GUI.color = Color.white;
         }
 
-        private void DrawZooPanel()
+        /// The whole screen, not a card floating on it.
+        ///
+        /// The zoo and the level path used to be small dialogs centred over the landing
+        /// page: on a tall phone that wasted most of the display, made the level path
+        /// about six pillows tall, and read as "a popup" rather than "a place you went".
+        /// These are screens. They get the screen.
+        private Rect FullScreenPanel(string title, out bool close)
         {
-            GUI.color = new Color(0, 0, 0, 0.62f);
-            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), _dimTex);
+            var sa = Screen.safeArea;
+            var r = new Rect(0, 0, Screen.width, Screen.height);
+            GUI.color = new Color(0.15f, 0.12f, 0.20f, 1f);
+            GUI.DrawTexture(r, _dimTex);
             GUI.color = Color.white;
 
-            // the zoo is one row of beds, so the panel is only as tall as it needs
-            // to be — a half-empty card reads as "unfinished screen"
-            float w = Mathf.Min(Screen.width * 0.94f, 760);
-            float bedW0 = Mathf.Min(210f, (w - 44f) * 0.46f);
-            float h = Mathf.Min(Screen.height * 0.82f, 118f + bedW0 * 1.24f + 26f + 120f
-                                                      + (Nightly.Available ? 52f : 0f));
-            var box = new Rect((Screen.width - w) / 2, (Screen.height - h) / 2, w, h);
-            DrawPanelBox(box);
+            float top = Screen.height - (sa.y + sa.height);
 
-            GUI.Label(new Rect(box.x, box.y + 18, box.width, 46), "Your zoo", _big);
+            // Two rows rather than one. Sharing a row with Back meant the title either
+            // ran underneath it or wrapped and clipped, depending on screen width —
+            // there is no single centred rect that survives both.
+            float bw = Mathf.Min(150f, Screen.width * 0.30f);
+            close = GUI.Button(new Rect(18, top + 18, bw, 70), "Back", _pill);
+
+            bool wrapped = _big.wordWrap; _big.wordWrap = false;
+            GUI.Label(new Rect(0, top + 96, Screen.width, 56), title, _big);
+            _big.wordWrap = wrapped;
+
+            const float headH = 190f;   // Back row + title + room for the caller's subtitle
+            return new Rect(0, top + headH, Screen.width, sa.y + sa.height - top - headH);
+        }
+
+        // ---- flick scrolling ----
+        // IMGUI scroll views only respond to their scrollbar and the mouse wheel, so on
+        // a phone the level path simply could not be scrolled at all — the one thing the
+        // screen exists for. These fields drive a hand-rolled drag with inertia.
+        private bool _dragging;
+        private float _dragLastY, _dragVel, _dragDist;
+        private Rect _scrollView;          // where dragging is allowed, in GUI space
+        private float _scrollMax;          // content height minus view height
+
+        /// True while the finger has travelled far enough that this is a scroll, not a
+        /// tap — used to stop a flick from also opening whatever was under the finger.
+        private bool Dragged => _dragDist > 14f;
+
+        private void UpdateFlickScroll(ref Vector2 scroll)
+        {
+            if (_scrollMax <= 0f) { scroll.y = 0f; _dragVel = 0f; return; }
+            var p = Input.mousePosition;
+            var gui = new Vector2(p.x, Screen.height - p.y);
+
+            if (Input.GetMouseButtonDown(0) && _scrollView.Contains(gui))
+            { _dragging = true; _dragLastY = p.y; _dragVel = 0f; _dragDist = 0f; }
+            else if (_dragging && Input.GetMouseButton(0))
+            {
+                float dy = p.y - _dragLastY;
+                _dragLastY = p.y;
+                _dragDist += Mathf.Abs(dy);
+                scroll.y += dy;                       // finger up reveals what's below
+                if (Time.deltaTime > 0f) _dragVel = dy / Time.deltaTime;
+            }
+            else if (Input.GetMouseButtonUp(0)) _dragging = false;
+
+            if (!_dragging)
+            {
+                scroll.y += _dragVel * Time.deltaTime;
+                _dragVel = Mathf.MoveTowards(_dragVel, 0f, 2600f * Time.deltaTime);
+                if (Mathf.Abs(_dragVel) < 8f) _dragVel = 0f;
+            }
+            // a soft stop at both ends rather than a hard clamp mid-flick
+            if (scroll.y < 0f) { scroll.y = 0f; _dragVel = 0f; }
+            if (scroll.y > _scrollMax) { scroll.y = _scrollMax; _dragVel = 0f; }
+        }
+
+        private void DrawZooPanel()
+        {
+            var body = FullScreenPanel("Your zoo", out bool close);
+            if (close) { Sfx.Tap(); _panel = Panel.None; return; }
+
             int home = Zoo.UnlockedCount();
-            GUI.Label(new Rect(box.x, box.y + 62, box.width, 30),
+            GUI.Label(new Rect(0, body.y - 38, Screen.width, 32),
                       home == 1 ? "1 friend has moved in" : $"{home} friends have moved in", _noteLight);
-            if (GUI.Button(new Rect(box.xMax - 66, box.y + 14, 50, 50), "X", _pill))
-            { Sfx.Tap(); _panel = Panel.None; }
 
+            // A two-column grid that scrolls downward, rather than one row that scrolled
+            // sideways. Sideways scrolling in a list is something people simply don't try
+            // on a phone, so half the zoo was effectively invisible.
             float pad = 22f;
-            float bedW = Mathf.Min(210f, (w - pad * 2) * 0.46f);
-            float bedH = bedW * 1.24f;                    // room for the animal, its name and its stage
-            var view = new Rect(box.x + pad, box.y + 118, w - pad * 2, bedH + 26f);
-            var content = new Rect(0, 0, Zoo.Count * (bedW + 14f), bedH);
-            _zooScroll = GUI.BeginScrollView(view, _zooScroll, content);
+            float innerW = body.width - pad * 2;
+            float bedW = (innerW - 18f) * 0.5f;
+            float bedH = bedW * 1.30f;
+            int rows = (Zoo.Count + 1) / 2;
+
+            // Reserve room under the grid for the "who's next" line, the dream (which
+            // wraps to two lines on a narrow screen) and the lanterns. Under-reserving
+            // here is what cut "…and answers them too" in half.
+            float footer = 150f + (Nightly.Available ? 74f : 0f);
+            var view = new Rect(body.x + pad, body.y + 6, innerW, body.height - footer - 12f);
+            float contentH = rows * (bedH + 16f);
+            _scrollView = view;
+            _scrollMax = Mathf.Max(0f, contentH - view.height);
+
+            GUI.BeginScrollView(view, _zooScroll, new Rect(0, 0, innerW, contentH),
+                                GUIStyle.none, GUIStyle.none);
             for (int i = 0; i < Zoo.Count; i++)
-                DrawBed(new Rect(i * (bedW + 14f), 0, bedW, bedH), i);
+            {
+                float bx = (i % 2) * (bedW + 18f);
+                float by = (i / 2) * (bedH + 16f);
+                if (by + bedH < _zooScroll.y || by > _zooScroll.y + view.height) continue;
+                DrawBed(new Rect(bx, by, bedW, bedH), i);
+            }
             GUI.EndScrollView();
 
             // one line, always: who's next and exactly how far away they are
-            var line = new Rect(box.x + pad, view.yMax + 18, w - pad * 2, 40);
+            var line = new Rect(body.x + pad, view.yMax + 12, innerW, 44);
             GUI.Label(line, Zoo.NextLine(), _noteLight);
 
             // and the dream, for anyone who's settled all the way in
             int dreaming = -1;
             for (int i = Zoo.Count - 1; i >= 0; i--) if (Zoo.Stage(i) >= 2) { dreaming = i; break; }
             if (dreaming >= 0)
-                GUI.Label(new Rect(box.x + pad, line.yMax + 4, w - pad * 2, 40),
+                GUI.Label(new Rect(body.x + pad, line.yMax + 2, innerW, 72),
                           $"{Zoo.Pals[dreaming].name} {Zoo.Pals[dreaming].dream}.", _cellSub3);
 
-            if (Nightly.Available) DrawLanterns(new Rect(box.x + pad, box.yMax - 56f, w - pad * 2, 40f));
+            if (Nightly.Available)
+                DrawLanterns(new Rect(body.x + pad, body.yMax - 62f, innerW, 44f));
         }
 
         /// The streak made visible: one lantern per milestone, lit ones warm and
@@ -502,8 +574,13 @@ namespace ChonkyMerge
             int stage = Zoo.Stage(i);
             float cx = r.x + r.width * 0.5f;
 
-            float pw = r.width * 0.70f, ph = pw * 0.58f;
-            var pillow = new Rect(cx - pw * 0.5f, r.yMax - 76f - ph, pw, ph);
+            // Everything here is a fraction of the card, not a pixel count. The old
+            // fixed offsets were tuned for a 210px bed in a small dialog; on the
+            // full-screen grid the cards are twice that and the animals grew straight
+            // out of their beds.
+            float labelH = r.height * 0.27f;                 // name + how settled they are
+            float pw = r.width * 0.66f, ph = pw * 0.58f;
+            var pillow = new Rect(cx - pw * 0.5f, r.yMax - labelH - ph, pw, ph);
 
             // the blanket: a soft disc in the animal's signature colour, wider than the
             // bed so a rim of "whose bed is this" always shows around the cream
@@ -536,25 +613,26 @@ namespace ChonkyMerge
                 if (art != null)
                 {
                     // a settled animal curls up smaller and sinks further into the bed
-                    float k = stage >= 1 ? 0.52f : 0.60f;
+                    float k = stage >= 1 ? 0.44f : 0.50f;
                     float aw = r.width * k, ah = aw * art.height / (float)art.width;
                     float breathe = 1f + Mathf.Sin(Time.time * (stage >= 1 ? 1.1f : 1.7f) + i) * (stage >= 1 ? 0.022f : 0.012f);
                     aw *= breathe; ah *= breathe;
-                    // how much of the animal is tucked below the top of the pillow
-                    float tuck = stage >= 1 ? 0.42f : 0.30f;
-                    GUI.DrawTexture(new Rect(cx - aw * 0.5f, pillow.y - ah * (1f - tuck), aw, ah), art);
+                    // sit them IN the bed: their bottom rests part-way down the pillow
+                    float tuck = stage >= 1 ? 0.52f : 0.42f;
+                    GUI.DrawTexture(new Rect(cx - aw * 0.5f, pillow.y + ph * tuck - ah, aw, ah), art);
                 }
-                GUI.Label(new Rect(r.x, r.yMax - 66, r.width, 32), pal.name, _big2);
+                GUI.Label(new Rect(r.x, r.yMax - labelH + 2f, r.width, labelH * 0.52f), pal.name, _big2);
                 GUI.color = new Color(1f, 1f, 1f, 0.72f);
-                GUI.Label(new Rect(r.x, r.yMax - 36, r.width, 28), Zoo.StageWord(stage), _cellSub3);
+                GUI.Label(new Rect(r.x, r.yMax - labelH * 0.46f, r.width, labelH * 0.46f),
+                          Zoo.StageWord(stage), _cellSub3);
                 GUI.color = Color.white;
             }
             else
             {
                 GUI.color = new Color(1f, 1f, 1f, 0.40f);
-                GUI.Label(new Rect(r.x, pillow.y - r.height * 0.34f, r.width, 70), "?", _title);
+                GUI.Label(new Rect(r.x, pillow.y - r.height * 0.18f, r.width, r.height * 0.22f), "?", _title);
                 GUI.color = Color.white;
-                GUI.Label(new Rect(r.x + 4, r.yMax - 58, r.width - 8, 54), Zoo.Requirement(i), _cellSub3);
+                GUI.Label(new Rect(r.x + 4, r.yMax - labelH, r.width - 8, labelH), Zoo.Requirement(i), _cellSub3);
             }
         }
 
@@ -611,7 +689,7 @@ namespace ChonkyMerge
             {
                 Sfx.Win();
                 Zoo.MarkArrivalSeen();
-                _panel = Panel.Zoo; _zooScroll = new Vector2(i * 204f, 0);
+                _panel = Panel.Zoo; _zooScroll = Vector2.zero;   // grid scrolls vertically now
             }
             return true;
         }
@@ -625,20 +703,13 @@ namespace ChonkyMerge
 
         private void DrawLevelsPanel()
         {
-            GUI.color = new Color(0, 0, 0, 0.62f);
-            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), _dimTex);
-            GUI.color = Color.white;
-
-            float w = Mathf.Min(Screen.width * 0.94f, 760);
-            float h = Mathf.Min(Screen.height * 0.82f, 1180);
-            var box = new Rect((Screen.width - w) / 2, (Screen.height - h) / 2, w, h);
-            DrawPanelBox(box);
-
-            GUI.Label(new Rect(box.x, box.y + 18, box.width, 46), "Choose a level", _big);
-            GUI.Label(new Rect(box.x, box.y + 62, box.width, 30),
+            var body = FullScreenPanel("Choose a level", out bool close);
+            if (close) { Sfx.Click(); _panel = Panel.None; return; }
+            GUI.Label(new Rect(0, body.y - 38, Screen.width, 32),
                 $"{SleepyZoo.PuzzleGame.TotalStars()} / {SleepyZoo.PuzzleGame.MaxStars} stars collected", _noteLight);
-            if (GUI.Button(new Rect(box.xMax - 66, box.y + 14, 50, 50), "X", _pill))
-            { Sfx.Click(); _panel = Panel.None; }
+
+            var box = body;
+            float w = box.width;
 
             // ---- the blanket path ----
             // Levels used to be a 4-column grid: readable, but it looked like a table
@@ -647,9 +718,13 @@ namespace ChonkyMerge
             // reads as somewhere you're travelling rather than a list you're ticking.
             float pad = 24f;
             float innerW = w - pad * 2;
-            float pillow = Mathf.Min(88f, innerW * 0.20f);
-            float step = pillow * 1.48f;                 // vertical distance between pillows
-            const float headH = 118f, chapGap = 30f;
+            // Pillows are sized so that about eight always fit on screen, whatever the
+            // screen is. Sizing them off the WIDTH looked right on a phone and showed
+            // only four at a time in a narrow window; sizing off the height keeps the
+            // path feeling like a path everywhere. Width still gets a veto.
+            float pillow = Mathf.Clamp(Mathf.Min(innerW * 0.30f, body.height / 11.4f), 76f, 200f);
+            float step = pillow * 1.42f;                 // vertical distance between pillows
+            float headH = pillow * 0.90f, chapGap = pillow * 0.26f;
 
             int chapters = SleepyZoo.PuzzleGame.ChapterCount;
             float contentH = 0f;
@@ -659,9 +734,13 @@ namespace ChonkyMerge
                 contentH += headH + (n - 1) * step + pillow + chapGap;
             }
 
-            var view = new Rect(box.x + pad, box.y + 104, innerW, h - 132);
-            var content = new Rect(0, 0, innerW - 16, contentH);
-            _levelScroll = GUI.BeginScrollView(view, _levelScroll, content);
+            var view = new Rect(box.x + pad, box.y + 8, innerW, box.height - 16);
+            var content = new Rect(0, 0, innerW, contentH);
+            // Register the drag area and travel for Update's flick handler, and hide the
+            // scrollbars — a thin IMGUI scrollbar is not a mobile control.
+            _scrollView = view;
+            _scrollMax = Mathf.Max(0f, contentH - view.height);
+            GUI.BeginScrollView(view, _levelScroll, content, GUIStyle.none, GUIStyle.none);
 
             // 130 levels is a long scroll: open the picker where the player actually
             // is, not at level 1 they cleared hours ago
@@ -676,32 +755,42 @@ namespace ChonkyMerge
                     upto += headH + (n - 1) * step + pillow + chapGap;
                 }
                 int into = here - SleepyZoo.PuzzleGame.ChapterFirstLevel(SleepyZoo.PuzzleGame.ChapterOf(here));
-                _levelScroll = new Vector2(0, Mathf.Max(0f, upto + into * step - view.height * 0.42f));
+                _levelScroll = new Vector2(0, Mathf.Clamp(upto + into * step - view.height * 0.42f, 0f, _scrollMax));
             }
 
-            float cx = (innerW - 16) * 0.5f;
-            float amp = Mathf.Min((innerW - 16) * 0.5f - pillow * 0.60f, pillow * 1.7f);
+            float cx = innerW * 0.5f;
+            float amp = Mathf.Min(innerW * 0.5f - pillow * 0.62f, pillow * 1.5f);
             float y = 0f;
+            // Only draw what's actually on screen. A pillow is roughly a dozen textures
+            // and a label, so drawing all 130 of them plus their stitching was over a
+            // thousand draw calls a frame for the eight or so anyone can see.
+            float visTop = _levelScroll.y - step, visBot = _levelScroll.y + view.height + step;
             for (int ch = 0; ch < chapters; ch++)
             {
                 int first = SleepyZoo.PuzzleGame.ChapterFirstLevel(ch);
                 int lastLv = SleepyZoo.PuzzleGame.ChapterLastLevel(ch);
                 bool chOpen = SleepyZoo.PuzzleGame.ChapterUnlocked(ch);
-                y = DrawChapterHeader(y, innerW - 16, ch, chOpen, headH);
+                float headTop = y;
+                y += headH;
+                if (headTop < visBot && headTop + headH > visTop)
+                    DrawChapterHeader(headTop, innerW, ch, chOpen, headH);
 
                 float top = y + pillow * 0.5f;
                 // stitching first, so every pillow sits on top of its thread
                 for (int i = first; i < lastLv; i++)
                 {
                     int k = i - first;
-                    DrawStitches(new Vector2(cx + PathX(k, amp), top + k * step),
-                                 new Vector2(cx + PathX(k + 1, amp), top + (k + 1) * step),
+                    float ya = top + k * step, yb = top + (k + 1) * step;
+                    if (yb < visTop || ya > visBot) continue;
+                    DrawStitches(new Vector2(cx + PathX(k, amp), ya),
+                                 new Vector2(cx + PathX(k + 1, amp), yb),
                                  chOpen && Unlocked(i + 1));
                 }
                 for (int i = first; i <= lastLv; i++)
                 {
                     int k = i - first;
                     var c = new Vector2(cx + PathX(k, amp), top + k * step);
+                    if (c.y + pillow < visTop || c.y - pillow > visBot) continue;
                     DrawPillow(new Rect(c.x - pillow * 0.5f, c.y - pillow * 0.5f, pillow, pillow), i, chOpen);
                 }
                 y = top + (lastLv - first) * step + pillow * 0.5f + chapGap;
@@ -763,7 +852,9 @@ namespace ChonkyMerge
                 }
                 GUI.color = Color.white;
 
-                if (GUI.Button(r, GUIContent.none, GUIStyle.none))
+                // `!Dragged` so a flick down the path doesn't also launch whatever
+                // level happened to be under the finger when it lifted.
+                if (GUI.Button(r, GUIContent.none, GUIStyle.none) && !Dragged)
                 {
                     Sfx.Tap();
                     PlayerPrefs.SetInt("zoo_level", i); PlayerPrefs.Save();
@@ -773,7 +864,7 @@ namespace ChonkyMerge
             else if (gated)
             {
                 // a star checkpoint: tappable, so it can explain itself (see DrawGateHelp)
-                if (GUI.Button(r, GUIContent.none, GUIStyle.none))
+                if (GUI.Button(r, GUIContent.none, GUIStyle.none) && !Dragged)
                 {
                     Sfx.Locked();
                     _gateLevel = i;

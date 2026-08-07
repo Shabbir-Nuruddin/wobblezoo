@@ -747,6 +747,11 @@ namespace SleepyZoo
         private Vector2 _swipeStart;
         private bool _swiping;
         private bool _solved;
+        // The win panel used to appear the instant the last animal was logically home —
+        // covering the board before it had finished sliding there. The whole payoff of
+        // the game is watching the room go quiet, so the panel now waits for everyone
+        // to land, holds a beat, and fades in over the top.
+        private float _winAt, _winFade;
 
         // on-board guidance arrow (used for both the tutorial nudge and hints)
         private Transform _arrowTf;
@@ -823,10 +828,50 @@ namespace SleepyZoo
         // Levels open in order once you've cleared the one before, but a few
         // checkpoints also need a running star total — so a lazy 1-star run hits a
         // wall and has to replay a couple of levels for more stars.
-        public static int StarsFor(int i) => PlayerPrefs.GetInt("zoo_stars_" + i, 0);
+        // Stars are read constantly — the level picker asks about every level, and the
+        // zoo asks for the running total once per animal, every frame. Going to
+        // PlayerPrefs for each of those meant ~34,000 lookups AND ~34,000 string
+        // allocations per frame on the picker, which is a stutter you can feel and a
+        // phone you can warm your hands on. It also got three times worse the moment
+        // the game went from 40 levels to 130.
+        //
+        // So the whole star table lives in memory, and PlayerPrefs is only touched when
+        // it actually changes. Anything that writes stars behind this cache's back MUST
+        // call ReloadProgress() — scene loads do it automatically.
+        private static int[] _starCache;
+        private static int _starTotal;
+
+        public static void ReloadProgress()
+        {
+            _starCache = new int[Levels.Length];
+            _starTotal = 0;
+            for (int i = 0; i < Levels.Length; i++)
+            {
+                _starCache[i] = PlayerPrefs.GetInt("zoo_stars_" + i, 0);
+                _starTotal += _starCache[i];
+            }
+        }
+
+        public static int StarsFor(int i)
+        {
+            if (_starCache == null) ReloadProgress();
+            return (uint)i < (uint)_starCache.Length ? _starCache[i] : 0;
+        }
+
         public static int TotalStars()
         {
-            int t = 0; for (int i = 0; i < Levels.Length; i++) t += StarsFor(i); return t;
+            if (_starCache == null) ReloadProgress();
+            return _starTotal;
+        }
+
+        /// The one place stars are written. Keeps the cache and PlayerPrefs in step.
+        private static void SetStars(int i, int stars)
+        {
+            if (_starCache == null) ReloadProgress();
+            if ((uint)i >= (uint)_starCache.Length || stars <= _starCache[i]) return;
+            _starTotal += stars - _starCache[i];
+            _starCache[i] = stars;
+            PlayerPrefs.SetInt("zoo_stars_" + i, stars);
         }
         // Total stars required to step past each checkpoint. Every 4 levels there's
         // a small one; the big one is the chapter door at level 21. The curve sits
@@ -885,6 +930,7 @@ namespace SleepyZoo
 
         private void Start()
         {
+            ReloadProgress();          // a scene load is the one place prefs may have moved under us
             SetupCamera();
             // The menu's screenshot tour hands over to this scene so the store gets
             // pictures of the actual game, not just its menus.
@@ -1001,6 +1047,7 @@ namespace SleepyZoo
 
         private void LoadBoard(Lv lv, int index, bool daily)
         {
+            CancelHint();                       // never let a previous level's hint land here
             foreach (Transform c in transform) Destroy(c.gameObject);
             _walls.Clear(); _undo.Clear();
             _moves=0; _solved=false; _stars=0; _levelTime=0f; _showHint=false; _swiping=false;
@@ -1124,11 +1171,29 @@ namespace SleepyZoo
             for(int k=0;k<_lv.holes.Length;k++)
             {
                 var c=_lv.holes[k];
-                // the two ends of a pair share a colour, so which goes where is obvious
-                Color rim=HolePair[(k/2)%HolePair.Length];
+                // The two ends of a pair share a colour AND a number of pebbles on the
+                // rim: one pebble, two, three. Colour alone excluded roughly one man in
+                // twelve from reasoning about where a burrow goes — which turns a puzzle
+                // into a guess for them. The pebbles carry the same information without
+                // needing colour vision at all.
+                int pair=(k/2)%HolePair.Length;
+                Color rim=HolePair[pair];
                 Tile(CellToWorld(c)+new Vector3(0,0,-0.01f),1,rim,SoftDisc(),0.90f);
                 var mouth=Tile(CellToWorld(c)+new Vector3(0,-0.02f,-0.02f),2,HoleDark,SoftDisc(),0.60f);
                 mouth.GetComponent<SpriteRenderer>().color=HoleDark;
+
+                int marks=pair+1;
+                for(int m=0;m<marks;m++)
+                {
+                    float t = marks==1 ? 0f : (m/(float)(marks-1))*2f-1f;   // -1..1 across the rim
+                    var at=CellToWorld(c)+new Vector3(t*0.22f, 0.30f-Mathf.Abs(t)*0.05f, -0.03f);
+                    // A pale pebble on a pale rim was invisible at phone size. Dark core,
+                    // light halo — it has to read at a glance or it isn't doing its job.
+                    var halo=Tile(at+new Vector3(0,0,0.01f),3,Color.white,SoftDisc(),0.30f);
+                    halo.GetComponent<SpriteRenderer>().color=new Color(1f,0.99f,0.94f,0.85f);
+                    var dot=Tile(at,4,Color.white,SoftDisc(),0.19f);
+                    dot.GetComponent<SpriteRenderer>().color=new Color(0.20f,0.15f,0.22f,0.95f);
+                }
             }
         }
 
@@ -1232,8 +1297,17 @@ namespace SleepyZoo
 
         private void FrameCamera()
         {
-            float aspect=Mathf.Max(0.3f,(float)Screen.width/Screen.height), margin=1.7f;
-            _cam.orthographicSize=Mathf.Max(_lv.h*0.5f+margin,(_lv.w*0.5f+margin)/aspect);
+            // The board is the game; it should own the screen. A single 1.7-unit margin
+            // on every side meant the camera framed a box far wider than the board, and
+            // on a tall phone the board came out about a third of the screen with dead
+            // space all round it. The horizontal margin is now small (the board fills
+            // most of the width), the vertical one leaves room for the title above and
+            // the three buttons below, and the camera sits a touch low so the board
+            // rides slightly high — which is where a thumb wants it.
+            float aspect=Mathf.Max(0.3f,(float)Screen.width/Screen.height);
+            const float marginX=0.62f, marginY=1.25f;
+            _cam.orthographicSize=Mathf.Max(_lv.h*0.5f+marginY,(_lv.w*0.5f+marginX)/aspect);
+            _cam.transform.position=new Vector3(0,-_cam.orthographicSize*0.06f,-10);
 
             if(_bgTf!=null)
             {
@@ -1287,7 +1361,16 @@ namespace SleepyZoo
                 _view[i].localScale=Vector3.Lerp(_view[i].localScale,want,Time.deltaTime*18f);
             }
             PulseBeds();
-            if (_solved){ DriveArrow(); return; }
+            if (_solved)
+            {
+                // hold until nobody is still sliding, then a short beat, then fade up
+                bool settled=true;
+                for(int i=0;i<_moving.Length;i++) if(_moving[i]) settled=false;
+                bool ready = settled && Time.time-_winAt>0.55f;
+                _winFade=Mathf.MoveTowards(_winFade, ready?1f:0f, Time.deltaTime*3.2f);
+                DriveArrow(); return;
+            }
+            _winFade=0f;
             _levelTime+=Time.deltaTime;
             _tipTime+=Time.deltaTime;
             DriveArrow();
@@ -1305,7 +1388,7 @@ namespace SleepyZoo
             {
                 _swiping=false;
                 Vector2 d=(Vector2)Input.mousePosition-_swipeStart;
-                if (d.magnitude>28f) DoMove(Dir(d));
+                if (d.magnitude>SwipeThreshold) DoMove(Dir(d));
             }
 
             if (Input.GetKeyDown(KeyCode.RightArrow)) DoMove(Vector2Int.right);
@@ -1335,6 +1418,15 @@ namespace SleepyZoo
             foreach (var r in _uiRects) if (r.Contains(g)) return true;
             return false;
         }
+
+        /// How far a finger has to travel before it counts as a swipe.
+        ///
+        /// This was a flat 28 pixels, which is fine on a laptop and far too twitchy on a
+        /// phone: on a 1080-wide screen it's 2.6% of the width, so the small drift in an
+        /// ordinary tap fires a move the player never asked for. Scaling it to the screen
+        /// keeps it about a finger's width everywhere, and the floor keeps it sane in the
+        /// tiny windows the screenshot tour uses.
+        private static float SwipeThreshold => Mathf.Max(28f, Mathf.Min(Screen.width,Screen.height)*0.055f);
 
         private static Vector2Int Dir(Vector2 d)=>Mathf.Abs(d.x)>Mathf.Abs(d.y)?(d.x>0?Vector2Int.right:Vector2Int.left):(d.y>0?Vector2Int.up:Vector2Int.down);
 
@@ -1481,6 +1573,7 @@ namespace SleepyZoo
                 if(_travel[i]>0) _moving[i]=true;
                 _pos[i]=np[i]; _target[i]=CellToWorld(np[i]);
             }
+            CancelHint();                                     // a hint still thinking is now stale
             _hintPath=null; _showHint=false; _arrowOn=false;  // any move clears shown guidance
             _tipTime=999f;             // hide the teaching tip once they act
             _moves++; Sfx.Swipe(); CheckWin();
@@ -1544,7 +1637,61 @@ namespace SleepyZoo
             return true;
         }
 
+        // ---- the hint, solved across frames ----
+        // The same search as SolveFrom, but it hands the frame back every so often.
+        // The biggest boards reach ~88,000 states, and doing that in one go locks the
+        // phone up for a second or two the moment somebody taps Hint — on the exact
+        // levels where they're most likely to need it.
+        private bool _hintSolving, _hintCancel;
+        private const int HintStatesPerFrame = 2500;
+
+        private System.Collections.IEnumerator SolveHint()
+        {
+            _hintSolving=true; _hintCancel=false; _hintPath=null;
+            var start=_pos;
+            List<Vector2Int> result=null;
+
+            if(IsGoal(start)) result=new List<Vector2Int>();
+            else
+            {
+                var came=new Dictionary<long,(long prev,int dir)>();
+                var q=new Queue<Vector2Int[]>();
+                came[StateKey(start)]=(-1,-1); q.Enqueue(start);
+                long goal=-1; int budget=HintStatesPerFrame;
+                while(q.Count>0 && !_hintCancel)
+                {
+                    var cur=q.Dequeue(); long ck=StateKey(cur);
+                    for(int di=0; di<4; di++)
+                    {
+                        var ns=SlideSim(cur,AllDirs[di]); long nk=StateKey(ns);
+                        if(came.ContainsKey(nk)) continue;
+                        came[nk]=(ck,di);
+                        if(IsGoal(ns)){ goal=nk; q.Clear(); break; }
+                        q.Enqueue(ns);
+                    }
+                    if(goal>=0) break;
+                    if(came.Count>300000) break;
+                    if(--budget<=0){ budget=HintStatesPerFrame; yield return null; }
+                }
+                if(goal>=0 && !_hintCancel)
+                {
+                    result=new List<Vector2Int>();
+                    long k=goal;
+                    while(came[k].prev!=-1){ result.Add(AllDirs[came[k].dir]); k=came[k].prev; }
+                    result.Reverse();
+                }
+            }
+
+            _hintSolving=false;
+            if(_hintCancel || _solved) yield break;
+            _hintPath=result; _showHint=true;
+        }
+
+        /// Stop a hint that's still thinking — any move makes its answer stale.
+        private void CancelHint(){ _hintCancel=true; _hintSolving=false; }
+
         // Breadth-first search back to the beds; returns the shortest swipe sequence.
+        // Still used for the tutorial's demo swipe, where the board is tiny.
         private List<Vector2Int> SolveFrom(Vector2Int[] start)
         {
             if(IsGoal(start)) return new List<Vector2Int>();
@@ -1580,6 +1727,8 @@ namespace SleepyZoo
         private void Undo()
         {
             if(_undo.Count==0) return;
+            CancelHint();                             // the board is about to change under it
+            _hintPath=null; _showHint=false;
             var s=_undo.Pop();
             _landsThisMove=2; _hapticThisMove=true;    // undo is a quiet rewind, not a landing
             for(int i=0;i<_pos.Length;i++)
@@ -1594,7 +1743,7 @@ namespace SleepyZoo
         private void CheckWin()
         {
             if(!IsGoal(_pos)) return;
-            _solved=true;
+            _solved=true; _winAt=Time.time; _winFade=0f;
             _stars = _moves<=_lv.par ? 3 : (_moves<=TwoStarMoves(_lv.par) ? 2 : 1);
             if(_daily)
             {
@@ -1606,8 +1755,7 @@ namespace SleepyZoo
                 StartCoroutine(WinFanfare(_stars));
                 return;
             }
-            int key=PlayerPrefs.GetInt("zoo_stars_"+_levelIndex,0);
-            if(_stars>key) PlayerPrefs.SetInt("zoo_stars_"+_levelIndex,_stars);
+            SetStars(_levelIndex,_stars);          // keeps the in-memory star table in step
             if(_isTutorial) PlayerPrefs.SetInt(TaughtKey(_chapter),1);     // never re-teach
             // remember the furthest level reached so Play resumes there
             int furthest=PlayerPrefs.GetInt("zoo_furthest",0);
@@ -1698,14 +1846,15 @@ namespace SleepyZoo
                 bool struggling = _moves>=Mathf.Max(TwoStarMoves(_lv.par),5) || _levelTime>=25f;
                 float hw=Mathf.Min(260,Screen.width*0.60f), hh=70;
                 var rHint=new Rect(cx-hw/2, by-hh-16, hw, hh); _uiRects.Add(rHint);
-                string hlabel=_showHint?"Hide hint":(struggling?"Need a hint?":"Hint");
+                string hlabel=_hintSolving?"Thinking...":_showHint?"Hide hint":(struggling?"Need a hint?":"Hint");
                 var prev=GUI.color;
-                if(struggling && !_showHint) GUI.color=new Color(1f,1f,1f,0.82f+0.18f*Mathf.Sin(Time.unscaledTime*4f));
+                if(struggling && !_showHint && !_hintSolving) GUI.color=new Color(1f,1f,1f,0.82f+0.18f*Mathf.Sin(Time.unscaledTime*4f));
                 if(CozyButton(rHint,hlabel,_btn))
                 {
                     Sfx.Click();
-                    if(_showHint) _showHint=false;
-                    else { _hintPath=SolveFrom(_pos); _showHint=true; }
+                    if(_hintSolving) CancelHint();
+                    else if(_showHint) _showHint=false;
+                    else StartCoroutine(SolveHint());
                 }
                 GUI.color=prev;
 
@@ -1738,10 +1887,22 @@ namespace SleepyZoo
 
         private void DrawWinPanel(float cx, float u)
         {
-            GUI.color=new Color(0,0,0,0.62f); GUI.DrawTexture(new Rect(0,0,Screen.width,Screen.height),_dimTex); GUI.color=Color.white;
+            // Nothing at all until the animals have settled — see _winFade.
+            if(_winFade<=0.01f) return;
+            // Buttons stay untouchable until the panel is essentially solid, so a tap
+            // meant for the board can't accidentally hit "Next level" as it fades in.
+            bool live=_winFade>0.85f;
+            var oldColor=GUI.color;
+            GUI.color=new Color(1,1,1,_winFade);
+
+            GUI.color=new Color(0,0,0,0.62f*_winFade); GUI.DrawTexture(new Rect(0,0,Screen.width,Screen.height),_dimTex);
+            GUI.color=new Color(1,1,1,_winFade);
             float w=Mathf.Min(Screen.width*0.9f,660), h=w*(512f/768f);
-            var box=new Rect(cx-w/2,(Screen.height-h)/2,w,h);
+            // a touch of rise as it fades in, so it arrives rather than blinking on
+            var box=new Rect(cx-w/2,(Screen.height-h)/2+(1f-_winFade)*26f,w,h);
             if(_panelTex!=null) GUI.DrawTexture(box,_panelTex);
+            GUI.enabled=live;
+            try {
 
             if(_daily){ DrawDailyWin(box,cx,w,h); return; }
 
@@ -1802,6 +1963,9 @@ namespace SleepyZoo
             }
             else if(CozyButton(rAct, last?"Play again":(chapterDone?"See what changed":"Next level"),_btn))
             { Sfx.Click(); LoadLevel(last?0:next); }
+
+            }
+            finally { GUI.enabled=true; GUI.color=oldColor; }
         }
 
         /// The end of Tonight's Puzzle. Deliberately a dead end: there is no "next",
