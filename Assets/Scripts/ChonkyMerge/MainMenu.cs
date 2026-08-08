@@ -37,7 +37,7 @@ namespace ChonkyMerge
         private Texture2D _heartIcon;
         private float _shopScroll;          // the Decorate list
         private float _prizeAt;             // "you found a Pillow" toast
-        private PowerUps.Kind _prizeKind;
+        private PowerUps.Prize _prize;
 
         private void Start()
         {
@@ -754,7 +754,12 @@ namespace ChonkyMerge
                 Ui.VGrad(14, (0f, new Color(0.141f, 0.094f, 0.075f, 0f)),
                              (1f, new Color(0.141f, 0.094f, 0.075f, 0.9f))), ScaleMode.StretchToFill);
 
+            // Exactly one thing owns the bottom of this screen at a time. IMGUI gives
+            // a click to the FIRST control drawn under the finger, so two overlapping
+            // panels here means the one underneath quietly wins — which is why the
+            // walkthrough is a branch rather than an overlay.
             if (_sel >= 0) DrawFriendSheet();
+            else if (DormCoachStep >= 0) DrawDormCoach();
             else
             {
                 GUI.Label(Ui.R(20, H - 104, Ui.W - 40, 18), Dorm.Hint(),
@@ -762,8 +767,75 @@ namespace ChonkyMerge
                 float bw = (Ui.W - 40 - 11) / 2f;
                 if (Ui.Primary(20, H - 80, bw, 52, "Tuck everyone in", 16f))
                 { Sfx.Sleep(); Dorm.TuckEveryone(); }
-                if (Ui.Outline(20 + bw + 11, H - 80, bw, 52, "Decorate", 18f, 999f, true))
+                if (Ui.Outline(20 + bw + 11, H - 80, bw, 52, "Shop", 18f, 999f, true))
                 { Sfx.Tap(); _screen = Screen2.Decorate; }
+            }
+        }
+
+        // =====================================================================
+        // THE DORM WALKTHROUGH
+        // =====================================================================
+        // Shown once, the first time this room is opened. The dorm is where the whole
+        // reward loop lives and until now it explained none of itself — a player who
+        // tapped nothing saw a pretty room and left. Three cards: what to tap, what a
+        // play actually pays, and where the snacks go.
+        private static readonly (string title, string body)[] DormCoach =
+        {
+            ("Everyone lives here",
+             "Tap any friend to feed them, pet them, play with them or tuck them in. Petting is always free."),
+            ("One game each, every day",
+             "A play nearly always turns up snacks. Now and then it turns up a treat that makes a level easier - and the more friends move in, the more chances you get."),
+            ("Snacks buy everything",
+             "Levels pay snacks, and so do your friends. Spend them in the shop on furniture for the room, or on a treat when you would rather not wait for one."),
+        };
+        private int _dormCoach = -2;        // -2 not checked yet, -1 done, else the step
+
+        /// The step to show, or -1 when the walkthrough is finished. Read lazily so a
+        /// save restored by SaveGuard is respected without the menu caring when.
+        private int DormCoachStep
+        {
+            get
+            {
+                if (_dormCoach == -2)
+                    _dormCoach = PlayerPrefs.GetInt("coach_dorm", 0) == 1 ? -1 : 0;
+                return _dormCoach >= DormCoach.Length ? -1 : _dormCoach;
+            }
+        }
+
+        /// Sits in the friend sheet's slot, so the room above stays visible — and
+        /// tappable, which is the point of the first card.
+        private void DrawDormCoach()
+        {
+            float H = Ui.H, W = Ui.W;
+            var (title, body) = DormCoach[_dormCoach];
+
+            var bodyStyle = Ui.Bold(13, new Color(1f, 0.925f, 0.816f, 0.8f),
+                                    TextAnchor.UpperLeft, true);
+            float cw = W - 44f;
+            float sh = 150f + Ui.TextHeight(body, bodyStyle, cw - 44f);
+            float y = H - sh;
+
+            Ui.Round(Ui.R(22, y, cw, sh + 40), 30, Ui.Cream);
+            Ui.Round(Ui.R(W * 0.5f - 21, y + 12, 42, 5), 3, Ui.Line);
+
+            GUI.Label(Ui.R(44, y + 26, cw - 44, 16),
+                      Ui.Track($"{_dormCoach + 1} of {DormCoach.Length}"),
+                      Ui.Bold(10, Ui.Hex(0xc0824f), TextAnchor.MiddleLeft));
+            GUI.Label(Ui.R(44, y + 46, cw - 44, 28), title,
+                      Ui.Head(21, Ui.Ink900, TextAnchor.MiddleLeft));
+            GUI.Label(Ui.R(44, y + 78, cw - 44, sh - 148), body, bodyStyle);
+
+            bool last = _dormCoach == DormCoach.Length - 1;
+            if (Ui.Primary(44, y + sh - 62, cw - 44, 50, last ? "Got it" : "Next", 17f))
+            {
+                Sfx.Tap();
+                _dormCoach++;
+                if (_dormCoach >= DormCoach.Length)
+                {
+                    PlayerPrefs.SetInt("coach_dorm", 1);
+                    PlayerPrefs.Save();
+                    SaveGuard.Mirror();
+                }
             }
         }
 
@@ -887,6 +959,58 @@ namespace ChonkyMerge
                              i % 2 == 0 ? Ui.Hex(0xd96a5a) : Ui.Hex(0x6a94c4));
             }
 
+            if (Decor.Owned("cushion"))
+            {
+                // a heap in the near corner, biggest at the bottom
+                float x = Ui.W - 104, y = H - 214f;
+                Ui.Round(Ui.R(x, y + 26, 74, 26), 12, Ui.Hex(0x8f6bb0));
+                Ui.Round(Ui.R(x + 10, y + 8, 54, 24), 11, Ui.Hex(0xb894d8));
+                Ui.Round(Ui.R(x + 22, y - 6, 40, 20), 9, Ui.Hex(0xe6c4f0));
+            }
+
+            if (Decor.Owned("clock"))
+            {
+                float x = Ui.W * 0.5f - 15, y = 148f;
+                Ui.Circle(Ui.R(x, y, 30, 30), Ui.Hex(0xf3e2c6));
+                Ui.Circle(Ui.R(x + 3, y + 3, 24, 24), Ui.Hex(0x7a4a25));
+                // hands parked just short of midnight, always
+                Ui.Fill(Ui.R(x + 14.4f, y + 8, 1.6f, 8), Ui.Hex(0xffe9bd));
+                Ui.Fill(Ui.R(x + 15, y + 14.4f, 6, 1.6f), Ui.Hex(0xffe9bd));
+            }
+
+            if (Decor.Owned("window"))
+            {
+                // a planter on the sill, under the room's own window
+                float x = Ui.W - 122, y = 226f;
+                Ui.Round(Ui.R(x, y + 16, 60, 16), 4, Ui.Hex(0x9a5f34));
+                for (int i = 0; i < 5; i++)
+                {
+                    float fx = x + 5 + i * 12;
+                    float sway = Mathf.Sin(Time.time * 0.9f + i) * 1.6f;
+                    Ui.Fill(Ui.R(fx + 3.5f, y + 6, 2, 12), Ui.Hex(0x5e9b52));
+                    Ui.Circle(Ui.R(fx + sway, y, 9, 9),
+                              i % 2 == 0 ? Ui.Hex(0xee7c9b) : Ui.Hex(0xffd166));
+                }
+            }
+
+            if (Decor.Owned("mobile"))
+            {
+                // hangs from the ceiling and turns, slowly, forever
+                float cx = 96f, cy = 116f;
+                Ui.Fill(Ui.R(cx - 1, cy, 2, 16), Ui.Hex(0x8a5228, 0.7f));
+                float t = Time.time * 0.5f;
+                for (int i = 0; i < 3; i++)
+                {
+                    float a = t + i * (Mathf.PI * 2f / 3f);
+                    float dx = Mathf.Sin(a) * 30f;
+                    float dep = 0.65f + 0.35f * Mathf.Cos(a);        // fake depth
+                    float s = 13f * dep;
+                    Ui.Fill(Ui.R(cx + dx - 0.5f, cy + 16, 1, 20), Ui.Hex(0x8a5228, 0.45f * dep));
+                    Ui.Circle(Ui.R(cx + dx - s * 0.5f, cy + 36 - s * 0.5f, s, s),
+                              new Color(1f, 0.92f, 0.72f, 0.55f + 0.35f * dep));
+                }
+            }
+
             if (Decor.Stars)
             {
                 // the one item that changes the whole room: a ceiling full of stars
@@ -995,14 +1119,18 @@ namespace ChonkyMerge
             if (ActionTile(22 + bw + 10, y + 118, bw, 84, Icons.Heart, "Pet", "free",
                            Ui.Hex(0xffdfe7), Ui.Hex(0xf7c2ce), Ui.Hex(0xa8425c), true))
             { Sfx.Tap(); Dorm.Pet(i); Flourish(i, Icons.Heart, Ui.Hex(0xee7c9b)); }
+            // "a snack" rather than "a prize": a play nearly always pays snacks and
+            // only sometimes a power-up, and the tile has to promise the common case
+            // or every ordinary play reads as a failure. The odds are spelled out
+            // underneath the room (see Dorm.Hint) rather than crammed in here.
             if (ActionTile(22 + (bw + 10) * 2, y + 118, bw, 84, Icons.Ball, "Play",
-                           canPlay ? "a prize" : "tomorrow",
+                           canPlay ? "a snack" : "tomorrow",
                            Ui.Hex(0xdcefd6), Ui.Hex(0xb9dcae), Ui.Hex(0x3f6b3a), canPlay))
             {
                 if (canPlay)
                 {
-                    Sfx.Win();
-                    _prizeKind = Dorm.Play(i);
+                    _prize = Dorm.Play(i);
+                    if (_prize.found) Sfx.Win(); else Sfx.Tap();
                     _prizeAt = Time.time;
                     Flourish(i, Icons.Ball, Ui.Hex(0x6aa85c));
                 }
@@ -1072,21 +1200,29 @@ namespace ChonkyMerge
             if (t >= 1f) { _prizeAt = 0f; return; }
             float a = t < 0.12f ? t / 0.12f : t > 0.8f ? (1f - t) / 0.2f : 1f;
 
+            bool found = _prize.found;
             float w = 250f, h = 96f;
             float y = Ui.H * 0.38f - t * 14f;
             var pc = GUI.color; GUI.color = new Color(1, 1, 1, a);
             Ui.Round(Ui.R((Ui.W - w) * 0.5f, y, w, h), 26, Ui.Hex(0x2b1c15, 0.96f));
             Ui.RoundOutline(Ui.R((Ui.W - w) * 0.5f, y, w, h), 26, 1.5f,
-                            Ui.Hex(0xffd166, 0.5f), new Color(0, 0, 0, 0f));
+                            Ui.Hex(found ? 0xffd166u : 0xd67f48u, 0.5f), new Color(0, 0, 0, 0f));
             GUI.Label(Ui.R(0, y + 16, Ui.W, 16), Ui.Track("you found"),
-                      Ui.Bold(10.5f, Ui.Hex(0xffd166)));
-            var icon = PowerUpIcon(_prizeKind);
+                      Ui.Bold(10.5f, Ui.Hex(found ? 0xffd166u : 0xe9a878u)));
+
+            // A miss still gets the full card. A power-up is now a roughly one-in-ten
+            // thing, so most plays land here — if this branch felt like a consolation
+            // prize the dorm would feel like a slot machine that mostly loses.
+            var icon = found ? PowerUpIcon(_prize.kind) : Icons.Snack;
+            string title = found ? PowerUps.Name(_prize.kind) : _prize.snacks + " snacks";
+            string sub = found ? "Use it on any level" : "Snacks buy treats and furniture";
+
             var ic = GUI.color; GUI.color = new Color(1, 1, 1, a);
             GUI.DrawTexture(Ui.R(Ui.W * 0.5f - 60, y + 40, 26, 26), icon);
             GUI.color = ic;
-            GUI.Label(Ui.R(Ui.W * 0.5f - 28, y + 38, 140, 30), PowerUps.Name(_prizeKind),
+            GUI.Label(Ui.R(Ui.W * 0.5f - 28, y + 38, 140, 30), title,
                       Ui.Head(20, Ui.Hex(0xfff4e4), TextAnchor.MiddleLeft));
-            GUI.Label(Ui.R(0, y + 68, Ui.W, 16), "Use it on any level",
+            GUI.Label(Ui.R(0, y + 68, Ui.W, 16), sub,
                       Ui.Bold(11, Ui.Ghost(0.6f)));
             GUI.color = pc;
         }
@@ -1113,7 +1249,7 @@ namespace ChonkyMerge
 
             if (Ui.GhostDisc(18, 58, 40, Icons.Chevron, 0.45f))
             { Sfx.Click(); _screen = Screen2.Dorm; }
-            GUI.Label(Ui.R(70, 56, 240, 22), "Decorate",
+            GUI.Label(Ui.R(70, 56, 240, 22), "The shop",
                       Ui.Head(20, Ui.Hex(0xfff4e4), TextAnchor.MiddleLeft));
             GUI.Label(Ui.R(70, 76, 260, 16),
                       $"{Decor.OwnedCount()} of {Decor.Count} things in the room",
@@ -1121,24 +1257,81 @@ namespace ChonkyMerge
             Ui.Chip(Ui.W - 92, 56, 32, Dorm.Snacks.ToString(), Icons.Snack, Ui.Snack,
                     Ui.Hex(0xffe9bd), Ui.Hex(0xffd166, 0.16f), 14f);
 
-            float rowH = 74f, gap = 10f;
+            float rowH = 74f, gap = 10f, headH = 40f;
             float listTop = 118f;
             float listH = H - listTop - 26f;
-            int rows = Mathf.FloorToInt((listH + gap) / (rowH + gap));
 
-            // a plain vertical list, scrolled with the same flick handler as the map
-            float contentH = Decor.Count * (rowH + gap);
+            // One list, two sections: the treat counter first (it is the new thing,
+            // and it is what a player short of power-ups came in here for), then the
+            // room. A single scroll rather than tabs — tabs would be a second thing
+            // to learn in a screen whose whole job is "spend snacks".
+            float treatsH = headH + PowerUps.Count * (rowH + gap);
+            float contentH = treatsH + headH + Decor.Count * (rowH + gap);
             _scrollView = Ui.R(0, listTop, Ui.W, listH);
             _scrollMax = Mathf.Max(0f, contentH - listH);
 
             GUI.BeginGroup(Ui.R(0, listTop, Ui.W, listH));
+
+            SectionHead(-_shopScroll, "Treats", $"{PowerUps.Price} snacks each  ·  the price creeps up");
+            for (int i = 0; i < PowerUps.Count; i++)
+            {
+                float y = headH + i * (rowH + gap) - _shopScroll;
+                if (y + rowH < -20 || y > listH + 20) continue;
+                DrawTreatRow(y, rowH, (PowerUps.Kind)i);
+            }
+
+            SectionHead(treatsH - _shopScroll, "For the room", "Bought once, yours forever");
             for (int i = 0; i < Decor.Count; i++)
             {
-                float y = i * (rowH + gap) - _shopScroll;
+                float y = treatsH + headH + i * (rowH + gap) - _shopScroll;
                 if (y + rowH < -20 || y > listH + 20) continue;
                 DrawShopRow(y, rowH, i);
             }
             GUI.EndGroup();
+        }
+
+        private void SectionHead(float y, string title, string sub)
+        {
+            if (y < -50 || y > Ui.H) return;
+            GUI.Label(Ui.R(26, y + 4, 200, 18), Ui.Track(title),
+                      Ui.Bold(11, Ui.Hex(0xffd166), TextAnchor.MiddleLeft));
+            GUI.Label(Ui.R(26, y + 20, Ui.W - 52, 16), sub,
+                      Ui.Bold(10.5f, new Color(1f, 0.925f, 0.816f, 0.5f), TextAnchor.MiddleLeft));
+        }
+
+        /// One power-up on the counter. Same shape as a decor row so the screen reads
+        /// as one list, but it never says "in the room" — you can always buy another.
+        private void DrawTreatRow(float y, float h, PowerUps.Kind k)
+        {
+            int price = PowerUps.Price;
+            bool afford = Dorm.Snacks >= price;
+            int have = PowerUps.Have(k);
+
+            var r = Ui.R(24, y, Ui.W - 48, h);
+            Ui.RoundOutline(r, 22, 2, Ui.Ghost(0.22f), Ui.Ghost(0.07f));
+
+            var sw = Ui.R(40, y + 16, 42, 42);
+            Ui.Round(sw, 12, Ui.Hex(0x7a4a25));
+            var pc = GUI.color; GUI.color = Ui.Hex(0xffe9bd);
+            GUI.DrawTexture(Ui.R(51, y + 27, 20, 20), PowerUpIcon(k));
+            GUI.color = pc;
+
+            GUI.Label(Ui.R(96, y + 14, Ui.W - 200, 22), PowerUps.Name(k),
+                      Ui.Head(17, Ui.Hex(0xfff4e4), TextAnchor.MiddleLeft));
+            GUI.Label(Ui.R(96, y + 36, Ui.W - 200, 20),
+                      have > 0 ? $"{PowerUps.Blurb(k)}  ·  you have {have}" : PowerUps.Blurb(k),
+                      Ui.Bold(10.5f, new Color(1f, 0.925f, 0.816f, 0.55f), TextAnchor.MiddleLeft));
+
+            var ink = afford ? Ui.Hex(0xffe9bd) : new Color(1f, 0.85f, 0.75f, 0.55f);
+            Ui.Chip(Ui.W - 116, y + h * 0.5f - 15, 30, price.ToString(), Icons.Snack,
+                    afford ? Ui.Snack : new Color(1f, 0.85f, 0.75f, 0.5f), ink,
+                    Ui.Ghost(afford ? 0.16f : 0.07f), 13f);
+
+            if (GUI.Button(r, GUIContent.none, GUIStyle.none) && !Dragged)
+            {
+                if (PowerUps.Buy(k)) { Sfx.Win(); _prize = new PowerUps.Prize { found = true, kind = k }; _prizeAt = Time.time; }
+                else Sfx.Locked();
+            }
         }
 
         private void DrawShopRow(float y, float h, int i)
@@ -1193,6 +1386,10 @@ namespace ChonkyMerge
                 case "toybox": return Ui.Hex(0xc07a3e);
                 case "bunting": return Ui.Hex(0xee7c9b);
                 case "shelf": return Ui.Hex(0x6a94c4);
+                case "cushion": return Ui.Hex(0xb894d8);
+                case "clock": return Ui.Hex(0xf3e2c6);
+                case "window": return Ui.Hex(0x5e9b52);
+                case "mobile": return Ui.Hex(0xffe9bd);
                 default: return Ui.Hex(0xfff0a8);
             }
         }

@@ -234,19 +234,41 @@ def dead_fraction(ctx, dist, rev, goals):
 # chapter one used to *start* getting hard, and par is capped at 9 across the whole
 # game instead of 12. Difficulty comes from board shape and the chapter's toy —
 # never from making you hold a longer plan in your head.
-CH1_ENTS  = [1, 1, 1, 2, 2, 2, 2, 2, 2, 2,  2, 2, 3, 3, 3, 3, 3, 3, 3, 3]
-CH1_PAR   = [2, 2, 3, 3, 3, 3, 4, 4, 4, 4,  4, 4, 4, 4, 5, 4, 5, 4, 5, 5]
-CH1_SIZE  = [4, 4, 4, 4, 4, 4, 5, 5, 5, 5,  5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
+#
+# THE FIRST TWENTY LEVELS ARE THE TUTORIAL. The animal count is the only thing
+# that climbs, and it climbs one friend at a time with a plateau after each:
+#
+#     1 friend   levels 1-3      learn what a swipe does
+#     2 friends  levels 4-9      learn that one swipe moves everybody
+#     3 friends  levels 10-20    learn to use a friend as a wall
+#
+# THREE IS THE CEILING HERE, AND IT IS THE RULE'S CEILING, NOT A TASTE CALL.
+# Chapter one's beds are not sticky, so winning means all N animals sitting on
+# their own beds AT THE SAME INSTANT, and every swipe drags whoever is already
+# home back off again. At four animals that goal state is a needle: 1,440 candidate
+# boards were generated across eight different shapes (5x5 and 6x6, par 3 to 5,
+# one to four blocks, dead fractions up to 0.40) and NOT ONE had an exact short
+# par. Sticky beds are what make four animals tractable, so the fourth friend
+# arrives at the top of chapter two — which is also the chapter that can hold them.
+# Do not "fix" this by raising par; a par-9 four-animal board is exactly the
+# admin this curve exists to prevent.
+CH1_ENTS  = [1, 1, 1, 2, 2, 2, 2, 2, 2, 3,  3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+CH1_PAR   = [2, 2, 3, 3, 3, 3, 4, 4, 4, 3,  4, 4, 4, 4, 5, 4, 5, 4, 5, 5]
+CH1_SIZE  = [4, 4, 4, 4, 4, 5, 5, 5, 5, 5,  5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
 # At least one block from level 2 onward. A bare 4x4 with one animal has almost no
 # reachable states — every swipe just pins it to an edge — so an EXACT par is very
 # often impossible and the generator grinds forever. One block is what makes a tiny
 # board a puzzle at all.
-CH1_WALLS = [0, 1, 1, 1, 1, 2, 1, 2, 2, 2,  2, 2, 1, 2, 2, 2, 3, 3, 3, 3]
+CH1_WALLS = [0, 1, 1, 1, 1, 1, 2, 2, 2, 1,  2, 2, 2, 2, 2, 2, 3, 3, 3, 3]
 
-CH2_ENTS  = [2, 2, 2, 2, 2, 3, 3, 3, 3, 3,  3, 3, 4, 4, 4, 4, 4, 4, 4, 4]
-CH2_PAR   = [2, 3, 3, 3, 4, 3, 4, 4, 4, 4,  4, 5, 4, 4, 5, 5, 5, 5, 5, 5]
-CH2_SIZE  = [4, 5, 5, 5, 5, 5, 5, 5, 5, 5,  6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
-CH2_WALLS = [0, 1, 1, 1, 2, 1, 2, 2, 2, 3,  2, 3, 2, 3, 3, 3, 3, 4, 4, 4]
+# Chapter two is where the fourth friend lives, so it gets there sooner than it
+# used to (level 30 rather than 33) and then stays there. Sticky beds are what make
+# four animals possible at all — see the note on CH1_ENTS — so the chapter that
+# introduces stickiness is also the chapter that cashes it in.
+CH2_ENTS  = [2, 2, 2, 2, 3, 3, 3, 3, 3, 4,  4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
+CH2_PAR   = [2, 3, 3, 3, 3, 4, 4, 4, 4, 4,  4, 4, 5, 5, 5, 5, 5, 5, 5, 5]
+CH2_SIZE  = [4, 5, 5, 5, 5, 5, 5, 5, 5, 6,  6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
+CH2_WALLS = [0, 1, 1, 1, 1, 2, 2, 2, 3, 2,  2, 3, 3, 3, 3, 3, 4, 4, 4, 4]
 
 # Chapters 3-8, fifteen slots each. Every chapter restarts at two animals, because
 # every chapter hands the player a new toy to learn.
@@ -504,44 +526,48 @@ def emit(lv, hint):
 # One line per level: teach the chapter's toy in the first few, then get out of
 # the way. Fifteen per chapter, matching the fifteen slots.
 HINTS = {
-    1: ["Swipe any direction. Everyone slides until something stops them.",
+    # The hint line has to match the board. These are keyed to CH1_ENTS above —
+    # if the animal counts move, these move with them. (The line that said "two
+    # friends now" sat on a one-animal board for a while, which is the kind of
+    # small lie that makes a player stop trusting the text.)
+    1: ["Swipe any direction. Your friend slides until something stops them.",
         "Walls stop you. So does the edge of the room.",
+        "Land on the matching bed and they're home.",
         "Two friends now. One swipe moves them both.",
         "Line them up, then send them home.",
         "Animals stop each other too - use that.",
         "A bigger room. Same one rule.",
-        "Sometimes the long way round is the short way.",
         "Blocks are just walls you can plan around.",
-        "Send the far one first.",
-        "Corners are good places to park somebody.",
+        "Sometimes the long way round is the short way.",
         "Three friends. Nobody gets left out.",
         "One swipe, three animals. Watch where they all end up.",
         "Use a friend as a wall for another friend.",
+        "Send the far one first.",
+        "Corners are good places to park somebody.",
         "The order they stop in is the whole puzzle.",
+        "Get one home, then work on the rest.",
         "Take your time. Nothing here is in a hurry.",
         "If it looks stuck, undo and try the other way.",
-        "Get one home, then work on the rest.",
         "Every bed wants its own animal.",
-        "Almost the end of the first room.",
         "Last one here. Then something changes."],
     2: ["Beds are sticky now. Touch yours and you're asleep for good.",
         "An animal that's asleep never moves again.",
         "A sleeping friend is a wall. That's useful.",
         "Park somebody in their bed, then use them.",
+        "Three friends and sticky beds.",
         "Who should fall asleep first?",
         "Sometimes you want to NOT land on your bed yet.",
-        "Three friends and sticky beds.",
         "Wake nobody. Once they're in, they're in.",
-        "Build a wall out of sleepers.",
         "The first one to bed changes everything after.",
-        "Try it the other way round.",
-        "Slow is fine. Undo is free.",
-        "Nearly there.",
-        "Four friends now. Same idea.",
+        "Four friends now - the full room. Sticky beds make it fair.",
+        "Build a wall out of sleepers.",
         "One at a time, in the right order.",
         "The awkward one usually goes first.",
+        "Try it the other way round.",
         "A sleeper in the right spot solves the rest.",
+        "Slow is fine. Undo is free.",
         "Think about who blocks who.",
+        "Nearly there.",
         "Second-to-last in this room.",
         "Last one. Then the rules move again."],
     3: ["Sticky beds - but tonight nobody minds whose bed is whose.",
@@ -646,6 +672,11 @@ def write_cs(chapters, path=CS_PATH):
 
     chunks = body.split("            new Lv(")
     preamble = chunks[0].rstrip("\n")
+    # Drop any chapter banner left by an earlier run. The banners below are emitted
+    # fresh every time, and without this the file grew one duplicate
+    # "===== CHAPTER 1 =====" line per regeneration.
+    preamble = "\n".join(
+        ln for ln in preamble.split("\n") if "===== CHAPTER" not in ln).rstrip("\n")
     existing = ["            new Lv(" + c.rstrip() for c in chunks[1:]]
 
     out = [preamble]

@@ -40,11 +40,15 @@ namespace ChonkyMerge
             new Item("rug",     "Round rug",      10, "Something soft underfoot."),
             new Item("lamp",    "Corner lamp",    16, "Warm light after dark."),
             new Item("plant",   "Big leafy plant",24, "It is doing its best."),
-            new Item("picture", "Framed picture", 32, "A landscape nobody recognises."),
-            new Item("toybox",  "Toy box",        42, "Somebody will empty this."),
-            new Item("bunting", "Paper bunting",  54, "For no particular occasion."),
-            new Item("shelf",   "Little bookshelf",70,"Mostly picture books."),
-            new Item("stars",   "Star projector", 90, "Turns the ceiling into a sky."),
+            new Item("cushion", "Cushion pile",   30, "Nobody has ever tidied these."),
+            new Item("picture", "Framed picture", 38, "A landscape nobody recognises."),
+            new Item("toybox",  "Toy box",        46, "Somebody will empty this."),
+            new Item("bunting", "Paper bunting",  56, "For no particular occasion."),
+            new Item("clock",   "Sleepy clock",   66, "It is always about bedtime."),
+            new Item("shelf",   "Little bookshelf",76,"Mostly picture books."),
+            new Item("window",  "Window box",     88, "Flowers that never need watering."),
+            new Item("mobile",  "Moon mobile",    102,"It turns very slowly."),
+            new Item("stars",   "Star projector", 120,"Turns the ceiling into a sky."),
         };
 
         public static int Count => Items.Length;

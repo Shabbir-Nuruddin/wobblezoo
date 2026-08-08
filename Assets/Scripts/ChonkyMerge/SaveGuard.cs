@@ -35,6 +35,14 @@ namespace ChonkyMerge
             yield return "sound_on"; yield return "haptics_on";
             yield return "night_last"; yield return "night_streak";
             yield return "night_best"; yield return "night_total";
+            // The dorm half of the save. These were missing, so a wiped PlayerPrefs
+            // restored every level and star and still handed back an empty room.
+            yield return "dorm_snacks"; yield return "pu_bought";
+            yield return "coach_dorm"; yield return "zoo_coach";
+            for (int i = 0; i < ChonkyMerge.PowerUps.Count; i++) yield return "pu_" + i;
+            for (int i = 0; i < ChonkyMerge.Decor.Count; i++) yield return "decor_" + Decor.Items[i].key;
+            for (int i = 0; i < ChonkyMerge.Zoo.Count; i++)
+            { yield return "dorm_mood_" + i; yield return "dorm_sleep_" + i; }
             for (int i = 0; i < SleepyZoo.PuzzleGame.LevelCount; i++) yield return "zoo_stars_" + i;
             for (int c = 1; c < SleepyZoo.PuzzleGame.ChapterCount; c++) yield return "zoo_taught_ch" + c;
         }

@@ -138,68 +138,66 @@ namespace SleepyZoo
 
 
             // ===================== CHAPTER 1 =====================
-
-            // ===================== CHAPTER 1 =====================
-            new Lv(4,4,2,"Swipe any direction. Everyone slides until something stops them.",
+            new Lv(4,4,2,"Swipe any direction. Your friend slides until something stops them.",
                 new Vector2Int[0],
                 new[]{ new EntDef(2,2, 3,3) }),
             new Lv(4,4,2,"Walls stop you. So does the edge of the room.",
                 new[]{ W2(3,3) },
                 new[]{ new EntDef(3,1, 0,3) }),
-            new Lv(4,4,3,"Two friends now. One swipe moves them both.",
+            new Lv(4,4,3,"Land on the matching bed and they're home.",
                 new[]{ W2(0,3) },
                 new[]{ new EntDef(0,1, 1,3) }),
-            new Lv(4,4,3,"Line them up, then send them home.",
+            new Lv(4,4,3,"Two friends now. One swipe moves them both.",
                 new[]{ W2(1,3) },
                 new[]{ new EntDef(3,1, 0,2), new EntDef(1,1, 0,3) }),
-            new Lv(4,4,3,"Animals stop each other too - use that.",
+            new Lv(4,4,3,"Line them up, then send them home.",
                 new[]{ W2(2,3) },
                 new[]{ new EntDef(2,0, 3,3), new EntDef(1,1, 2,2) }),
-            new Lv(4,4,3,"A bigger room. Same one rule.",
-                new[]{ W2(1,2),W2(2,3) },
-                new[]{ new EntDef(1,0, 0,3), new EntDef(2,0, 0,1) }),
-            new Lv(5,5,4,"Sometimes the long way round is the short way.",
-                new[]{ W2(3,0) },
-                new[]{ new EntDef(0,1, 0,4), new EntDef(1,1, 4,4) }),
-            new Lv(5,5,4,"Blocks are just walls you can plan around.",
+            new Lv(5,5,3,"Animals stop each other too - use that.",
+                new[]{ W2(4,0) },
+                new[]{ new EntDef(4,2, 4,4), new EntDef(3,0, 4,3) }),
+            new Lv(5,5,4,"A bigger room. Same one rule.",
                 new[]{ W2(1,2),W2(3,1) },
                 new[]{ new EntDef(0,1, 0,0), new EntDef(2,1, 0,4) }),
-            new Lv(5,5,4,"Send the far one first.",
+            new Lv(5,5,4,"Blocks are just walls you can plan around.",
                 new[]{ W2(1,0),W2(3,3) },
                 new[]{ new EntDef(1,4, 0,0), new EntDef(4,4, 4,0) }),
-            new Lv(5,5,4,"Corners are good places to park somebody.",
+            new Lv(5,5,4,"Sometimes the long way round is the short way.",
                 new[]{ W2(3,3),W2(4,1) },
                 new[]{ new EntDef(2,0, 4,2), new EntDef(0,4, 4,4) }),
-            new Lv(5,5,4,"Three friends. Nobody gets left out.",
-                new[]{ W2(0,3),W2(3,1) },
-                new[]{ new EntDef(4,4, 1,3), new EntDef(3,2, 0,4) }),
+            new Lv(5,5,3,"Three friends. Nobody gets left out.",
+                new[]{ W2(2,1) },
+                new[]{ new EntDef(1,3, 0,0), new EntDef(3,0, 1,0), new EntDef(4,3, 2,2) }),
             new Lv(5,5,4,"One swipe, three animals. Watch where they all end up.",
-                new[]{ W2(1,2),W2(4,0) },
-                new[]{ new EntDef(2,3, 4,4), new EntDef(3,3, 4,1) }),
+                new[]{ W2(2,3),W2(3,3) },
+                new[]{ new EntDef(2,4, 4,0), new EntDef(0,2, 3,0), new EntDef(4,1, 4,4) }),
             new Lv(5,5,4,"Use a friend as a wall for another friend.",
-                new[]{ W2(3,4) },
-                new[]{ new EntDef(3,1, 0,4), new EntDef(3,0, 0,3), new EntDef(2,3, 4,4) }),
-            new Lv(5,5,4,"The order they stop in is the whole puzzle.",
                 new[]{ W2(2,0),W2(4,2) },
                 new[]{ new EntDef(0,1, 0,4), new EntDef(3,0, 3,4), new EntDef(4,1, 0,3) }),
-            new Lv(5,5,5,"Take your time. Nothing here is in a hurry.",
-                new[]{ W2(3,4),W2(4,4) },
-                new[]{ new EntDef(0,3, 0,1), new EntDef(3,1, 0,0), new EntDef(0,4, 1,0) }),
-            new Lv(5,5,4,"If it looks stuck, undo and try the other way.",
+            new Lv(5,5,4,"Send the far one first.",
                 new[]{ W2(0,0),W2(2,2) },
                 new[]{ new EntDef(1,3, 4,4), new EntDef(1,4, 3,4), new EntDef(1,0, 4,3) }),
-            new Lv(5,5,5,"Get one home, then work on the rest.",
-                new[]{ W2(0,1),W2(1,4),W2(4,3) },
-                new[]{ new EntDef(0,3, 0,0), new EntDef(2,4, 1,0), new EntDef(3,1, 0,2) }),
-            new Lv(5,5,4,"Every bed wants its own animal.",
-                new[]{ W2(0,1),W2(1,2),W2(3,0) },
-                new[]{ new EntDef(3,4, 4,0), new EntDef(2,4, 4,1), new EntDef(0,3, 2,0) }),
-            new Lv(5,5,5,"Almost the end of the first room.",
-                new[]{ W2(0,0),W2(2,3),W2(4,2) },
-                new[]{ new EntDef(2,1, 2,0), new EntDef(2,2, 3,3), new EntDef(1,2, 1,0) }),
+            new Lv(5,5,4,"Corners are good places to park somebody.",
+                new[]{ W2(1,0),W2(4,0) },
+                new[]{ new EntDef(2,4, 3,0), new EntDef(3,1, 4,1), new EntDef(2,0, 4,2) }),
+            new Lv(5,5,5,"The order they stop in is the whole puzzle.",
+                new[]{ W2(1,4),W2(2,0) },
+                new[]{ new EntDef(4,4, 0,0), new EntDef(3,3, 2,1), new EntDef(2,3, 3,0) }),
+            new Lv(5,5,4,"Get one home, then work on the rest.",
+                new[]{ W2(2,0),W2(4,2) },
+                new[]{ new EntDef(2,4, 3,4), new EntDef(0,3, 4,3), new EntDef(3,2, 4,4) }),
+            new Lv(5,5,5,"Take your time. Nothing here is in a hurry.",
+                new[]{ W2(0,1),W2(1,2),W2(4,4) },
+                new[]{ new EntDef(2,1, 0,3), new EntDef(3,2, 0,4), new EntDef(1,0, 0,0) }),
+            new Lv(5,5,4,"If it looks stuck, undo and try the other way.",
+                new[]{ W2(2,2),W2(2,3),W2(4,4) },
+                new[]{ new EntDef(4,0, 1,0), new EntDef(3,2, 0,1), new EntDef(2,1, 0,0) }),
+            new Lv(5,5,5,"Every bed wants its own animal.",
+                new[]{ W2(2,2),W2(2,4),W2(3,1) },
+                new[]{ new EntDef(4,3, 3,2), new EntDef(1,3, 0,0), new EntDef(4,0, 0,1) }),
             new Lv(5,5,5,"Last one here. Then something changes.",
-                new[]{ W2(0,2),W2(1,0),W2(2,4) },
-                new[]{ new EntDef(1,2, 4,0), new EntDef(2,2, 3,0), new EntDef(3,2, 0,3) }),
+                new[]{ W2(0,1),W2(0,3),W2(4,0) },
+                new[]{ new EntDef(3,2, 0,0), new EntDef(1,3, 0,4), new EntDef(1,2, 0,2) }),
 
             // ===================== CHAPTER 2 =====================
             new Lv(4,4,2,"Beds are sticky now. Touch yours and you're asleep for good.",
@@ -214,56 +212,54 @@ namespace SleepyZoo
             new Lv(5,5,3,"Park somebody in their bed, then use them.",
                 new[]{ W2(3,3) },
                 new[]{ new EntDef(3,1, 0,2), new EntDef(0,4, 2,4) }),
+            new Lv(5,5,3,"Three friends and sticky beds.",
+                new[]{ W2(1,3) },
+                new[]{ new EntDef(1,1, 4,0), new EntDef(2,0, 2,1), new EntDef(0,2, 2,4) }),
             new Lv(5,5,4,"Who should fall asleep first?",
-                new[]{ W2(0,4),W2(2,4) },
-                new[]{ new EntDef(0,3, 2,3), new EntDef(4,0, 1,1) }),
-            new Lv(5,5,3,"Sometimes you want to NOT land on your bed yet.",
-                new[]{ W2(2,4) },
-                new[]{ new EntDef(1,0, 1,1), new EntDef(0,2, 4,0), new EntDef(1,3, 1,4) }),
-            new Lv(5,5,4,"Three friends and sticky beds.",
+                new[]{ W2(2,0),W2(3,2) },
+                new[]{ new EntDef(3,1, 0,2), new EntDef(1,1, 0,0), new EntDef(4,3, 4,4) }),
+            new Lv(5,5,4,"Sometimes you want to NOT land on your bed yet.",
                 new[]{ W2(2,3),W2(4,4) },
                 new[]{ new EntDef(1,3, 1,2), new EntDef(0,2, 3,3), new EntDef(0,1, 3,0) }),
             new Lv(5,5,4,"Wake nobody. Once they're in, they're in.",
                 new[]{ W2(3,0),W2(4,2) },
                 new[]{ new EntDef(1,3, 4,4), new EntDef(3,1, 1,2), new EntDef(1,0, 0,1) }),
-            new Lv(5,5,4,"Build a wall out of sleepers.",
-                new[]{ W2(2,0),W2(2,1) },
-                new[]{ new EntDef(1,4, 3,0), new EntDef(3,1, 4,3), new EntDef(3,2, 1,3) }),
-            new Lv(5,5,6,"The first one to bed changes everything after.",
-                new[]{ W2(2,3),W2(3,2),W2(4,4) },
-                new[]{ new EntDef(3,1, 3,4), new EntDef(1,0, 2,0), new EntDef(1,3, 4,2) }),
-            new Lv(6,6,4,"Try it the other way round.",
-                new[]{ W2(5,3),W2(5,4) },
-                new[]{ new EntDef(3,1, 5,0), new EntDef(3,2, 1,5), new EntDef(0,3, 0,2) }),
-            new Lv(6,6,5,"Slow is fine. Undo is free.",
-                new[]{ W2(1,3),W2(2,1),W2(2,4) },
-                new[]{ new EntDef(3,4, 3,5), new EntDef(4,3, 3,2), new EntDef(2,5, 5,2) }),
-            new Lv(6,6,4,"Nearly there.",
-                new[]{ W2(1,2),W2(2,2) },
-                new[]{ new EntDef(0,2, 0,0), new EntDef(0,4, 4,5), new EntDef(3,1, 0,5), new EntDef(5,0, 1,4) }),
-            new Lv(6,6,4,"Four friends now. Same idea.",
-                new[]{ W2(1,2),W2(3,0),W2(5,2) },
-                new[]{ new EntDef(4,4, 2,4), new EntDef(3,5, 5,5), new EntDef(2,3, 0,0), new EntDef(5,1, 4,0) }),
-            new Lv(6,6,5,"One at a time, in the right order.",
-                new[]{ W2(0,1),W2(2,2),W2(2,5) },
-                new[]{ new EntDef(3,5, 4,0), new EntDef(5,4, 0,4), new EntDef(2,0, 5,3), new EntDef(1,5, 1,1) }),
+            new Lv(5,5,4,"The first one to bed changes everything after.",
+                new[]{ W2(1,4),W2(2,0),W2(2,1) },
+                new[]{ new EntDef(3,1, 4,3), new EntDef(3,2, 1,3), new EntDef(3,0, 4,2) }),
+            new Lv(6,6,6,"Four friends now - the full room. Sticky beds make it fair.",
+                new[]{ W2(3,0),W2(4,1) },
+                new[]{ new EntDef(2,1, 1,1), new EntDef(3,1, 4,3), new EntDef(5,5, 4,0), new EntDef(5,2, 0,2) }),
+            new Lv(6,6,4,"Build a wall out of sleepers.",
+                new[]{ W2(5,0),W2(5,3) },
+                new[]{ new EntDef(4,1, 1,5), new EntDef(5,5, 2,5), new EntDef(4,3, 2,1), new EntDef(1,1, 3,0) }),
+            new Lv(6,6,4,"One at a time, in the right order.",
+                new[]{ W2(0,5),W2(1,5),W2(5,2) },
+                new[]{ new EntDef(5,1, 2,1), new EntDef(5,5, 0,2), new EntDef(4,1, 1,2), new EntDef(0,3, 0,0) }),
             new Lv(6,6,5,"The awkward one usually goes first.",
-                new[]{ W2(0,3),W2(1,5),W2(3,4) },
-                new[]{ new EntDef(4,0, 5,5), new EntDef(1,2, 1,0), new EntDef(4,2, 5,2), new EntDef(5,4, 2,3) }),
+                new[]{ W2(3,0),W2(5,1),W2(5,3) },
+                new[]{ new EntDef(1,3, 2,5), new EntDef(5,4, 0,1), new EntDef(2,1, 2,4), new EntDef(1,5, 5,5) }),
+            new Lv(6,6,5,"Try it the other way round.",
+                new[]{ W2(3,1),W2(3,4),W2(5,3) },
+                new[]{ new EntDef(3,5, 2,3), new EntDef(2,0, 0,2), new EntDef(4,1, 1,0), new EntDef(5,1, 5,0) }),
             new Lv(6,6,5,"A sleeper in the right spot solves the rest.",
-                new[]{ W2(1,1),W2(3,0),W2(5,2) },
-                new[]{ new EntDef(2,0, 5,1), new EntDef(3,3, 1,4), new EntDef(1,3, 3,5), new EntDef(3,2, 2,2) }),
+                new[]{ W2(1,4),W2(2,4),W2(4,2) },
+                new[]{ new EntDef(3,4, 2,2), new EntDef(4,0, 4,1), new EntDef(3,5, 0,3), new EntDef(2,5, 4,5) }),
+            new Lv(6,6,5,"Slow is fine. Undo is free.",
+                new[]{ W2(1,4),W2(2,2),W2(3,5) },
+                new[]{ new EntDef(4,0, 0,0), new EntDef(2,1, 4,3), new EntDef(1,2, 0,3), new EntDef(5,3, 3,3) }),
             new Lv(6,6,5,"Think about who blocks who.",
-                new[]{ W2(0,5),W2(3,1),W2(3,4),W2(5,5) },
-                new[]{ new EntDef(4,4, 4,2), new EntDef(3,0, 1,4), new EntDef(0,4, 0,1), new EntDef(2,0, 4,3) }),
+                new[]{ W2(0,0),W2(0,1),W2(4,2),W2(5,5) },
+                new[]{ new EntDef(1,4, 1,3), new EntDef(4,1, 1,0), new EntDef(0,4, 4,5), new EntDef(2,2, 5,2) }),
+            new Lv(6,6,5,"Nearly there.",
+                new[]{ W2(1,1),W2(4,0),W2(4,3),W2(5,5) },
+                new[]{ new EntDef(0,3, 3,3), new EntDef(0,4, 0,5), new EntDef(4,5, 2,5), new EntDef(0,1, 1,5) }),
             new Lv(6,6,5,"Second-to-last in this room.",
-                new[]{ W2(0,0),W2(4,4),W2(4,5),W2(5,4) },
-                new[]{ new EntDef(1,1, 3,5), new EntDef(4,1, 1,3), new EntDef(2,1, 2,4), new EntDef(2,3, 3,1) }),
+                new[]{ W2(0,5),W2(1,0),W2(1,3),W2(4,4) },
+                new[]{ new EntDef(2,4, 0,0), new EntDef(3,3, 3,2), new EntDef(5,4, 4,5), new EntDef(5,0, 4,0) }),
             new Lv(6,6,5,"Last one. Then the rules move again.",
-                new[]{ W2(1,5),W2(4,2),W2(4,4),W2(5,5) },
-                new[]{ new EntDef(2,5, 5,0), new EntDef(0,4, 2,1), new EntDef(3,5, 3,3), new EntDef(1,3, 1,4) }),
-
-            // ===================== CHAPTER 3 =====================
+                new[]{ W2(0,4),W2(2,5),W2(3,4),W2(4,3) },
+                new[]{ new EntDef(2,4, 2,0), new EntDef(0,1, 1,1), new EntDef(3,2, 5,1), new EntDef(2,1, 2,3) }),
             new Lv(5,5,3,"Sticky beds - but tonight nobody minds whose bed is whose.",
                 new Vector2Int[0],
                 new[]{ new EntDef(4,0, 0,1), new EntDef(0,4, 1,2) }),
@@ -775,6 +771,18 @@ namespace SleepyZoo
         private Color _arrowTint;
         private bool _isTutorial;             // first level of a chapter: guided first-swipe demo
         private Vector2Int _tutorialDir;      // the helpful first swipe to demonstrate
+
+        // ---- the opening walkthrough (level 1, first run, once ever) ----
+        // The demo arrow on its own assumed the player already knew what an animal,
+        // a bed and the rails WERE — it only ever answered "which way do I swipe".
+        // This is the part before that: four spotlit cards that name the friend, name
+        // the bed, promise that nothing is a mistake, and point at the treat rail.
+        // It runs on level one only, it is never shown twice, and every step is one
+        // tap. Chapters 2-8 keep the single arrow, because by then the only new thing
+        // is the rule and a full walkthrough would be talking down to somebody.
+        private const string CoachKey = "zoo_coach";
+        private int _coach = -1;              // -1 off, otherwise the step being shown
+        private float _coachAt;               // when the step appeared (for the fade)
         private float _tipTime;               // brief per-level teaching tip fades out
         private int _chapter;                 // which chapter this level belongs to
         private static string TaughtKey(int chapter) =>
@@ -1135,6 +1143,14 @@ namespace SleepyZoo
                 var demo=SolveFrom(_pos);
                 _tutorialDir=(demo!=null&&demo.Count>0)?demo[0]:Vector2Int.right;
             }
+            // Level one, first ever run: the full walkthrough starts before the arrow.
+            // Note it RESUMES rather than restarts — the rails are tappable at step 2,
+            // so a player can hit Reset mid-walkthrough, and rewinding them to card
+            // one for that would be a punishment for touching the thing we just told
+            // them was free.
+            bool coachable=!daily && _levelIndex==0 && PlayerPrefs.GetInt(CoachKey,0)==0;
+            if(!coachable) _coach=-1; else if(_coach<0) _coach=0;
+            _coachAt=Time.unscaledTime;
             FrameCamera();
         }
 
@@ -2079,6 +2095,139 @@ namespace SleepyZoo
                                 TuckIn.Ui.Hex(0x1a1226, 0.86f));
                 GUI.Label(TuckIn.Ui.R((W - cw) * 0.5f, ry - 126, cw, 40), cap, st);
             }
+
+            DrawCoach(ry);
+        }
+
+        // =====================================================================
+        // THE OPENING WALKTHROUGH
+        // =====================================================================
+        /// Where a board cell lands on the screen, in design units.
+        ///
+        /// This is FrameCamera's arithmetic read backwards. The camera fits
+        /// `max(w,h) + pad` world units across BoardRect(), so one world unit is a
+        /// known number of design units and every cell's centre follows — no second
+        /// layout to drift, and no Camera.WorldToScreenPoint (which would be in
+        /// device pixels and would need unpicking again for GUI space).
+        private Rect CellUiRect(Vector2Int c)
+        {
+            var board = BoardRect();
+            float u = board.width / (Mathf.Max(_lv.w, _lv.h) + 0.62f);
+            float cx = board.center.x + (c.x - (_lv.w - 1) * 0.5f) * u;
+            float cy = board.center.y - (c.y - (_lv.h - 1) * 0.5f) * u;   // GUI y is flipped
+            return new Rect(cx - u * 0.5f, cy - u * 0.5f, u, u);
+        }
+
+        /// The four steps, in order. Each is a spotlight plus one card.
+        private void DrawCoach(float railY)
+        {
+            if (_coach < 0) return;
+
+            // Winning mid-walkthrough ends it rather than stacking a card under the
+            // win panel. They have seen the parts that matter by then.
+            if (_solved) { EndCoach(); return; }
+
+            // Step 2 hands the board back and waits for the swipe the demo arrow is
+            // already asking for: nothing drawn, nothing blocked, no dim over the one
+            // moment the player is finally meant to touch something.
+            if (_coach == 2)
+            {
+                if (_moves >= 1) { _coach = 3; _coachAt = Time.unscaledTime; }
+                return;
+            }
+
+            Rect target; string title, body;
+            switch (_coach)
+            {
+                case 0:
+                    target = CellUiRect(_pos[0]);
+                    title = "This is your friend";
+                    body = "Sleepy, and not in bed yet. Getting them there is the whole game.";
+                    break;
+                case 1:
+                    target = CellUiRect(_bed[0]);
+                    title = "This is their bed";
+                    body = "Same colour as the friend it belongs to. Land on it and they're home.";
+                    break;
+                case 3:
+                    target = new Rect(22, railY, TuckIn.Ui.W - 44, 62);
+                    title = "Nothing here is a mistake";
+                    body = "Undo, Reset and Hint are free and always will be. Poke at it.";
+                    break;
+                default:
+                    target = new Rect(22, railY - 74f, TuckIn.Ui.W - 44, 62);
+                    title = "Treats";
+                    body = "Your friends in the dorm find these. Using one costs nothing - not even a star.";
+                    break;
+            }
+
+            DrawSpotlight(target, title, body);
+
+            // One tap anywhere moves on. The whole screen is registered as UI so the
+            // tap cannot also be read as the start of a swipe.
+            var full = TuckIn.Ui.R(0, 0, TuckIn.Ui.W, TuckIn.Ui.H);
+            _uiRects.Add(full);
+            if (GUI.Button(full, GUIContent.none, GUIStyle.none))
+            {
+                Sfx.Click();
+                _coach = _coach >= 4 ? -1 : _coach + 1;
+                _coachAt = Time.unscaledTime;
+                if (_coach < 0) EndCoach();
+            }
+        }
+
+        private void EndCoach()
+        {
+            _coach = -1;
+            PlayerPrefs.SetInt(CoachKey, 1);
+            PlayerPrefs.Save();
+            ChonkyMerge.SaveGuard.Mirror();
+        }
+
+        /// A dim over everything except one rect, and a card that explains it.
+        ///
+        /// Drawn as FOUR rects around the hole rather than one full-screen fill —
+        /// IMGUI always paints over the camera, so a single covering rect would hide
+        /// the board, which is the one thing a spotlight must not do.
+        private void DrawSpotlight(Rect hole, string title, string body)
+        {
+            float W = TuckIn.Ui.W, H = TuckIn.Ui.H;
+            float a = Mathf.Clamp01((Time.unscaledTime - _coachAt) / 0.22f);
+            var dim = new Color(0.04f, 0.03f, 0.08f, 0.62f * a);
+
+            hole = new Rect(hole.x - 8, hole.y - 8, hole.width + 16, hole.height + 16);
+            TuckIn.Ui.Fill(TuckIn.Ui.R(0, 0, W, hole.y), dim);
+            TuckIn.Ui.Fill(TuckIn.Ui.R(0, hole.yMax, W, H - hole.yMax), dim);
+            TuckIn.Ui.Fill(TuckIn.Ui.R(0, hole.y, hole.x, hole.height), dim);
+            TuckIn.Ui.Fill(TuckIn.Ui.R(hole.xMax, hole.y, W - hole.xMax, hole.height), dim);
+
+            // a soft ring so the hole reads as "look here" and not as a rendering bug
+            float pulse = 1f + 0.03f * Mathf.Sin(Time.unscaledTime * 3.2f);
+            var ring = new Rect(hole.center.x - hole.width * 0.5f * pulse,
+                                hole.center.y - hole.height * 0.5f * pulse,
+                                hole.width * pulse, hole.height * pulse);
+            TuckIn.Ui.RoundOutline(TuckIn.Ui.R(ring.x, ring.y, ring.width, ring.height),
+                                   Mathf.Min(22f, ring.height * 0.4f), 2.5f,
+                                   new Color(1f, 0.85f, 0.42f, 0.85f * a), new Color(0, 0, 0, 0f));
+
+            // the card: below the hole if it fits, above it otherwise
+            var bodyStyle = TuckIn.Ui.Bold(13, new Color(1f, 0.957f, 0.894f, 0.82f),
+                                           TextAnchor.UpperCenter, true);
+            float cw = W - 56f;
+            float ch = 84f + TuckIn.Ui.TextHeight(body, bodyStyle, cw - 40f);
+            float cy = hole.yMax + 18f;
+            if (cy + ch > H - 24f) cy = Mathf.Max(24f, hole.y - 18f - ch);
+
+            var pc = GUI.color; GUI.color = new Color(1, 1, 1, a);
+            TuckIn.Ui.Round(TuckIn.Ui.R(28, cy, cw, ch), 26, TuckIn.Ui.Hex(0x2b1c15, 0.97f));
+            TuckIn.Ui.RoundOutline(TuckIn.Ui.R(28, cy, cw, ch), 26, 1.5f,
+                                   TuckIn.Ui.Hex(0xffd166, 0.42f), new Color(0, 0, 0, 0f));
+            GUI.Label(TuckIn.Ui.R(48, cy + 16, cw - 40, 24), title,
+                      TuckIn.Ui.Head(19, TuckIn.Ui.Hex(0xfff4e4)));
+            GUI.Label(TuckIn.Ui.R(48, cy + 42, cw - 40, ch - 66), body, bodyStyle);
+            GUI.Label(TuckIn.Ui.R(28, cy + ch - 24, cw, 18), TuckIn.Ui.Track("tap to continue"),
+                      TuckIn.Ui.Bold(10, TuckIn.Ui.Hex(0xffd166, 0.75f)));
+            GUI.color = pc;
         }
 
 

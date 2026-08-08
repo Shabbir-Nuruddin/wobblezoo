@@ -106,16 +106,17 @@ namespace ChonkyMerge
             PlayerPrefs.Save();
         }
 
-        /// A game together. Wakes them up, leaves them Playful, and hands back the
-        /// power-up they turned up — see PowerUps.PlayWith for why it is once a day
-        /// and why missing a day costs nothing.
-        public static PowerUps.Kind Play(int i)
+        /// A game together. Wakes them up, leaves them Playful, and hands back what
+        /// they turned up — usually a couple of snacks, sometimes a power-up. See
+        /// PowerUps.PlayWith for the odds, why it is once a day, and why missing a
+        /// day costs nothing.
+        public static PowerUps.Prize Play(int i)
         {
             SetMood(i, 1);
             SetAsleep(i, false);
-            var k = PowerUps.PlayWith(i);
+            var p = PowerUps.PlayWith(i);
             PlayerPrefs.Save();
-            return k;
+            return p;
         }
 
         public static void TuckEveryone()
@@ -136,10 +137,14 @@ namespace ChonkyMerge
         /// and it always has an answer.
         public static string Hint()
         {
+            // The odds are said out loud. A power-up is roughly a one-in-ten find
+            // now, and a player who isn't told that will read nine ordinary plays as
+            // the game being broken rather than as the game being generous later.
             int plays = PowerUps.PlaysAvailable();
             if (plays > 0)
-                return plays == 1 ? "One friend still wants to play today."
-                                  : $"{plays} friends still want to play today.";
+                return plays == 1
+                    ? $"One friend still wants to play — {PowerUps.ChanceToday()}% chance of a treat."
+                    : $"{plays} friends still want to play — {PowerUps.ChanceToday()}% chance each.";
             int home = Zoo.UnlockedCount();
             if (AsleepCount() >= home && home > 0) return "Everyone's asleep. Goodnight.";
             if (Snacks <= 0) return "Out of snacks — petting is always free.";

@@ -42,7 +42,21 @@
 ## Current Working State
 
 ### What was being worked on most recently (per git log, newest first)
-**Phase 5 — Play Store readiness.** The game was content-complete but not shippable: all eighteen Android icon slots were **empty** (Play would have got the default Unity logo), the target API was set to "automatic" (meaning "whatever SDK this machine happens to have"), and there was no App Bundle path at all — Play has not accepted plain APKs for new apps since 2021. Added `IconSetup` (generates and assigns adaptive/round/legacy icons from art already in the repo), `StoreBuilder` (signed `.aab`, target API 36), the whole `store/` kit, and extended the screenshot tour into the puzzle scene so the listing can show real gameplay.
+**Onboarding + economy pass.** Three things the game never explained or never
+rationed. (1) **Two one-time walkthroughs** — a five-step spotlight on level 1 and
+three cards on the first dorm visit; see "The opening walkthrough" below. (2)
+**Power-ups became a roll instead of a payout** — the dorm used to hand one over on
+every play, so the shelf was permanently full by mid-game; the odds are now
+`max(10, 30/friends)` and a miss pays snacks (see "Power-ups and the dorm loop").
+(3) **The shop grew** to twelve furniture items plus a treat counter that sells
+power-ups for snacks at a rising price. Alongside that, chapter one's ramp was
+rebuilt around the animal count (1 → 2 → 3, with the fourth friend at level 30 in
+chapter two, which is the only chapter whose rules can hold four — the sweep that
+proved it is recorded under the difficulty curve), its hint lines were re-keyed to
+the boards they actually sit on, and `SaveGuard` picked up the whole dorm half of
+the save, which it had never been mirroring.
+
+Before that, **Phase 5 — Play Store readiness.** The game was content-complete but not shippable: all eighteen Android icon slots were **empty** (Play would have got the default Unity logo), the target API was set to "automatic" (meaning "whatever SDK this machine happens to have"), and there was no App Bundle path at all — Play has not accepted plain APKs for new apps since 2021. Added `IconSetup` (generates and assigns adaptive/round/legacy icons from art already in the repo), `StoreBuilder` (signed `.aab`, target API 36), the whole `store/` kit, and extended the screenshot tour into the puzzle scene so the listing can show real gameplay.
 
 Before that, Phases 3 and 4. Phase 3 took the game from 40 levels to **130** — six new chapters, each with one new toy, all BFS-verified by both the Python generator and the in-engine C# audit. Phase 4 added **Tonight's Puzzle** (a daily level with its own pool in `DailyLevels.cs`), a **streak that cools instead of resetting**, lanterns as the streak reward, and **`SaveGuard`**, a local mirror of every save key that restores itself if PlayerPrefs is ever lost.
 
@@ -88,8 +102,24 @@ Before that, Phases 3 and 4. Phase 3 took the game from 40 levels to **130** —
 The game is deliberately **easy**, and that is a product decision, not an oversight.
 It is played in cars and in bed by someone who wants to wind down. The curve is:
 
-- **Baseline par 2-5, forever.** No rising tide. Average par is **4.3** across all
-  130 levels, and the animal count now stops at four (it used to reach five).
+- **Baseline par 2-5, forever.** No rising tide. Average par is **4.21** across all
+  130 levels, max par 7, and the animal count stops at four (it used to reach five).
+- **The animal count is the only thing that climbs, and it climbs one friend at a
+  time**: 1 for levels 1-3, 2 for 4-9, 3 for 10-20 (`CH1_ENTS`), then chapter two
+  restarts at 2 and reaches **4 at level 30** (`CH2_ENTS`). It used to spend nine
+  levels on two animals and reach the fourth friend only at level 33.
+- **THREE ANIMALS IS CHAPTER ONE'S HARD CEILING, and it is the rule's ceiling, not
+  a taste call.** Chapter one's beds are not sticky, so winning means every animal
+  on its own bed *at the same instant* while each swipe drags whoever is already
+  home back off. At four animals that goal state is a needle: a sweep of **1,440
+  candidate boards across eight shapes** (5x5 and 6x6, par 3-5, one to four blocks,
+  dead fraction up to 0.40) produced **zero** exact short pars. Sticky beds are what
+  make four tractable, which is why the fourth friend lives in chapter two. Do not
+  try to fix this by raising par — a par-9 four-animal board is exactly the admin
+  this curve exists to prevent.
+- `HINTS[1]` / `HINTS[2]` are keyed to the ents tables; if the counts move, the
+  lines move with them. (A "two friends now" line sat on a one-animal board for a
+  while — the kind of small lie that costs the text its credibility.)
 - **Seven spikes, placed by hand** (`MEDIUM_LEVELS` / `HARD_LEVELS` in
   `tools/gen_levels.py`): par 6 at levels 30, 60, 90, 120, and par 7 at 45, 85, 125.
   The par-7s are the only levels where reaching for the hint is the *expected*
@@ -113,22 +143,60 @@ The reward loop deliberately lives OUTSIDE the puzzle now:
     clear levels -> snacks + stars
     stars        -> new friends move in
     friends      -> one free play each per day
-    play         -> power-ups (Pillow, Lullaby, Tidy up)
+    play         -> MAYBE a power-up (Pillow, Lullaby, Tidy up), usually snacks
+    snacks       -> the shop: furniture, or a power-up if you'd rather not wait
     power-ups    -> levels get easier
 
 which is what gives unlocking an animal a reason beyond a nicer picture: ten friends
-home is ten power-ups a day, one friend is one. Rules that must hold:
+home is ten rolls a day, one friend is one. Rules that must hold:
 
 - **Using a power-up costs no stars.** An earlier version capped a helped level at
   two stars; it reads as fair and plays badly, because it makes every power-up a
   "should I?" decision and hesitancy is the exact feeling this game removes. The
-  balance is *supply* — one play per friend per day — not a penalty.
+  balance is *supply*, never a penalty at the point of use.
+- **A play is a ROLL, not a payout.** It used to hand over a power-up every single
+  time, so by mid-game the shelf was permanently full and nothing on it meant
+  anything. The odds are `max(10, 30 / friends)` — **30% at one friend, 15% at two,
+  a 10% floor from three on** (`PowerUps.ChancePercent`, and the table is written
+  out in that file's header). Expected haul per day runs 0.3 at one friend up to
+  **1.0 at the full ten**: one on a typical day, two on 26% of days, three on 7%.
+  Averaged across the game that is ~12.5% a play. **Do not raise the floor** — the
+  whole point is that a power-up is something you save up for.
+- **The roll is deterministic per (day, friend)**, from an FNV-1a hash written out
+  in `PowerUps.Hash` (not `string.GetHashCode`, which is not guaranteed stable and
+  now decides a reward). Backing out of the dorm cannot reroll a miss.
+- **A miss always pays snacks** (`PowerUps.ConsolationSnacks` = 2) and gets the same
+  full prize card, because with a ~10% hit rate most plays land there. A branch that
+  felt like a consolation prize would make the dorm read as a slot machine.
 - **Nothing expires and nothing decays.** Missing a day costs nothing; you simply
   did not collect. There is no streak here.
 - **No second currency and nothing bought with money.** Snacks come from levels and
-  buy dorm furniture (`Decor.cs`); power-ups come from playing with animals.
+  from dorm plays, and buy both furniture (`Decor.cs`, 12 items) and power-ups
+  (`PowerUps.Price`, `24 + 8 * bought` capped at 60 — a rising price so the counter
+  can never become a vending machine).
 - `DayNight.cs` reads `DateTime.Now` and never sets a timer, so the whole dorm works
   offline, on a plane, in a tunnel.
+
+## The opening walkthrough
+
+There are two, both one-time, both driven by a PlayerPrefs flag:
+
+- **The board** (`PuzzleGame.DrawCoach` / `DrawSpotlight`, key `zoo_coach`). Level 1
+  only. Five steps: name the friend, name the bed, hand the board back for the swipe
+  the demo arrow is already asking for, then point at the free rails (Undo/Reset/
+  Hint) and at the treat rail. Each step dims everything except one rect — drawn as
+  **four rects around a hole**, never one covering fill, because IMGUI paints over
+  the camera and a full-screen fill hides the board (see trap #1).
+  `CellUiRect` is `FrameCamera`'s arithmetic read backwards, so the spotlight and the
+  world-space grid cannot drift.
+- **The dorm** (`MainMenu.DrawDormCoach`, key `coach_dorm`). First visit, three
+  cards in the friend-sheet's slot: what to tap, what a play actually pays, where
+  snacks go. It is a **branch, not an overlay** — IMGUI gives a click to the *first*
+  control drawn under the finger, so an overlay would silently lose taps to the
+  friend buttons underneath.
+
+Chapters 2-8 keep the old single arrow + one `taught` line. By then the only new
+thing is the rule, and a full walkthrough would be talking down to somebody.
 
 ## Two traps this codebase has already sprung
 
@@ -277,7 +345,7 @@ Check the log for `"APK build result: Succeeded"`. Exits with code 1 on failure 
 | `Assets/Scripts/ChonkyMerge/Dorm.cs` | Snacks, moods, who is asleep; the Feed / Pet / Play / Tuck in actions. |
 | `Assets/Scripts/ChonkyMerge/DayNight.cs` | What time it is: the window's sky, the room's light level, the greeting. Reads the clock, never sets a timer. |
 | `Assets/Scripts/ChonkyMerge/Decor.cs` | The furniture catalogue: eight items bought with snacks, each drawn in the dorm. |
-| `Assets/Scripts/ChonkyMerge/PowerUps.cs` | Pillow / Lullaby / Tidy up: stock, and the one-free-play-per-friend-per-day that earns them. |
+| `Assets/Scripts/ChonkyMerge/PowerUps.cs` | Pillow / Lullaby / Tidy up: stock, the odds a dorm play turns one up (`ChancePercent` — this is the balance), and the shop's rising price. |
 | `Assets/Scripts/ChonkyMerge/Sfx.cs` | The game's sound bank: seven CC0 clips from `Resources/Audio` + a code-generated swipe whoosh; reads/writes `sound_on`. |
 | `Assets/Scripts/ChonkyMerge/Haptics.cs` | Short Android vibrations (8-26ms) for landing/sleeping/winning; own `haptics_on` flag; no-op in editor and off-device. |
 | `Assets/Resources/Audio/` | The seven shipped sound effects (Kenney, CC0 — see `docs/CREDITS.md`). |
@@ -319,7 +387,7 @@ Check the log for `"APK build result: Succeeded"`. Exits with code 1 on failure 
 - **Every animal carries a signature-colour glow at `sortingOrder 5`, scale 1.34.** Anything else drawn behind an animal has to clear that glow or it is simply invisible. The heavy sleeper's shadow was drawn at order 4 and scale 1.30 — smaller than the glow and behind it — so for all of chapter 7 the one animal that *cannot move on its own* looked identical to every other animal. It's now a flat shadow pushed down to the floor of the cell; sitting it behind the animal isn't enough either, because a grey shadow behind a grey animal just reads as more animal.
 - **`ScreenCapture.CaptureScreenshot(path, 2)` supersamples correctly here**, IMGUI included, so store screenshots come out at 1216×2160 from a 608×1080 window. Note the standalone player **clamps a windowed build to the monitor height** — asking for 1080×1920 on a 1080p screen silently gives a square 1080×1080, so pick a window that fits and let the supersize do the work.
 - **`ArtImportSettings.cs` force-sets all `Resources/Art/*` textures to Uncompressed.** This keeps sprite quality high but means large PNGs bloat the build significantly — keep background images downscaled (this was a real issue addressed in an earlier commit, per `docs/ASSETS_AND_TODO.md`'s now-outdated background list).
-- **PlayerPrefs keys in active use:** `zoo_level` (last/selected level index), `zoo_furthest` (resume point), `zoo_stars_<i>` (best stars per level index), `zoo_tutorial_done` / `zoo_taught_ch<n>` (per-chapter walkthrough shown), `sound_on` (0/1), `haptics_on` (0/1), `zoo_seen` (arrivals already announced), `zoo_want_daily` (menu → puzzle scene handoff, cleared on read), `night_last` / `night_streak` / `night_best` / `night_total` (Tonight's Puzzle), `chonky_best` (leftover from the old merge game — still read by the vestigial `HighScore` panel, TODO #3). Changing any of these keys' names will silently reset player progress.
+- **PlayerPrefs keys in active use:** `zoo_level` (last/selected level index), `zoo_furthest` (resume point), `zoo_stars_<i>` (best stars per level index), `zoo_tutorial_done` / `zoo_taught_ch<n>` (per-chapter walkthrough shown), `zoo_coach` (level-1 spotlight walkthrough), `coach_dorm` (first-dorm-visit cards), `sound_on` (0/1), `haptics_on` (0/1), `zoo_seen` (arrivals already announced), `zoo_want_daily` (menu → puzzle scene handoff, cleared on read), `night_last` / `night_streak` / `night_best` / `night_total` (Tonight's Puzzle), `dorm_snacks`, `dorm_mood_<i>` / `dorm_sleep_<i>`, `decor_<key>`, `pu_<0..2>` (power-up stock), `pu_bought` (drives the shop price), `play_<i>` (the date a friend was last played with — a **string**, so `SaveGuard` cannot mirror it; losing it just grants a free play), `chonky_best` (leftover from the old merge game — still read by the vestigial `HighScore` panel, TODO #3). Changing any of these keys' names will silently reset player progress.
 - **Every save key must also be listed in `SaveGuard.Keys()`.** PlayerPrefs cannot be enumerated in Unity, so that method IS the save format — a key added to the game but not to `Keys()` compiles fine, works fine, and is silently missing from the backup that restores a wiped save.
 - **Levels live in TWO generated arrays now:** `Levels` in `PuzzleGame.cs` (the 130-level campaign) and `Dailies` in `DailyLevels.cs` (the nightly pool). They're separate files on purpose — the generator rewrites one array per file, so a tool never has to find the right array inside a file holding two. `PuzzleGame` is `partial` for exactly this reason.
 - **Never regenerate a chapter by splicing into the existing array.** If a chapter fails to generate, a splice silently leaves a HOLE, and because chapters are addressed by index (`ChapterStart`) every later chapter shifts up and gets played under the wrong chapter's rules — a level-breaking bug that looks fine in a diff. This actually happened to chapter 5. Use `tools/assemble_levels.py`, which rebuilds the whole array from the plan plus the last commit and refuses to write unless the count is exactly `sum(CHAPTER_LEN)`.
