@@ -1,8 +1,8 @@
-# Privacy Policy — Wobble Zoo
+# Privacy Policy — Tuck In
 
 **Last updated: 1 August 2026**
 
-Wobble Zoo does not collect, store, transmit, or share any personal information.
+Tuck In does not collect, store, transmit, or share any personal information.
 
 ## What we collect
 
@@ -18,12 +18,12 @@ Your progress — which levels you have finished, how many stars you earned, whi
 animals have moved into your zoo, your nightly streak, and your sound and
 vibration settings — is saved on your own phone, in the app's private storage.
 
-It never leaves your device. We cannot see it. Uninstalling Wobble Zoo deletes
+It never leaves your device. We cannot see it. Uninstalling Tuck In deletes
 all of it permanently.
 
 ## Permissions
 
-Wobble Zoo requests one permission:
+Tuck In requests one permission:
 
 - **Vibration** — short taps when an animal lands on a bed. You can switch this
   off at any time in Settings, and the game works exactly the same without it.
@@ -35,12 +35,12 @@ camera, your microphone, your contacts, or your advertising ID.
 
 The game has a Share button. Pressing it opens Android's own share sheet with a
 short, fixed sentence about the game, which you can then send — or not — using
-whichever app you choose. Wobble Zoo does not see where you send it, and sends
+whichever app you choose. Tuck In does not see where you send it, and sends
 nothing itself.
 
 ## Children
 
-Wobble Zoo is suitable for all ages. Because it collects no data at all, it
+Tuck In is suitable for all ages. Because it collects no data at all, it
 collects no data from children either. It contains no advertising, no purchases,
 no chat, and no links out of the app other than the share sheet described above.
 

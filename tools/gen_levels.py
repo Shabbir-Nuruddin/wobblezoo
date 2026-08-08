@@ -1,5 +1,5 @@
 """
-Level generator / verifier for Wobble Zoo ("Bedtime Shuffle").
+Level generator / verifier for Tuck In ("Bedtime Shuffle").
 
 This is a second, independent implementation of the game's rules — it mirrors
 PuzzleGame.SlideSim + SolveFrom exactly. Every level's `par` is the true

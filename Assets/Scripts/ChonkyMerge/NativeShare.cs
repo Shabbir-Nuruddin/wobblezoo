@@ -21,7 +21,7 @@ namespace ChonkyMerge
 
                 using var unity = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
                 using var activity = unity.GetStatic<AndroidJavaObject>("currentActivity");
-                using var chooser = intentClass.CallStatic<AndroidJavaObject>("createChooser", intent, "Share Wobble Zoo");
+                using var chooser = intentClass.CallStatic<AndroidJavaObject>("createChooser", intent, "Share Tuck In");
                 activity.Call("startActivity", chooser);
             }
             catch (System.Exception e) { Debug.LogWarning("Share failed: " + e.Message); }

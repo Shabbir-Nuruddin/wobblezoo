@@ -54,18 +54,18 @@ player can learn in one level and a puzzle fan can respect.
 
 ## Naming decisions
 
-- **Working title: "Wobble Zoo."** Company name "Wobble Games." Both are
+- **Working title: "Tuck In."** Company name "Wobble Games." Both are
   **historical carryovers from an earlier physics-based prototype** (a
   tilt/wobble merge game, then a "Wobble Tower" stacking game) that no longer
   describes the current game — the current mechanic has nothing to do with
   wobbling or towers. The name has been flagged internally as a likely rename
   candidate but **no replacement name has been chosen or committed**. Do not
-  assume "Wobble Zoo" is the final shipped name; do not assume it needs to
+  assume "Tuck In" is the final shipped name; do not assume it needs to
   change either — this is an open decision for the product owner.
 - **In-code / commit-message nickname: "Sleepy Zoo"** and **"Bedtime
   Shuffle"** have both been used informally to describe the current
   animals-in-beds mechanic. Neither is a confirmed final title. Treat all
-  three names ("Wobble Zoo", "Sleepy Zoo", "Bedtime Shuffle") as internal
+  three names ("Tuck In", "Sleepy Zoo", "Bedtime Shuffle") as internal
   code-names until the product owner picks one for the store listing.
 - **Android package ID (`com.wobblegames.wobblezoo`) should be treated as
   effectively permanent** regardless of what display name is chosen — changing

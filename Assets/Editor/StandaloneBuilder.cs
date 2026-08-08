@@ -23,7 +23,7 @@ namespace ChonkyMerge.EditorTools
             var opts = new BuildPlayerOptions
             {
                 scenes = new[] { "Assets/Scenes/MainMenu.unity", "Assets/Scenes/Puzzle.unity" },
-                locationPathName = "Builds/Win/WobbleZoo.exe",
+                locationPathName = "Builds/Win/Tuck In.exe",
                 target = BuildTarget.StandaloneWindows64,
                 options = BuildOptions.Development,
             };

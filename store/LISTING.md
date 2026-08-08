@@ -1,4 +1,4 @@
-# Google Play listing — Wobble Zoo
+# Google Play listing — Tuck In
 
 Copy-paste source for the Play Console listing. Character limits are Play's, and
 every field below is already inside them.
@@ -8,10 +8,10 @@ every field below is already inside them.
 ## App name (max 30)
 
 ```
-Wobble Zoo: Bedtime Puzzle
+Tuck In: Bedtime Puzzle
 ```
 
-*(26 characters. "Wobble Zoo" alone is fine too, but the subtitle is what tells a
+*(26 characters. "Tuck In" alone is fine too, but the subtitle is what tells a
 browsing player what the game actually is — and "puzzle" is the word people search.)*
 
 ## Short description (max 80)
@@ -34,7 +34,7 @@ and the room goes quiet.
 That's the entire rule. There is nothing else to learn on level one.
 
 A PUZZLE YOU CAN FINISH BEFORE YOU FALL ASLEEP
-No level in Wobble Zoo takes more than twelve moves to solve perfectly. Puzzles
+No level in Tuck In takes more than twelve moves to solve perfectly. Puzzles
 get harder by getting cleverer, never by getting longer. You will not lose
 twenty minutes to one board.
 

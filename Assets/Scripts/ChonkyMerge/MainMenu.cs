@@ -1,111 +1,57 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using TuckIn;
 
 namespace ChonkyMerge
 {
     /// <summary>
-    /// The landing page. Builds the themed background, bobbing critters, logo, and
-    /// tappable buttons (Play, High Score, Settings) plus a share and sound toggle —
-    /// all from the generated art, with no manual scene wiring.
+    /// Home, the map, and the dorm — the three screens outside the puzzle.
+    ///
+    /// This used to be a stack of sprite buttons with IMGUI panels floating over
+    /// them. It is now drawn entirely through <see cref="Ui"/>, on the redesign's
+    /// 390x844 canvas, which is what makes the layout survive a narrow phone and a
+    /// tall one without anything colliding.
+    ///
+    /// The shape of the redesign, in one paragraph: home has ONE door (a big
+    /// terracotta Continue that names the level you are up to), a permanent bottom
+    /// rail to the three other places you can go, and nothing else competing. The
+    /// map is a quilt you scroll, with each chapter as its own coloured band and
+    /// locked chapters still refusing to say what changes. The dorm is a room you
+    /// visit rather than a list you scroll: tap a friend and you can feed, pet or
+    /// tuck them in.
     /// </summary>
     public class MainMenu : MonoBehaviour
     {
         private Camera _cam;
-        private float H, W, ContentW;
-        private enum Panel { None, HighScore, Settings, Levels, Zoo }
-        private Panel _panel = Panel.None;
+        private enum Screen2 { Home, Map, Dorm, Settings, Decorate }
+        private Screen2 _screen = Screen2.Home;
 
-        private readonly System.Collections.Generic.List<Transform> _floaters = new();
-        private readonly System.Collections.Generic.List<Vector3> _floaterBase = new();
-        private GUIStyle _title, _big, _big2, _mid, _btn, _cellNum, _pill, _bigPill, _note, _noteLight, _cellSub, _cellSub2, _cellSub3, _chapTitle;
-        private Texture2D _pillTex, _starTex, _dimTex, _cardTex, _dotTex;
-        private Vector2 _levelScroll, _zooScroll;
-        private float _levelsCenterY, _levelsW, _levelsH;   // world footprint of the big Levels button
-        // the "this level is star-locked" helper strip: which gate was tapped, where to
-        // send them for the missing stars, and how long the strip stays up
+        private float _mapScroll;
         private bool _scrollToCurrent = true;
-        private int _gateLevel, _topUpLevel;
+        private int _sel = -1;              // selected dorm friend (-1 = none)
+        private int _gateLevel = -1, _topUpLevel;
         private float _gateTime;
+        private float _heartAt;             // the little feed/pet flourish
+        private Vector2 _heartPos;
+        private Color _heartCol;
+        private Texture2D _heartIcon;
 
         private void Start()
         {
             SleepyZoo.PuzzleGame.ReloadProgress();
             SetupCamera();
-            H = _cam.orthographicSize;
-            W = H * _cam.aspect;
-            ContentW = Mathf.Min(2f * W, 2f * H * 0.64f); // keep a portrait content column
 
-            BuildBackground();
-            BuildFloaters();
-            BuildLogo();
-            BuildButtons();
-
-            if (ShotArg("-shots") != null) StartCoroutine(ShotTour());
-        }
-
-        // ---- screenshot tour (development only) ----
-        // Every screen in this game is IMGUI drawn in code, so "does it look right?"
-        // can only be answered by rendering it. Run the Windows build with
-        //     WobbleZoo.exe -shots C:\some\folder -shotstars 26
-        // and it walks the menu, the blanket path and the zoo, saving a PNG of each,
-        // then exits. `-shotstars` fakes progress so locked screens can be seen too;
-        // it is never written to disk (the process is killed rather than quit, so
-        // Unity never flushes PlayerPrefs) — a real player's save is untouchable.
-        private static string ShotArg(string flag)
-        {
-            var a = System.Environment.GetCommandLineArgs();
-            for (int i = 0; i < a.Length - 1; i++) if (a[i] == flag) return a[i + 1];
-            for (int i = 0; i < a.Length; i++) if (a[i] == flag) return "";
-            return null;
-        }
-
-        private System.Collections.IEnumerator ShotTour()
-        {
-            string dir = ShotArg("-shots");
-            if (string.IsNullOrEmpty(dir)) dir = ".";
-            // Without this the player stops rendering the moment its window loses focus,
-            // the coroutine stops getting frames, and the tour silently stalls part-way
-            // through — leaving a folder of three screenshots and no error anywhere.
-            Application.runInBackground = true;
-            string starArg = ShotArg("-shotstars");
-            if (!string.IsNullOrEmpty(starArg) && int.TryParse(starArg, out int upto))
+            // The win screen can send the player straight to the dorm, which is the
+            // only place the snacks they just earned mean anything. The request is
+            // consumed here so a later, unrelated return to the menu lands home.
+            if (PlayerPrefs.GetInt(SleepyZoo.PuzzleGame.MenuScreenKey, 0) == 1)
             {
-                // in-memory only: two stars on everything cleared, so gates, the path
-                // and a few zoo arrivals all have something to show
-                for (int i = 0; i < upto; i++) PlayerPrefs.SetInt("zoo_stars_" + i, i % 3 == 0 ? 3 : 2);
-                PlayerPrefs.SetInt("zoo_furthest", upto);
-                SleepyZoo.PuzzleGame.ReloadProgress();   // written behind the star cache's back
+                PlayerPrefs.SetInt(SleepyZoo.PuzzleGame.MenuScreenKey, 0);
+                PlayerPrefs.Save();
+                _screen = Screen2.Dorm;
             }
 
-            // Force the arrival card on. Unity can flush PlayerPrefs behind our back, so
-            // a previous tour's "mark everything seen" can survive into this one and
-            // silently turn this shot into a duplicate of the home screen — which is
-            // exactly what happened the first time.
-            PlayerPrefs.SetInt("zoo_seen", 0);
-            yield return Shot(dir, "01_arrival");
-            // The arrival card covers the home screen and hides the tabs behind it, so
-            // clear the pending arrivals and shoot home properly too.
-            PlayerPrefs.SetInt("zoo_seen", Zoo.UnlockedCount());
-            PlayerPrefs.SetInt("night_last", Nightly.Tonight - 1);   // a live streak to look at
-            PlayerPrefs.SetInt("night_streak", 6);
-            PlayerPrefs.SetInt("night_best", 6);
-            yield return Shot(dir, "02_home");
-            _panel = Panel.Levels;   yield return Shot(dir, "03_path");
-            _levelScroll = new Vector2(0, 900f); yield return Shot(dir, "04_path_scrolled");
-            _panel = Panel.Zoo;      yield return Shot(dir, "05_zoo");
-            _zooScroll = new Vector2(0, 620f); yield return Shot(dir, "06_zoo_scrolled");
-            _panel = Panel.Settings; yield return Shot(dir, "07_settings");
-
-            // Hand over to the puzzle scene, which shoots one board per chapter and then
-            // hard-kills the process — so Unity never flushes the faked PlayerPrefs.
-            SceneManager.LoadScene("Puzzle");
-        }
-
-        private System.Collections.IEnumerator Shot(string dir, string name)
-        {
-            for (int f = 0; f < 6; f++) yield return null;      // let the panel settle
-            ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(dir, name + ".png"), 2);
-            for (int f = 0; f < 12; f++) yield return null;     // and let the file land
+            if (ShotArg("-shots") != null) StartCoroutine(ShotTour());
         }
 
         private void SetupCamera()
@@ -121,345 +67,90 @@ namespace ChonkyMerge
             _cam.orthographicSize = 5f;
             _cam.transform.position = new Vector3(0, 0, -10);
             _cam.clearFlags = CameraClearFlags.SolidColor;
-            _cam.backgroundColor = new Color(0.98f, 0.86f, 0.77f);
+            _cam.backgroundColor = Ui.NightTop;
         }
 
-        // ---- builders ----
-        private SpriteRenderer Load(string res, Vector2 pos, int order, out float worldH)
+        // ---- screenshot tour (development only) ----
+        // Every screen here is drawn in code, so "does it look right?" can only be
+        // answered by rendering it. Run the Windows build with
+        //     "Tuck In.exe" -shots C:\some\folder -shotstars 26
+        // and it walks each screen, saves a PNG, then hands over to the puzzle scene.
+        private static string ShotArg(string flag)
         {
-            var s = Resources.Load<Sprite>("Art/" + res);
-            var go = new GameObject(res);
-            go.transform.position = new Vector3(pos.x, pos.y, 0);
-            var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = s;
-            sr.sortingOrder = order;
-            worldH = s != null ? s.bounds.size.y : 1f;
-            return sr;
+            var a = System.Environment.GetCommandLineArgs();
+            for (int i = 0; i < a.Length - 1; i++) if (a[i] == flag) return a[i + 1];
+            for (int i = 0; i < a.Length; i++) if (a[i] == flag) return "";
+            return null;
         }
 
-        private GameObject FitWidth(string res, Vector2 pos, int order, float worldWidth, out float resultH)
+        private System.Collections.IEnumerator ShotTour()
         {
-            var sr = Load(res, pos, order, out _);
-            float w = sr.sprite.bounds.size.x;
-            float sc = worldWidth / w;
-            sr.transform.localScale = new Vector3(sc, sc, 1);
-            resultH = sr.sprite.bounds.size.y * sc;
-            return sr.gameObject;
-        }
-
-        private void BuildBackground()
-        {
-            var sr = Load("MenuBackground", Vector2.zero, 0, out float wh);
-            float ww = sr.sprite.bounds.size.x;
-            float cover = Mathf.Max((2f * W) / ww, (2f * H) / wh);
-            sr.transform.localScale = new Vector3(cover, cover, 1);
-        }
-
-        private void BuildFloaters()
-        {
-            string[] kinds = { "critter_cat", "critter_dog", "critter_capy", "critter_hamster" };
-            Vector2[] spots =
+            string dir = ShotArg("-shots");
+            if (string.IsNullOrEmpty(dir)) dir = ".";
+            Application.runInBackground = true;
+            string starArg = ShotArg("-shotstars");
+            if (!string.IsNullOrEmpty(starArg) && int.TryParse(starArg, out int upto))
             {
-                new(-W * 0.66f, H * 0.24f), new(W * 0.68f, H * 0.30f),
-                new(-W * 0.60f, -H * 0.30f), new(W * 0.62f, -H * 0.20f)
-            };
-            for (int i = 0; i < kinds.Length; i++)
-            {
-                var go = FitWidth(kinds[i], spots[i], 2, ContentW * 0.20f, out _);
-                var sr = go.GetComponent<SpriteRenderer>();
-                sr.color = new Color(1, 1, 1, 0.92f);
-                _floaters.Add(go.transform);
-                _floaterBase.Add(go.transform.position);
+                for (int i = 0; i < upto; i++) PlayerPrefs.SetInt("zoo_stars_" + i, i % 3 == 0 ? 3 : 2);
+                PlayerPrefs.SetInt("zoo_furthest", upto);
+                SleepyZoo.PuzzleGame.ReloadProgress();
             }
+
+            PlayerPrefs.SetInt("zoo_seen", 0);
+            yield return Shot(dir, "01_arrival");
+            PlayerPrefs.SetInt("zoo_seen", Zoo.UnlockedCount());
+            PlayerPrefs.SetInt("night_last", Nightly.Tonight - 1);
+            PlayerPrefs.SetInt("night_streak", 6);
+            PlayerPrefs.SetInt("night_best", 6);
+            yield return Shot(dir, "02_home");
+            _screen = Screen2.Map; _scrollToCurrent = true; yield return Shot(dir, "03_map");
+            _mapScroll += 900f; yield return Shot(dir, "04_map_scrolled");
+            _screen = Screen2.Dorm; yield return Shot(dir, "05_dorm");
+            _sel = 0; yield return Shot(dir, "06_dorm_friend");
+            _sel = -1;
+            _screen = Screen2.Settings; yield return Shot(dir, "07_settings");
+            _screen = Screen2.Decorate; yield return Shot(dir, "08_decorate");
+
+            SceneManager.LoadScene("Puzzle");
         }
 
-        private void BuildLogo()
+        private System.Collections.IEnumerator Shot(string dir, string name)
         {
-            FitWidth("Logo", new Vector2(0, H * 0.60f), 5, ContentW * 0.92f, out _);
+            for (int f = 0; f < 6; f++) yield return null;
+            ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(dir, name + ".png"), 2);
+            for (int f = 0; f < 12; f++) yield return null;
         }
 
-        private void BuildButtons()
-        {
-            float y = H * 0.06f;
-            y = AddButton("btn_play", ButtonId.Play, y, ContentW * 0.86f) - 0.35f;
-
-            // Middle slot is now a big "Levels" button. It's drawn in OnGUI (so it can
-            // carry a text label) — here we just reserve its world footprint to match
-            // the other pills. This replaces the old vestigial "High Score" button
-            // (which showed the dead merge-game score) and the tiny top-left tab.
-            float lvW = ContentW * 0.74f;
-            var probe = Resources.Load<Sprite>("Art/btn_score");
-            float sc = lvW / probe.bounds.size.x;
-            _levelsH = probe.bounds.size.y * sc;
-            _levelsW = lvW;
-            _levelsCenterY = y - _levelsH * 0.5f;
-            y = _levelsCenterY - _levelsH * 0.5f - 0.30f;
-
-            AddButton("btn_settings", ButtonId.Settings, y, ContentW * 0.74f);
-        }
-
-        private float AddButton(string res, ButtonId id, float topY, float worldWidth)
-        {
-            // measure first
-            var probe = Resources.Load<Sprite>("Art/" + res);
-            float sc = worldWidth / probe.bounds.size.x;
-            float hgt = probe.bounds.size.y * sc;
-            float centerY = topY - hgt * 0.5f;
-
-            var go = FitWidth(res, new Vector2(0, centerY), 10, worldWidth, out _);
-            var col = go.AddComponent<BoxCollider2D>();
-            col.isTrigger = true;
-            var mb = go.AddComponent<MenuButton>();
-            mb.Setup(id, go.transform.localScale);
-            return centerY - hgt * 0.5f; // bottom edge for next button
-        }
-
-        // The floating sound and share sprites used to live here. They're gone on
-        // purpose: the source art has the glyph and its circle misaligned, so both
-        // buttons visibly spilled outside their own rims on a real phone — and they
-        // crowded the top-right corner that the Tonight pill needs. Sound already had
-        // a switch in Settings, and Share has moved there too, so the landing page is
-        // now just a title, three buttons, and the two tabs that lead somewhere.
-
-        // ---- interaction ----
+        // ---- input ----
         private void Update()
         {
-            AnimateFloaters();
-
             if (Input.GetKeyDown(KeyCode.Escape))
             {
-                if (_panel != Panel.None) { _panel = Panel.None; Sfx.Click(); }
+                if (_sel >= 0) { _sel = -1; Sfx.Click(); }
+                else if (_screen == Screen2.Decorate) { _screen = Screen2.Dorm; Sfx.Click(); }
+                else if (_screen != Screen2.Home) { _screen = Screen2.Home; Sfx.Click(); }
                 else Application.Quit();
                 return;
             }
-
-            // Flick scrolling is driven from Update, not OnGUI, because IMGUI never
-            // delivers drag events for a scroll view's body.
-            if (_panel == Panel.Levels) UpdateFlickScroll(ref _levelScroll);
-            else if (_panel == Panel.Zoo) UpdateFlickScroll(ref _zooScroll);
+            if (_screen == Screen2.Map) UpdateFlickScroll(ref _mapScroll);
             else { _dragging = false; _dragVel = 0f; _dragDist = 0f; }
-
-            if (_panel != Panel.None) return; // panel taps handled by OnGUI
-
-            if (Input.GetMouseButtonDown(0)) HandleTap(Input.mousePosition);
-            for (int i = 0; i < Input.touchCount; i++)
-                if (Input.GetTouch(i).phase == TouchPhase.Began)
-                    HandleTap(Input.GetTouch(i).position);
-        }
-
-        private void AnimateFloaters()
-        {
-            for (int i = 0; i < _floaters.Count; i++)
-            {
-                float ph = i * 1.7f + Time.time;
-                Vector3 b = _floaterBase[i];
-                _floaters[i].position = b + new Vector3(Mathf.Sin(ph * 0.6f) * 0.10f,
-                                                        Mathf.Sin(ph) * 0.16f, 0f);
-                _floaters[i].rotation = Quaternion.Euler(0, 0, Mathf.Sin(ph * 0.8f) * 6f);
-            }
-        }
-
-        private void HandleTap(Vector3 screenPos)
-        {
-            Vector3 wp = _cam.ScreenToWorldPoint(screenPos);
-            var col = Physics2D.OverlapPoint(wp);
-            if (col == null) return;
-            var btn = col.GetComponent<MenuButton>();
-            if (btn == null) return;
-
-            btn.Press();
-            Sfx.Click();
-            DoAction(btn.Id);
-        }
-
-        private void DoAction(ButtonId id)
-        {
-            switch (id)
-            {
-                case ButtonId.Play:
-                    // continue where they left off rather than restarting the tutorial
-                    PlayerPrefs.SetInt("zoo_level", SleepyZoo.PuzzleGame.ResumeLevel());
-                    PlayerPrefs.Save();
-                    SceneManager.LoadScene("Puzzle");
-                    break;
-                case ButtonId.HighScore: _panel = Panel.HighScore; break;
-                case ButtonId.Settings: _panel = Panel.Settings; break;
-                case ButtonId.Share:
-                    NativeShare.ShareText(ShareMessage);
-                    break;
-                case ButtonId.SoundToggle: Sfx.SoundOn = !Sfx.SoundOn; break;
-            }
-        }
-
-        // ---- HUD / panels ----
-        private void OnGUI()
-        {
-            EnsureStyles();
-
-            // Big "Levels" button, sitting in the middle slot of the button stack.
-            // Its world footprint was reserved in BuildButtons; convert to screen space
-            // so it lines up perfectly with the Play/Settings pills.
-            if (_panel == Panel.None && _levelsW > 0f)
-            {
-                Vector3 tl = _cam.WorldToScreenPoint(new Vector3(-_levelsW * 0.5f, _levelsCenterY + _levelsH * 0.5f, 0));
-                Vector3 br = _cam.WorldToScreenPoint(new Vector3(_levelsW * 0.5f, _levelsCenterY - _levelsH * 0.5f, 0));
-                var rLv = new Rect(tl.x, Screen.height - tl.y, br.x - tl.x, (Screen.height - br.y) - (Screen.height - tl.y));
-                if (GUI.Button(rLv, "Levels", _bigPill)) { Sfx.Tap(); _panel = Panel.Levels; _scrollToCurrent = true; }
-                // live star total, tucked just under the button so stars feel worth chasing
-                GUI.Label(new Rect(0, rLv.yMax + 2, Screen.width, 30),
-                    $"{SleepyZoo.PuzzleGame.TotalStars()} / {SleepyZoo.PuzzleGame.MaxStars} stars collected", _note);
-            }
-
-            // The zoo tab, top-left: a live count of who's home. Doubles as the badge
-            // that tells the player there IS a zoo without a tutorial explaining it.
-            // Hidden while an arrival card is up, so nothing is tappable behind it.
-            if (_panel == Panel.None && Zoo.PendingArrival() < 0)
-            {
-                // One honest top bar: two tabs, same size, one at each end, both sized
-                // for a thumb. They used to be a small pill on the left and a pill on
-                // the right that printed straight over the share icon.
-                float barY = Screen.height - Screen.safeArea.height - Screen.safeArea.y + 18;
-                float tabW = Mathf.Min(230f, Screen.width * 0.40f), tabH = 76f;
-
-                var rZoo = new Rect(18, barY, tabW, tabH);
-                if (GUI.Button(rZoo, $"Zoo  {Zoo.UnlockedCount()}/{Zoo.Count}", _pill))
-                { Sfx.Tap(); _panel = Panel.Zoo; _zooScroll = Vector2.zero; }
-
-                // Tonight's Puzzle, mirrored on the right. One tab, no second map and no
-                // badge shouting at anyone — a daily thing that nags is a daily thing
-                // people turn off. It says what it is and waits.
-                if (Nightly.Available)
-                {
-                    var rNight = new Rect(Screen.width - tabW - 18, barY, tabW, tabH);
-                    if (GUI.Button(rNight, Nightly.DoneTonight ? "Tonight  done" : "Tonight", _pill))
-                    {
-                        Sfx.Tap();
-                        PlayerPrefs.SetInt(SleepyZoo.PuzzleGame.DailyRequestKey, 1);
-                        PlayerPrefs.Save();
-                        SceneManager.LoadScene("Puzzle");
-                    }
-                    // Caption sits under the tab, right-aligned, and is kept short — the
-                    // full story is told on the win panel, not on the home screen.
-                    var cap = _note.alignment;
-                    _note.alignment = TextAnchor.UpperRight;
-                    GUI.Label(new Rect(rNight.xMax - 320, rNight.yMax + 4, 320, 28),
-                              Nightly.Line(), _note);
-                    _note.alignment = cap;
-                }
-            }
-
-            if (_panel == Panel.Levels) { DrawLevelsPanel(); return; }
-            if (_panel == Panel.Zoo) { DrawZooPanel(); return; }
-            if (_panel == Panel.None && DrawArrivalCard()) return;
-
-            if (_panel == Panel.None) return;
-
-            // Settings. The old "High Score" panel and its "Reset high score" button are
-            // gone: they belonged to the merge game this project used to be, read from a
-            // score this game never writes, and were unreachable from the menu anyway.
-            var body = FullScreenPanel("Settings", out bool close);
-            if (close) { Sfx.Click(); _panel = Panel.None; return; }
-
-            float bw = Mathf.Min(460f, Screen.width * 0.82f);
-            float bh = 84f, gap = 18f;
-            float bx = (Screen.width - bw) * 0.5f;
-            float y = body.y + 40f;
-
-            if (GUI.Button(new Rect(bx, y, bw, bh), Sfx.SoundOn ? "Sound:  ON" : "Sound:  OFF", _pill))
-            { Sfx.SoundOn = !Sfx.SoundOn; Sfx.Click(); }
-            y += bh + gap;
-
-            // Vibration is its own switch, not part of Sound: playing muted with
-            // the animals still landing in your hand is a real way people play.
-            if (GUI.Button(new Rect(bx, y, bw, bh), Haptics.Enabled ? "Vibration:  ON" : "Vibration:  OFF", _pill))
-            {
-                Haptics.Enabled = !Haptics.Enabled;
-                Sfx.Tap();
-                if (Haptics.Enabled) Haptics.Soft();     // let them feel what they just turned on
-            }
-            y += bh + gap;
-
-            // Share used to be a floating icon in the corner whose glyph spilled out of
-            // its own circle. It's a button with a word on it now.
-            if (GUI.Button(new Rect(bx, y, bw, bh), "Tell a friend", _pill))
-            { Sfx.Click(); NativeShare.ShareText(ShareMessage); }
-            y += bh + gap * 2f;
-
-            GUI.Label(new Rect(0, y, Screen.width, 30),
-                      $"Wobble Zoo  {Application.version}", _cellSub3);
-        }
-
-        // Plain sentences only. The old copy used an em dash and it came through as a
-        // stray glyph in the share sheet on a real phone.
-        private const string ShareMessage =
-            "I'm playing Wobble Zoo, a cozy bedtime puzzle where one swipe slides every "
-            + "animal until something stops them. You just tuck them all into bed. "
-            + "It's very relaxing.";
-
-        // ---- the zoo ----
-        // A single wide bedroom you scroll sideways: a bed per animal, filled in as
-        // they arrive, empty (and honest about the price) where the next ones will go.
-        // No cards to collect, no shop, nothing to spend — just a room that fills up.
-        // Every panel sits on this: a solid, warm night-coloured card with a soft
-        // cream rim. The default IMGUI box is translucent, which let the logo and the
-        // Play button show straight through the level picker and the zoo.
-        private void DrawPanelBox(Rect r)
-        {
-            GUI.color = new Color(0.90f, 0.84f, 0.74f, 0.55f);          // rim
-            GUI.DrawTexture(new Rect(r.x - 3, r.y - 3, r.width + 6, r.height + 6), _dimTex);
-            GUI.color = new Color(0.17f, 0.13f, 0.22f, 0.995f);         // body
-            GUI.DrawTexture(r, _dimTex);
-            GUI.color = Color.white;
-        }
-
-        /// The whole screen, not a card floating on it.
-        ///
-        /// The zoo and the level path used to be small dialogs centred over the landing
-        /// page: on a tall phone that wasted most of the display, made the level path
-        /// about six pillows tall, and read as "a popup" rather than "a place you went".
-        /// These are screens. They get the screen.
-        private Rect FullScreenPanel(string title, out bool close)
-        {
-            var sa = Screen.safeArea;
-            var r = new Rect(0, 0, Screen.width, Screen.height);
-            GUI.color = new Color(0.15f, 0.12f, 0.20f, 1f);
-            GUI.DrawTexture(r, _dimTex);
-            GUI.color = Color.white;
-
-            float top = Screen.height - (sa.y + sa.height);
-
-            // Two rows rather than one. Sharing a row with Back meant the title either
-            // ran underneath it or wrapped and clipped, depending on screen width —
-            // there is no single centred rect that survives both.
-            float bw = Mathf.Min(150f, Screen.width * 0.30f);
-            close = GUI.Button(new Rect(18, top + 18, bw, 70), "Back", _pill);
-
-            bool wrapped = _big.wordWrap; _big.wordWrap = false;
-            GUI.Label(new Rect(0, top + 96, Screen.width, 56), title, _big);
-            _big.wordWrap = wrapped;
-
-            const float headH = 190f;   // Back row + title + room for the caller's subtitle
-            return new Rect(0, top + headH, Screen.width, sa.y + sa.height - top - headH);
         }
 
         // ---- flick scrolling ----
-        // IMGUI scroll views only respond to their scrollbar and the mouse wheel, so on
-        // a phone the level path simply could not be scrolled at all — the one thing the
-        // screen exists for. These fields drive a hand-rolled drag with inertia.
+        // IMGUI scroll views only respond to their scrollbar and the mouse wheel, so
+        // on a phone the map simply could not be scrolled at all. This is a
+        // hand-rolled drag with inertia, driven from Update because IMGUI never
+        // delivers drag events for a scroll view's body.
         private bool _dragging;
-        private float _dragLastY, _dragVel, _dragDist;
-        private Rect _scrollView;          // where dragging is allowed, in GUI space
-        private float _scrollMax;          // content height minus view height
-
-        /// True while the finger has travelled far enough that this is a scroll, not a
-        /// tap — used to stop a flick from also opening whatever was under the finger.
+        private float _dragLastY, _dragVel, _dragDist, _scrollMax;
+        private Rect _scrollView;
         private bool Dragged => _dragDist > 14f;
 
-        private void UpdateFlickScroll(ref Vector2 scroll)
+        private void UpdateFlickScroll(ref float scroll)
         {
-            if (_scrollMax <= 0f) { scroll.y = 0f; _dragVel = 0f; return; }
+            if (_scrollMax <= 0f) { scroll = 0f; _dragVel = 0f; return; }
             var p = Input.mousePosition;
-            var gui = new Vector2(p.x, Screen.height - p.y);
+            var gui = new Vector2(p.x, UnityEngine.Screen.height - p.y);
 
             if (Input.GetMouseButtonDown(0) && _scrollView.Contains(gui))
             { _dragging = true; _dragLastY = p.y; _dragVel = 0f; _dragDist = 0f; }
@@ -468,560 +159,845 @@ namespace ChonkyMerge
                 float dy = p.y - _dragLastY;
                 _dragLastY = p.y;
                 _dragDist += Mathf.Abs(dy);
-                scroll.y += dy;                       // finger up reveals what's below
-                if (Time.deltaTime > 0f) _dragVel = dy / Time.deltaTime;
+                scroll -= dy / Ui.S;
+                if (Time.deltaTime > 0f) _dragVel = -dy / Ui.S / Time.deltaTime;
             }
             else if (Input.GetMouseButtonUp(0)) _dragging = false;
 
             if (!_dragging)
             {
-                scroll.y += _dragVel * Time.deltaTime;
+                scroll += _dragVel * Time.deltaTime;
                 _dragVel = Mathf.MoveTowards(_dragVel, 0f, 2600f * Time.deltaTime);
                 if (Mathf.Abs(_dragVel) < 8f) _dragVel = 0f;
             }
-            // a soft stop at both ends rather than a hard clamp mid-flick
-            if (scroll.y < 0f) { scroll.y = 0f; _dragVel = 0f; }
-            if (scroll.y > _scrollMax) { scroll.y = _scrollMax; _dragVel = 0f; }
+            if (scroll < 0f) { scroll = 0f; _dragVel = 0f; }
+            if (scroll > _scrollMax) { scroll = _scrollMax; _dragVel = 0f; }
         }
 
-        private void DrawZooPanel()
+        // ---- the frame ----
+        private void OnGUI()
         {
-            var body = FullScreenPanel("Your zoo", out bool close);
-            if (close) { Sfx.Tap(); _panel = Panel.None; return; }
+            Ui.Frame();
+            switch (_screen)
+            {
+                case Screen2.Map: DrawMap(); break;
+                case Screen2.Dorm: DrawDorm(); break;
+                case Screen2.Settings: DrawSettings(); break;
+                case Screen2.Decorate: DrawDecorate(); break;
+                default: DrawHome(); break;
+            }
+        }
+
+        // =====================================================================
+        // 1a — HOME
+        // One door, one hero, no collisions.
+        // =====================================================================
+        private void DrawHome()
+        {
+            float H = Ui.H;
+
+            Ui.Backdrop(10, (0f, Ui.NightTop), (0.34f, Ui.NightMid), (0.62f, Ui.NightWarm),
+                        (0.84f, Ui.NightGlow), (1f, Ui.NightLow));
+
+            // The moon, with its long soft bloom. It is anchored to the design's
+            // y=258 but never allowed to sink behind the dorm shelf — on a short
+            // phone the shelf rides up, and a moon peeking out from behind a
+            // bookcase reads as a bug rather than a sky.
+            float shelfY = H - 300f - 150f;
+            float moonY = Mathf.Min(258f, shelfY - 96f);
+            Ui.Glow(Ui.R(298, moonY, 70, 70), 46f, new Color(1f, 0.886f, 0.698f, 0.34f));
+            Ui.Circle(Ui.R(298, moonY, 70, 70), Ui.Hex(0xffeecd));
+            Twinkles();
+
+            // ground: a soft hill, then the dorm shelf standing on it
+            Ui.Hill(H - 236f - 90f, 90f, Ui.Hex(0x5b3a1e));
+
+            // ---- top row: progress on the left, quiet controls on the right ----
+            int stars = SleepyZoo.PuzzleGame.TotalStars();
+            Ui.Chip(18, 58, 32, stars.ToString(), Ui.StarTex, Ui.StarLit, Ui.Hex(0xfff2e2),
+                    Ui.Ghost(0.14f), 15f, "/ " + SleepyZoo.PuzzleGame.MaxStars);
+
+            if (Ui.GhostDisc(Ui.W - 18 - 38 - 47, 55, 38, Sfx.SoundOn ? Icons.Speaker : Icons.SpeakerOff, 0.45f))
+            { Sfx.SoundOn = !Sfx.SoundOn; Sfx.Click(); }
+            if (Ui.GhostDisc(Ui.W - 18 - 38, 55, 38, Icons.Gear, 0.45f))
+            { Sfx.Click(); _screen = Screen2.Settings; }
+
+            // ---- the name ----
+            GUI.Label(Ui.R(0, 132, Ui.W, 66), "Tuck", Ui.Head(70, Ui.Hex(0xfff4e4)));
+            GUI.Label(Ui.R(0, 196, Ui.W, 66), "In", Ui.Head(70, Ui.Hex(0xffcf8d)));
+            GUI.Label(Ui.R(0, 268, Ui.W, 20), Ui.Track("a bedtime puzzle"),
+                      Ui.Bold(12.5f, new Color(1f, 0.925f, 0.816f, 0.6f)));
+
+            // ---- the dorm shelf: a window into the other screen ----
+            DrawShelf(shelfY);
+
+            // ---- the one primary: continue ----
+            int lv = SleepyZoo.PuzzleGame.ResumeLevel();
+            int ch = SleepyZoo.PuzzleGame.ChapterOf(lv);
+            float by = H - 96f - 68f;
+            if (ContinueButton(22, by, Ui.W - 44, 68, lv, ch))
+            {
+                Sfx.Click();
+                PlayerPrefs.SetInt("zoo_level", lv);
+                PlayerPrefs.Save();
+                SceneManager.LoadScene("Puzzle");
+            }
+
+            // ---- the bottom rail ----
+            DrawNav(H - 26f - 62f);
+
+            // the arrival card sits over everything, once
+            DrawArrivalCard();
+        }
+
+        private void Twinkles()
+        {
+            // a handful of stars that breathe out of phase, so the sky is never static
+            float[,] t = { { 44, 78, 4 }, { 120, 132, 3 }, { 196, 64, 3 }, { 330, 96, 3 },
+                           { 76, 176, 3 }, { 258, 152, 4 }, { 20, 232, 3 }, { 352, 214, 3 } };
+            for (int i = 0; i < t.GetLength(0); i++)
+            {
+                float a = 0.35f + 0.5f * (0.5f + 0.5f * Mathf.Sin(Time.time * (1.6f + i * 0.23f) + i));
+                Ui.Circle(Ui.R(t[i, 0], t[i, 1], t[i, 2], t[i, 2]), new Color(1f, 0.914f, 0.784f, a));
+            }
+        }
+
+        /// The dorm shelf on the home screen: four cubbies, filled with whoever is
+        /// actually home. It is the only place stars visibly buy something without
+        /// the player having to go and look.
+        private void DrawShelf(float y)
+        {
+            Ui.Round(Ui.R(28, y - 26, 334, 34), 14, Ui.Hex(0xa9682f));           // the rail above
+            Ui.RoundOutline(Ui.R(44, y, 302, 150), 26, 3, Ui.Hex(0x935a2c), Ui.Hex(0x7a4a25));
 
             int home = Zoo.UnlockedCount();
-            GUI.Label(new Rect(0, body.y - 38, Screen.width, 32),
-                      home == 1 ? "1 friend has moved in" : $"{home} friends have moved in", _noteLight);
-
-            // A two-column grid that scrolls downward, rather than one row that scrolled
-            // sideways. Sideways scrolling in a list is something people simply don't try
-            // on a phone, so half the zoo was effectively invisible.
-            float pad = 22f;
-            float innerW = body.width - pad * 2;
-            float bedW = (innerW - 18f) * 0.5f;
-            float bedH = bedW * 1.30f;
-            int rows = (Zoo.Count + 1) / 2;
-
-            // Reserve room under the grid for the "who's next" line, the dream (which
-            // wraps to two lines on a narrow screen) and the lanterns. Under-reserving
-            // here is what cut "…and answers them too" in half.
-            float footer = 150f + (Nightly.Available ? 74f : 0f);
-            var view = new Rect(body.x + pad, body.y + 6, innerW, body.height - footer - 12f);
-            float contentH = rows * (bedH + 16f);
-            _scrollView = view;
-            _scrollMax = Mathf.Max(0f, contentH - view.height);
-
-            GUI.BeginScrollView(view, _zooScroll, new Rect(0, 0, innerW, contentH),
-                                GUIStyle.none, GUIStyle.none);
-            for (int i = 0; i < Zoo.Count; i++)
+            for (int i = 0; i < 4; i++)
             {
-                float bx = (i % 2) * (bedW + 18f);
-                float by = (i / 2) * (bedH + 16f);
-                if (by + bedH < _zooScroll.y || by > _zooScroll.y + view.height) continue;
-                DrawBed(new Rect(bx, by, bedW, bedH), i);
-            }
-            GUI.EndScrollView();
-
-            // one line, always: who's next and exactly how far away they are
-            var line = new Rect(body.x + pad, view.yMax + 12, innerW, 44);
-            GUI.Label(line, Zoo.NextLine(), _noteLight);
-
-            // and the dream, for anyone who's settled all the way in
-            int dreaming = -1;
-            for (int i = Zoo.Count - 1; i >= 0; i--) if (Zoo.Stage(i) >= 2) { dreaming = i; break; }
-            if (dreaming >= 0)
-                GUI.Label(new Rect(body.x + pad, line.yMax + 2, innerW, 72),
-                          $"{Zoo.Pals[dreaming].name} {Zoo.Pals[dreaming].dream}.", _cellSub3);
-
-            if (Nightly.Available)
-                DrawLanterns(new Rect(body.x + pad, body.yMax - 62f, innerW, 44f));
-        }
-
-        /// The streak made visible: one lantern per milestone, lit ones warm and
-        /// glowing, the rest dark. This is what nights actually buy — the zoo getting
-        /// cosier — so it has to be something you can point at, not a number.
-        private void DrawLanterns(Rect r)
-        {
-            int lit = Nightly.Lanterns, n = Nightly.MaxLanterns;
-            float step = Mathf.Min(38f, r.width / (n + 1f));
-            float d = step * 0.62f;
-            float x = r.x + (r.width - step * (n - 1) - d) * 0.5f;
-            float y = r.y + 4f;
-            for (int i = 0; i < n; i++)
-            {
-                var c = i < lit ? new Color(1.00f, 0.80f, 0.42f, 0.95f)
-                                : new Color(1.00f, 1.00f, 1.00f, 0.13f);
-                if (i < lit)   // a soft halo, so a lit lantern actually reads as lit
+                float cx = 64 + i * 74;
+                var slot = Ui.R(cx, y + 26, 60, 52);
+                if (i < home)
                 {
-                    GUI.color = new Color(1.00f, 0.78f, 0.36f, 0.22f);
-                    GUI.DrawTexture(new Rect(x + i * step - d * 0.35f, y - d * 0.35f, d * 1.7f, d * 1.7f), _dotTex);
+                    Ui.RoundGrad(slot, 12, Ui.VGrad(20 + i, (0f, Ui.Hex(0xffdca6)), (1f, Ui.Hex(0xf2a95c))));
+                    var art = Zoo.Art(i);
+                    if (art != null)
+                    {
+                        float bob = Mathf.Sin(Time.time * 1.7f + i * 1.3f) * 2.5f;
+                        float aw = 38f, ah = aw * art.height / (float)art.width;
+                        GUI.DrawTexture(Ui.R(cx + (60 - aw) * 0.5f, y + 26 + (52 - ah) * 0.5f + bob, aw, ah), art);
+                    }
                 }
-                GUI.color = c;
-                GUI.DrawTexture(new Rect(x + i * step, y, d, d), _dotTex);
+                else Ui.RoundOutline(slot, 12, 2, Ui.Hex(0x8a5228), Ui.Hex(0x6b3f20));
             }
-            GUI.color = Color.white;
-            GUI.Label(new Rect(r.x, y + d + 2f, r.width, 26f),
-                      lit >= n ? "every lantern lit" : $"{lit} of {n} lanterns lit", _cellSub3);
+
+            GUI.Label(Ui.R(44, y + 150 - 24, 302, 16),
+                      $"the dorm  ·  {home} of {Zoo.Count} home",
+                      Ui.Bold(12, new Color(1f, 0.91f, 0.776f, 0.72f)));
         }
 
-        // One animal, in bed. Built bottom-up from the pillow so nothing can drift
-        // into the name: coloured blanket, cream bed (the same art the board uses),
-        // animal resting on it, name and how settled they are underneath.
-        private void DrawBed(Rect r, int i)
+        /// The continue button. It is the only chunky terracotta thing on the screen,
+        /// and it names where you are going rather than just saying "Play" — so the
+        /// main action carries information instead of being a shape you memorise.
+        private bool ContinueButton(float x, float y, float w, float h, int lv, int ch)
         {
-            var pal = Zoo.Pals[i];
-            bool home = Zoo.Unlocked(i);
-            int stage = Zoo.Stage(i);
-            float cx = r.x + r.width * 0.5f;
+            var outer = Ui.R(x, y, w, h);
+            bool down = outer.Contains(Event.current.mousePosition) && Input.GetMouseButton(0);
+            float lift = down ? Ui.P(2f) : Ui.P(4f);
+            float edge = Ui.P(7f);
 
-            // Everything here is a fraction of the card, not a pixel count. The old
-            // fixed offsets were tuned for a 210px bed in a small dialog; on the
-            // full-screen grid the cards are twice that and the animals grew straight
-            // out of their beds.
-            float labelH = r.height * 0.27f;                 // name + how settled they are
-            float pw = r.width * 0.66f, ph = pw * 0.58f;
-            var pillow = new Rect(cx - pw * 0.5f, r.yMax - labelH - ph, pw, ph);
+            Ui.Round(new Rect(outer.x, outer.y + Ui.P(11f), outer.width, outer.height), 999,
+                     new Color(Ui.PrimaryShadow.r, Ui.PrimaryShadow.g, Ui.PrimaryShadow.b, 0.40f));
+            Ui.Round(new Rect(outer.x, outer.y, outer.width, outer.height + edge), 999, Ui.PrimaryBase);
+            var face = new Rect(outer.x, outer.y - lift + edge, outer.width, outer.height);
+            Ui.RoundGrad(face, 999, Ui.VGrad(1, (0f, Ui.PrimaryTop), (1f, Ui.PrimaryBot)));
 
-            // the blanket: a soft disc in the animal's signature colour, wider than the
-            // bed so a rim of "whose bed is this" always shows around the cream
-            var blanket = new Rect(pillow.x - pw * 0.22f, pillow.y - ph * 0.42f,
-                                   pillow.width + pw * 0.44f, pillow.height + ph * 0.84f);
-            GUI.color = home ? new Color(pal.col.r, pal.col.g, pal.col.b, 0.85f)
-                             : new Color(0.55f, 0.52f, 0.58f, 0.28f);
-            GUI.DrawTexture(blanket, _dotTex);
-            GUI.color = Color.white;
+            float fy = y - lift / Ui.S + 7f;
+            GUI.Label(Ui.R(x + 24, fy + 12, 160, 13), Ui.Track("continue"),
+                      Ui.Bold(11, new Color(1f, 0.941f, 0.871f, 0.72f), TextAnchor.MiddleLeft));
+            GUI.Label(Ui.R(x + 24, fy + 28, 200, 30), $"Level {lv + 1}",
+                      Ui.Head(27, Ui.PrimaryInk, TextAnchor.MiddleLeft));
 
-            // a special friend sleeps under a gold rim; a rare guest gets a wider glow
-            if (home && pal.tier != Zoo.Tier.Friend)
+            GUI.Label(Ui.R(x + w - 120 - 58, fy + 14, 120, 13), SleepyZoo.PuzzleGame.RoomName(ch),
+                      Ui.Bold(11, new Color(1f, 0.941f, 0.871f, 0.72f), TextAnchor.MiddleRight));
+            int got = SleepyZoo.PuzzleGame.StarsFor(lv);
+            for (int i = 0; i < 3; i++)
+                Ui.StarShape(Ui.R(x + w - 58 - 47 + i * 14, fy + 32, 11, 11),
+                             i < got ? Ui.StarLit : new Color(1, 1, 1, 0.35f));
+
+            var disc = Ui.R(x + w - 58, fy + h * 0.5f - 23, 46, 46);
+            Ui.Round(disc, 23, new Color(1f, 0.965f, 0.918f, 0.16f));
+            var pc = GUI.color; GUI.color = Ui.PrimaryInk;
+            GUI.DrawTexture(Ui.R(x + w - 58 + 12, fy + h * 0.5f - 12, 22, 22), Icons.Play);
+            GUI.color = pc;
+
+            return GUI.Button(new Rect(outer.x, outer.y, outer.width, outer.height + edge),
+                              GUIContent.none, GUIStyle.none);
+        }
+
+        /// The permanent bottom rail. Three tertiary destinations, all the same
+        /// weight, none of them competing with the primary above them.
+        private void DrawNav(float y)
+        {
+            float w = (Ui.W - 44 - 20) / 3f;
+            if (NavItem(22, y, w, 62, Icons.Map, "Map", null, default, default))
+            { Sfx.Tap(); _screen = Screen2.Map; _scrollToCurrent = true; }
+
+            if (NavItem(22 + w + 10, y, w, 62, Icons.Bed, "Dorm",
+                        $"{Zoo.UnlockedCount()}/{Zoo.Count}", Ui.Hex(0xc67139), Color.white))
+            { Sfx.Tap(); _screen = Screen2.Dorm; _sel = -1; }
+
+            bool night = Nightly.Available;
+            if (NavItem(22 + (w + 10) * 2, y, w, 62, Icons.Moon, "Tonight",
+                        night && Nightly.Streak > 0 ? Nightly.Streak.ToString() : null,
+                        Ui.Hex(0xffd166), Ui.Umber) && night)
             {
-                float g = pal.tier == Zoo.Tier.Guest ? r.width * 0.15f : r.width * 0.07f;
-                GUI.color = new Color(1f, 0.86f, 0.42f, pal.tier == Zoo.Tier.Guest ? 0.30f : 0.22f);
-                GUI.DrawTexture(new Rect(blanket.x - g, blanket.y - g, blanket.width + g * 2, blanket.height + g * 2), _dotTex);
-                GUI.color = Color.white;
-            }
-
-            if (_cardTex != null)
-            {
-                GUI.color = home ? new Color(1f, 1f, 1f, 0.95f) : new Color(0.7f, 0.68f, 0.72f, 0.35f);
-                GUI.DrawTexture(pillow, _cardTex);
-                GUI.color = Color.white;
-            }
-
-            if (home)
-            {
-                var art = Zoo.Art(i);
-                if (art != null)
-                {
-                    // a settled animal curls up smaller and sinks further into the bed
-                    float k = stage >= 1 ? 0.44f : 0.50f;
-                    float aw = r.width * k, ah = aw * art.height / (float)art.width;
-                    float breathe = 1f + Mathf.Sin(Time.time * (stage >= 1 ? 1.1f : 1.7f) + i) * (stage >= 1 ? 0.022f : 0.012f);
-                    aw *= breathe; ah *= breathe;
-                    // sit them IN the bed: their bottom rests part-way down the pillow
-                    float tuck = stage >= 1 ? 0.52f : 0.42f;
-                    GUI.DrawTexture(new Rect(cx - aw * 0.5f, pillow.y + ph * tuck - ah, aw, ah), art);
-                }
-                GUI.Label(new Rect(r.x, r.yMax - labelH + 2f, r.width, labelH * 0.52f), pal.name, _big2);
-                GUI.color = new Color(1f, 1f, 1f, 0.72f);
-                GUI.Label(new Rect(r.x, r.yMax - labelH * 0.46f, r.width, labelH * 0.46f),
-                          Zoo.StageWord(stage), _cellSub3);
-                GUI.color = Color.white;
-            }
-            else
-            {
-                GUI.color = new Color(1f, 1f, 1f, 0.40f);
-                GUI.Label(new Rect(r.x, pillow.y - r.height * 0.18f, r.width, r.height * 0.22f), "?", _title);
-                GUI.color = Color.white;
-                GUI.Label(new Rect(r.x + 4, r.yMax - labelH, r.width - 8, labelH), Zoo.Requirement(i), _cellSub3);
+                Sfx.Tap();
+                PlayerPrefs.SetInt(SleepyZoo.PuzzleGame.DailyRequestKey, 1);
+                PlayerPrefs.Save();
+                SceneManager.LoadScene("Puzzle");
             }
         }
 
-        // The arrival moment: one card, once, the first time you're back on the menu
-        // after a friend moved in. This is the whole reason the zoo exists — the game
-        // has something to show you that happened while you were away.
-        private bool DrawArrivalCard()
+        private bool NavItem(float x, float y, float w, float h, Texture2D icon, string label,
+                             string badge, Color badgeBg, Color badgeInk)
         {
-            int i = Zoo.PendingArrival();
-            if (i < 0) return false;
-            var pal = Zoo.Pals[i];
+            var r = Ui.R(x, y, w, h);
+            bool down = r.Contains(Event.current.mousePosition) && Input.GetMouseButton(0);
+            Ui.RoundOutline(r, 22, 1.5f, Ui.Hex(0xffe1be, down ? 0.5f : 0.3f),
+                            new Color(0.251f, 0.137f, 0.063f, down ? 0.36f : 0.24f));
+            var pc = GUI.color; GUI.color = Ui.Ghost(0.94f);
+            GUI.DrawTexture(Ui.R(x + w * 0.5f - 10, y + 12, 20, 20), icon);
+            GUI.color = pc;
+            GUI.Label(Ui.R(x, y + 34, w, 18), label, Ui.Bold(12, Ui.Ghost(0.94f)));
 
-            GUI.color = new Color(0, 0, 0, 0.66f);
-            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), _dimTex);
-            GUI.color = Color.white;
-
-            // Laid out top-down from one running cursor, and the panel is sized to fit
-            // it — a fixed height had the "Say hello" button printing straight through
-            // the line that says who moved in.
-            float w = Mathf.Min(Screen.width * 0.84f, 560);
-            float bw = w * 0.52f, artH = bw * 0.72f;
-            const float titleTop = 26f, titleH = 40f, gapArt = 44f, gapName = 10f,
-                        nameH = 50f, subH = 44f, gapBtn = 26f, btnH = 66f, botPad = 28f;
-            float h = titleTop + titleH + gapArt + artH + gapName + nameH + subH
-                      + gapBtn + btnH + botPad;
-            var box = new Rect((Screen.width - w) / 2, (Screen.height - h) / 2, w, h);
-            DrawPanelBox(box);
-
-            float y = box.y + titleTop;
-            GUI.Label(new Rect(box.x, y, box.width, titleH), "Someone moved in!", _noteLight);
-            y += titleH + gapArt;
-
-            var blanket = new Rect(box.x + (w - bw) / 2f, y, bw, artH);
-            GUI.color = new Color(pal.col.r, pal.col.g, pal.col.b, 0.85f);
-            GUI.DrawTexture(blanket, _dotTex);
-            GUI.color = Color.white;
-
-            var art = Zoo.Art(i);
-            if (art != null)
+            if (!string.IsNullOrEmpty(badge))
             {
-                float aw = bw * 0.62f, ah = aw * art.height / (float)art.width;
-                float bob = Mathf.Sin(Time.time * 2.2f) * 6f;
-                GUI.DrawTexture(new Rect(box.x + (w - aw) / 2f, blanket.y - ah * 0.30f + bob, aw, ah), art);
+                var st = Ui.Bold(10, badgeInk);
+                float bw = st.CalcSize(new GUIContent(badge)).x / Ui.S + 14f;
+                var br = Ui.R(x + w - bw + 4, y - 6, bw, 18);
+                Ui.Round(new Rect(br.x - Ui.P(2), br.y - Ui.P(2), br.width + Ui.P(4), br.height + Ui.P(4)),
+                         999, Ui.Hex(0x4a2a18));
+                Ui.Round(br, 999, badgeBg);
+                GUI.Label(br, badge, st);
             }
-
-            y = blanket.yMax + gapName;
-            GUI.Label(new Rect(box.x, y, box.width, nameH), pal.name, _big);
-            y += nameH;
-            GUI.Label(new Rect(box.x + 30, y, box.width - 60, subH),
-                      "has come to stay at your zoo", _cellSub3);
-            y += subH + gapBtn;
-
-            if (GUI.Button(new Rect(box.x + w / 2 - 130, y, 260, btnH), "Say hello", _pill))
-            {
-                Sfx.Win();
-                Zoo.MarkArrivalSeen();
-                _panel = Panel.Zoo; _zooScroll = Vector2.zero;   // grid scrolls vertically now
-            }
-            return true;
+            return GUI.Button(r, GUIContent.none, GUIStyle.none);
         }
 
-        // ---- level picker ----
-        // Star economy lives in one place (PuzzleGame) so the menu and the game can
-        // never disagree about what's unlocked.
-        private static int StarsFor(int i) => SleepyZoo.PuzzleGame.StarsFor(i);
-        private static bool Unlocked(int i) => SleepyZoo.PuzzleGame.IsUnlocked(i);
-        private static bool GateBlocked(int i) => !Unlocked(i) && StarsFor(i - 1) > 0;
-
-        private void DrawLevelsPanel()
+        // =====================================================================
+        // 1b — THE MAP
+        // A quilt you scroll, chapters as bands.
+        // =====================================================================
+        // Each chapter gets the colours of its own room, so scrolling the map is
+        // the same journey as playing it. A locked band goes dark and keeps its
+        // secret.
+        private static readonly uint[,] BandCols =
         {
-            var body = FullScreenPanel("Choose a level", out bool close);
-            if (close) { Sfx.Click(); _panel = Panel.None; return; }
-            GUI.Label(new Rect(0, body.y - 38, Screen.width, 32),
-                $"{SleepyZoo.PuzzleGame.TotalStars()} / {SleepyZoo.PuzzleGame.MaxStars} stars collected", _noteLight);
+            { 0xf3e6e9, 0xf7efe7, 0x7c4f5e }, { 0xe4eddd, 0xf0f2e7, 0x4d6b46 },
+            { 0xdfeaf2, 0xeef1e6, 0x3a5a72 }, { 0xe6edf5, 0xf2f5f9, 0x46607c },
+            { 0xf6e7d8, 0xf8f0e4, 0x8a5730 }, { 0xe0efe6, 0xeef4ec, 0x3f6b55 },
+            { 0xece4f2, 0xf3eff6, 0x5b4a75 }, { 0xe3e3f2, 0xeeeef7, 0x3b3b6b },
+        };
 
-            var box = body;
-            float w = box.width;
+        private const float NodeStep = 92f, NodeW = 64f, NodeH = 60f, BandHead = 74f, BandPad = 26f;
 
-            // ---- the blanket path ----
-            // Levels used to be a 4-column grid: readable, but it looked like a table
-            // of contents. Now each chapter is a quilted path winding up through the
-            // room, one pillow per level, stitched together. Same information, but it
-            // reads as somewhere you're travelling rather than a list you're ticking.
-            float pad = 24f;
-            float innerW = w - pad * 2;
-            // Pillows are sized so that about eight always fit on screen, whatever the
-            // screen is. Sizing them off the WIDTH looked right on a phone and showed
-            // only four at a time in a narrow window; sizing off the height keeps the
-            // path feeling like a path everywhere. Width still gets a veto.
-            float pillow = Mathf.Clamp(Mathf.Min(innerW * 0.30f, body.height / 11.4f), 76f, 200f);
-            float step = pillow * 1.42f;                 // vertical distance between pillows
-            float headH = pillow * 0.90f, chapGap = pillow * 0.26f;
+        private float BandHeight(int ch)
+        {
+            if (!SleepyZoo.PuzzleGame.ChapterUnlocked(ch)) return 150f;
+            int n = SleepyZoo.PuzzleGame.ChapterLastLevel(ch) - SleepyZoo.PuzzleGame.ChapterFirstLevel(ch) + 1;
+            return BandHead + (n - 1) * NodeStep + NodeH + BandPad;
+        }
+
+        private void DrawMap()
+        {
+            float H = Ui.H;
+            Ui.Backdrop(11, (0f, Ui.Cream), (1f, Ui.Hex(0xe9dcc6)));
 
             int chapters = SleepyZoo.PuzzleGame.ChapterCount;
             float contentH = 0f;
-            for (int ch = 0; ch < chapters; ch++)
-            {
-                int n = SleepyZoo.PuzzleGame.ChapterLastLevel(ch) - SleepyZoo.PuzzleGame.ChapterFirstLevel(ch) + 1;
-                contentH += headH + (n - 1) * step + pillow + chapGap;
-            }
+            for (int ch = 0; ch < chapters; ch++) contentH += BandHeight(ch);
 
-            var view = new Rect(box.x + pad, box.y + 8, innerW, box.height - 16);
-            var content = new Rect(0, 0, innerW, contentH);
-            // Register the drag area and travel for Update's flick handler, and hide the
-            // scrollbars — a thin IMGUI scrollbar is not a mobile control.
+            var view = Ui.R(0, 0, Ui.W, H);
             _scrollView = view;
-            _scrollMax = Mathf.Max(0f, contentH - view.height);
-            GUI.BeginScrollView(view, _levelScroll, content, GUIStyle.none, GUIStyle.none);
+            _scrollMax = Mathf.Max(0f, contentH - (H - 118f));
 
-            // 130 levels is a long scroll: open the picker where the player actually
-            // is, not at level 1 they cleared hours ago
             if (_scrollToCurrent)
             {
                 _scrollToCurrent = false;
                 int here = SleepyZoo.PuzzleGame.ResumeLevel();
+                int hereCh = SleepyZoo.PuzzleGame.ChapterOf(here);
                 float upto = 0f;
-                for (int ch = 0; ch < SleepyZoo.PuzzleGame.ChapterOf(here); ch++)
-                {
-                    int n = SleepyZoo.PuzzleGame.ChapterLastLevel(ch) - SleepyZoo.PuzzleGame.ChapterFirstLevel(ch) + 1;
-                    upto += headH + (n - 1) * step + pillow + chapGap;
-                }
-                int into = here - SleepyZoo.PuzzleGame.ChapterFirstLevel(SleepyZoo.PuzzleGame.ChapterOf(here));
-                _levelScroll = new Vector2(0, Mathf.Clamp(upto + into * step - view.height * 0.42f, 0f, _scrollMax));
+                for (int ch = 0; ch < hereCh; ch++) upto += BandHeight(ch);
+                int into = here - SleepyZoo.PuzzleGame.ChapterFirstLevel(hereCh);
+                _mapScroll = Mathf.Clamp(upto + BandHead + into * NodeStep - H * 0.45f, 0f, _scrollMax);
             }
 
-            float cx = innerW * 0.5f;
-            float amp = Mathf.Min(innerW * 0.5f - pillow * 0.62f, pillow * 1.5f);
-            float y = 0f;
-            // Only draw what's actually on screen. A pillow is roughly a dozen textures
-            // and a label, so drawing all 130 of them plus their stitching was over a
-            // thousand draw calls a frame for the eight or so anyone can see.
-            float visTop = _levelScroll.y - step, visBot = _levelScroll.y + view.height + step;
+            // ---- the bands ----
+            GUI.BeginGroup(view);
+            float y = 118f - _mapScroll;
             for (int ch = 0; ch < chapters; ch++)
             {
-                int first = SleepyZoo.PuzzleGame.ChapterFirstLevel(ch);
-                int lastLv = SleepyZoo.PuzzleGame.ChapterLastLevel(ch);
-                bool chOpen = SleepyZoo.PuzzleGame.ChapterUnlocked(ch);
-                float headTop = y;
-                y += headH;
-                if (headTop < visBot && headTop + headH > visTop)
-                    DrawChapterHeader(headTop, innerW, ch, chOpen, headH);
-
-                float top = y + pillow * 0.5f;
-                // stitching first, so every pillow sits on top of its thread
-                for (int i = first; i < lastLv; i++)
+                float bh = BandHeight(ch);
+                if (y + bh > -40f && y < H + 40f)
                 {
-                    int k = i - first;
-                    float ya = top + k * step, yb = top + (k + 1) * step;
-                    if (yb < visTop || ya > visBot) continue;
-                    DrawStitches(new Vector2(cx + PathX(k, amp), ya),
-                                 new Vector2(cx + PathX(k + 1, amp), yb),
-                                 chOpen && Unlocked(i + 1));
+                    if (SleepyZoo.PuzzleGame.ChapterUnlocked(ch)) DrawOpenBand(y, bh, ch);
+                    else DrawLockedBand(y, bh, ch);
                 }
-                for (int i = first; i <= lastLv; i++)
-                {
-                    int k = i - first;
-                    var c = new Vector2(cx + PathX(k, amp), top + k * step);
-                    if (c.y + pillow < visTop || c.y - pillow > visBot) continue;
-                    DrawPillow(new Rect(c.x - pillow * 0.5f, c.y - pillow * 0.5f, pillow, pillow), i, chOpen);
-                }
-                y = top + (lastLv - first) * step + pillow * 0.5f + chapGap;
+                y += bh;
             }
-            GUI.EndScrollView();
-            DrawGateHelp(box);
+            GUI.EndGroup();
+
+            // ---- the header, floating over a fade ----
+            GUI.DrawTexture(Ui.R(0, 0, Ui.W, 118),
+                Ui.VGrad(12, (0f, Ui.Cream), (0.62f, Ui.Cream), (1f, new Color(0.961f, 0.918f, 0.847f, 0f))),
+                ScaleMode.StretchToFill);
+
+            if (Ui.GhostDisc(20, 52, 40, Icons.Chevron, 0.45f, Ui.Ink800, false))
+            { Sfx.Click(); _screen = Screen2.Home; }
+            Ui.Round(Ui.R(20, 52, 40, 40), 20, Ui.Hex(0xe9e2d4, 0f));   // keep the disc reading on cream
+            GUI.Label(Ui.R(72, 54, 200, 22), "The map", Ui.Head(20, Ui.Ink900, TextAnchor.MiddleLeft));
+            GUI.Label(Ui.R(72, 74, 240, 16),
+                      $"{SleepyZoo.PuzzleGame.ChapterCount} chapters · {SleepyZoo.PuzzleGame.LevelCount} nights",
+                      Ui.Bold(11, Ui.Ink600, TextAnchor.MiddleLeft));
+            Ui.Chip(Ui.W - 100, 56, 32, SleepyZoo.PuzzleGame.TotalStars().ToString(),
+                    Ui.StarTex, Ui.Star, Ui.Ink900, Ui.Hex(0xe9e2d4), 14f);
+
+            DrawGateHelp();
+        }
+
+        private void DrawOpenBand(float y, float bh, int ch)
+        {
+            var band = Ui.R(0, y, Ui.W, bh);
+            GUI.DrawTexture(band, Ui.VGrad(30 + ch,
+                (0f, Ui.Hex(BandCols[ch, 0])), (1f, Ui.Hex(BandCols[ch, 1]))), ScaleMode.StretchToFill);
+
+            int first = SleepyZoo.PuzzleGame.ChapterFirstLevel(ch);
+            int last = SleepyZoo.PuzzleGame.ChapterLastLevel(ch);
+            int n = last - first + 1;
+            int done = 0;
+            for (int i = first; i <= last; i++) if (SleepyZoo.PuzzleGame.StarsFor(i) > 0) done++;
+
+            // header row
+            Ui.Round(Ui.R(24, y + 20, 46, 46), 16, Ui.Hex(BandCols[ch, 2]));
+            GUI.Label(Ui.R(24, y + 20, 46, 46), (ch + 1).ToString(), Ui.Head(20, Ui.Hex(BandCols[ch, 1])));
+            GUI.Label(Ui.R(82, y + 22, Ui.W - 100, 22), SleepyZoo.PuzzleGame.ChapterName(ch),
+                      Ui.Head(19, Ui.Ink900, TextAnchor.MiddleLeft));
+            GUI.Label(Ui.R(82, y + 44, Ui.W - 100, 18),
+                      $"{SleepyZoo.PuzzleGame.RoomName(ch)} · {done} of {n} tucked in",
+                      Ui.Bold(11.5f, Ui.Ink700, TextAnchor.MiddleLeft));
+
+            // the winding path
+            float top = y + BandHead + NodeH * 0.5f;
+            float cx = Ui.W * 0.5f;
+            float amp = 96f;
+            for (int i = first; i < last; i++)
+            {
+                int k = i - first;
+                var a = new Vector2(cx + PathX(k, amp), top + k * NodeStep);
+                var b = new Vector2(cx + PathX(k + 1, amp), top + (k + 1) * NodeStep);
+                DrawStitches(a, b, SleepyZoo.PuzzleGame.StarsFor(i) > 0);
+            }
+            for (int i = first; i <= last; i++)
+            {
+                int k = i - first;
+                DrawNode(cx + PathX(k, amp), top + k * NodeStep, i);
+            }
         }
 
         // The path's sideways wander. Two sines so it never looks like a plain zigzag.
         private static float PathX(int k, float amp) =>
             Mathf.Sin(k * 0.85f) * amp * 0.80f + Mathf.Sin(k * 0.37f) * amp * 0.20f;
 
-        // Dotted "stitches" joining two pillows. Unreached parts of the path are
-        // faded, so how far you've come is visible at a glance.
-        private void DrawStitches(Vector2 a, Vector2 b, bool reached)
+        /// The dotted stitching between two nodes — sparse, like the design's
+        /// `stroke-dasharray: 2 13`. Behind you it is terracotta; ahead it is grey.
+        private void DrawStitches(Vector2 a, Vector2 b, bool done)
         {
-            const int dots = 5;
-            float s = 9f;
-            GUI.color = reached ? new Color(0.95f, 0.84f, 0.62f, 1f)
-                                : new Color(0.72f, 0.68f, 0.72f, 0.30f);
+            const int dots = 6;
+            var c = done ? Ui.Hex(0xc67139) : Ui.Hex(0xc0b6a5);
             for (int i = 1; i <= dots; i++)
             {
                 var p = Vector2.Lerp(a, b, i / (float)(dots + 1));
-                GUI.DrawTexture(new Rect(p.x - s * 0.5f, p.y - s * 0.5f, s, s), _dotTex);
+                Ui.Circle(Ui.R(p.x - 2, p.y - 2, 4, 4), c);
             }
-            GUI.color = Color.white;
         }
 
-        // One level, as a pillow on the path.
-        private void DrawPillow(Rect r, int i, bool chapterOpen)
+        private void DrawNode(float cx, float cy, int i)
         {
-            bool open = chapterOpen && Unlocked(i);
-            bool gated = chapterOpen && GateBlocked(i);
-            int stars = StarsFor(i);
-            bool next = open && stars == 0;              // the one they're up to
+            bool open = SleepyZoo.PuzzleGame.IsUnlocked(i);
+            int stars = SleepyZoo.PuzzleGame.StarsFor(i);
+            bool next = open && stars == 0;
 
-            // the pillow itself
             if (next)
             {
-                // a soft halo so "you are here" is obvious without an arrow or a label
-                GUI.color = new Color(1f, 0.86f, 0.42f, 0.55f);
-                float g = r.width * 0.30f;
-                GUI.DrawTexture(new Rect(r.x - g, r.y - g, r.width + g * 2, r.height + g * 2), _dotTex);
-            }
-            GUI.color = open ? Color.white : new Color(0.62f, 0.60f, 0.64f, 0.5f);
-            if (_cardTex != null) GUI.DrawTexture(r, _cardTex); else GUI.Box(r, GUIContent.none);
-            GUI.color = Color.white;
+                // the one you are up to: bigger, terracotta, with a breathing halo
+                float w = 78, h = 74;
+                float pulse = 8f + 4f * Mathf.Sin(Time.time * 2.4f);
+                Ui.RoundOutline(Ui.R(cx - w * 0.5f - pulse, cy - h * 0.5f - pulse, w + pulse * 2, h + pulse * 2),
+                                34, 2, Ui.Hex(0xc67139, 0.35f), new Color(0, 0, 0, 0f));
+                var r = Ui.R(cx - w * 0.5f, cy - h * 0.5f, w, h);
+                Ui.Round(new Rect(r.x, r.y + Ui.P(5), r.width, r.height), 22, Ui.Hex(0x8c491a));
+                Ui.RoundGrad(r, 22, Ui.VGrad(1, (0f, Ui.PrimaryTop), (1f, Ui.PrimaryBot)));
+                GUI.Label(Ui.R(cx - w * 0.5f, cy - h * 0.5f + 4, w, 40), (i + 1).ToString(),
+                          Ui.Head(28, Ui.PrimaryInk));
+                GUI.Label(Ui.R(cx - w * 0.5f, cy + h * 0.5f - 20, w, 14), Ui.Track("next"),
+                          Ui.Bold(10, new Color(1f, 0.965f, 0.918f, 0.8f)));
 
+                // and the one line of information that matters before you tap it
+                string tip = $"{SleepyZoo.PuzzleGame.AnimalCount(i)} animals · par {SleepyZoo.PuzzleGame.ParOf(i)}";
+                var st = Ui.Bold(11, Ui.Hex(0xffeed6));
+                float tw = st.CalcSize(new GUIContent(tip)).x / Ui.S + 24f;
+                float tx = Mathf.Clamp(cx + 46, 8, Ui.W - tw - 8);
+                Ui.Round(Ui.R(tx, cy + 26, tw, 26), 12, Ui.Umber);
+                GUI.Label(Ui.R(tx, cy + 26, tw, 26), tip, st);
+
+                if (GUI.Button(r, GUIContent.none, GUIStyle.none) && !Dragged) Launch(i);
+                return;
+            }
+
+            var nr = Ui.R(cx - NodeW * 0.5f, cy - NodeH * 0.5f, NodeW, NodeH);
             if (open)
             {
-                GUI.Label(new Rect(r.x, r.y + r.height * 0.06f, r.width, r.height * 0.52f),
-                          (i + 1).ToString(), _cellNum);
-                float ss = r.width * 0.23f, sgap = ss * 0.12f, tot = 3 * ss + 2 * sgap;
-                float sy = r.yMax - ss - r.height * 0.08f, sx = r.x + (r.width - tot) / 2f;
+                Ui.Round(new Rect(nr.x, nr.y + Ui.P(3), nr.width, nr.height), 18, Ui.Line);
+                Ui.RoundOutline(nr, 18, 2, Ui.Line, Ui.CreamTile);
+                GUI.Label(Ui.R(cx - NodeW * 0.5f, cy - NodeH * 0.5f + 4, NodeW, 30), (i + 1).ToString(),
+                          Ui.Head(22, Ui.Ink800));
                 for (int s = 0; s < 3; s++)
-                {
-                    GUI.color = s < stars ? Color.white : new Color(0.35f, 0.30f, 0.34f, 0.45f);
-                    if (_starTex != null) GUI.DrawTexture(new Rect(sx + s * (ss + sgap), sy, ss, ss), _starTex);
-                }
-                GUI.color = Color.white;
-
-                // `!Dragged` so a flick down the path doesn't also launch whatever
-                // level happened to be under the finger when it lifted.
-                if (GUI.Button(r, GUIContent.none, GUIStyle.none) && !Dragged)
-                {
-                    Sfx.Tap();
-                    PlayerPrefs.SetInt("zoo_level", i); PlayerPrefs.Save();
-                    SceneManager.LoadScene("Puzzle");
-                }
+                    Ui.StarShape(Ui.R(cx - 16 + s * 12, cy + NodeH * 0.5f - 17, 10, 10),
+                                 s < stars ? Ui.Star : Ui.Line);
+                if (GUI.Button(nr, GUIContent.none, GUIStyle.none) && !Dragged) Launch(i);
             }
-            else if (gated)
+            else
             {
-                // a star checkpoint: tappable, so it can explain itself (see DrawGateHelp)
-                if (GUI.Button(r, GUIContent.none, GUIStyle.none) && !Dragged)
+                Ui.RoundOutline(nr, 18, 2, Ui.Line, Ui.LockedFill);
+                var pc = GUI.color; GUI.color = Ui.LockedInk;
+                GUI.DrawTexture(Ui.R(cx - 10, cy - 10, 20, 20), Icons.Lock);
+                GUI.color = pc;
+                // a star checkpoint explains itself rather than just saying no
+                if (SleepyZoo.PuzzleGame.StarsFor(i - 1) > 0 &&
+                    GUI.Button(nr, GUIContent.none, GUIStyle.none) && !Dragged)
                 {
                     Sfx.Locked();
                     _gateLevel = i;
                     _topUpLevel = SleepyZoo.PuzzleGame.EasiestTopUpLevel();
                     _gateTime = 6f;
                 }
-                GUI.Label(new Rect(r.x, r.y + r.height * 0.04f, r.width, r.height * 0.44f),
-                          (i + 1).ToString(), _cellNum);
-                float ss = r.width * 0.24f;
-                var sr = new Rect(r.x + r.width * 0.5f - ss - 2, r.yMax - ss - r.height * 0.12f, ss, ss);
-                GUI.color = new Color(1f, 0.86f, 0.30f);
-                if (_starTex != null) GUI.DrawTexture(sr, _starTex);
-                GUI.color = new Color(0.36f, 0.21f, 0.10f);
-                GUI.Label(new Rect(sr.xMax, sr.y - 2, r.width * 0.42f, ss + 4),
-                          SleepyZoo.PuzzleGame.RequiredStars(i).ToString(), _cellSub);
-                GUI.color = Color.white;
-            }
-            else
-            {
-                GUI.Label(new Rect(r.x, r.y + r.height * 0.10f, r.width, r.height * 0.5f),
-                          (i + 1).ToString(), _cellNum);
             }
         }
 
-        // A star checkpoint used to be a dead end: it said "no" and left the player
-        // with nowhere to tap. Now tapping a locked level explains the gap and offers
-        // the easiest level to replay for the missing stars.
-        private void DrawGateHelp(Rect box)
+        private void Launch(int level)
+        {
+            Sfx.Tap();
+            PlayerPrefs.SetInt("zoo_level", level);
+            PlayerPrefs.Save();
+            SceneManager.LoadScene("Puzzle");
+        }
+
+        /// A locked chapter: dark, named only as "? ? ?", carrying its tease, the
+        /// exact star price, and somewhere to go and earn it. Knowing that SOMETHING
+        /// changes without knowing what is the whole reason the last few levels of
+        /// the chapter before are worth three-starring.
+        private void DrawLockedBand(float y, float bh, int ch)
+        {
+            Ui.Fill(Ui.R(0, y, Ui.W, bh), Ui.PanelDark);
+            var ink = Ui.Hex(0xf0e6d4);
+
+            Ui.Round(Ui.R(24, y + 26, 46, 46), 16, new Color(ink.r, ink.g, ink.b, 0.12f));
+            GUI.Label(Ui.R(24, y + 26, 46, 46), (ch + 1).ToString(), Ui.Head(20, ink));
+            GUI.Label(Ui.R(82, y + 28, Ui.W - 100, 22), "? ? ?", Ui.Head(19, ink, TextAnchor.MiddleLeft));
+            GUI.Label(Ui.R(82, y + 50, Ui.W - 106, 18), SleepyZoo.PuzzleGame.ChapterTease(ch),
+                      Ui.Bold(11.5f, new Color(ink.r, ink.g, ink.b, 0.62f), TextAnchor.MiddleLeft));
+
+            // A chapter has TWO doors: enough stars, and having finished the chapter
+            // before it. Showing the star bar when the stars are already paid read as
+            // a bug ("145 / 126" on a full bar, still locked), so once the stars are
+            // in, the band stops talking about stars and names the real blocker.
+            int need = SleepyZoo.PuzzleGame.ChapterRequiredStars(ch);
+            int have = SleepyZoo.PuzzleGame.TotalStars();
+            bool starsPaid = have >= need;
+            int gap = Mathf.Max(0, need - have);
+
+            Ui.Bar(24, y + 92, Ui.W - 48 - 74, 12, need <= 0 ? 1f : Mathf.Clamp01(have / (float)need),
+                   new Color(ink.r, ink.g, ink.b, 0.14f), Ui.Hex(0xe08b46), Ui.Hex(0xffd166));
+            GUI.Label(Ui.R(Ui.W - 24 - 70, y + 88, 70, 20),
+                      starsPaid ? "stars paid" : $"{have} / {need} ★",
+                      Ui.Bold(starsPaid ? 11 : 12, Ui.Hex(0xffd166), TextAnchor.MiddleRight));
+
+            GUI.Label(Ui.R(24, y + 114, Ui.W - 48, 18),
+                      starsPaid
+                        ? $"Finish chapter {ch} to open this one."
+                        : $"{gap} stars away. Replay level {SleepyZoo.PuzzleGame.EasiestTopUpLevel() + 1} for an easy three.",
+                      Ui.Bold(12, new Color(ink.r, ink.g, ink.b, 0.7f), TextAnchor.MiddleLeft));
+        }
+
+        /// Tapping a star-locked level used to be a dead end. Now it says the price,
+        /// the gap, and offers the easiest level to replay for the difference.
+        private void DrawGateHelp()
         {
             if (_gateTime <= 0f) return;
             _gateTime -= Time.deltaTime;
+            float h = 84f;
+            var r = Ui.R(16, Ui.H - h - 16, Ui.W - 32, h);
+            Ui.Round(r, 22, Ui.Hex(0x2a1f33, 0.96f));
 
-            float hgt = 84f, m = 16f;
-            var r = new Rect(box.x + m, box.yMax - hgt - m, box.width - m * 2, hgt);
-            GUI.color = new Color(0.16f, 0.12f, 0.20f, 0.94f);
-            GUI.DrawTexture(r, _dimTex);
-            GUI.color = Color.white;
-
-            int need = SleepyZoo.PuzzleGame.RequiredStars(_gateLevel) - SleepyZoo.PuzzleGame.TotalStars();
-            GUI.Label(new Rect(r.x + 16, r.y + 10, r.width - 190, 30),
-                      $"Level {_gateLevel + 1} opens at {SleepyZoo.PuzzleGame.RequiredStars(_gateLevel)} stars", _noteLight);
-            GUI.Label(new Rect(r.x + 16, r.y + 40, r.width - 190, 30),
-                      need == 1 ? "1 star to go" : $"{need} stars to go", _cellSub3);
-
-            var br = new Rect(r.xMax - 176, r.y + 16, 160, hgt - 32);
-            if (GUI.Button(br, $"Replay {_topUpLevel + 1}", _pill))
-            {
-                Sfx.Tap();
-                PlayerPrefs.SetInt("zoo_level", _topUpLevel); PlayerPrefs.Save();
-                SceneManager.LoadScene("Puzzle");
-            }
+            int need = SleepyZoo.PuzzleGame.RequiredStars(_gateLevel);
+            int gap = need - SleepyZoo.PuzzleGame.TotalStars();
+            GUI.Label(Ui.R(32, Ui.H - h - 4, Ui.W - 190, 22),
+                      $"Level {_gateLevel + 1} opens at {need} stars",
+                      Ui.Bold(13, Ui.Hex(0xffd166), TextAnchor.MiddleLeft));
+            GUI.Label(Ui.R(32, Ui.H - h + 20, Ui.W - 190, 22),
+                      gap == 1 ? "1 star to go" : $"{gap} stars to go",
+                      Ui.Bold(12, Ui.Ghost(0.7f), TextAnchor.MiddleLeft));
+            if (Ui.Outline(Ui.W - 148, Ui.H - h + 8, 132, 44, $"Replay {_topUpLevel + 1}", 13))
+            { Launch(_topUpLevel); }
         }
 
-        // A chapter strip. A locked chapter deliberately hides its name and its
-        // twist — knowing that SOMETHING changes, but not what, is what makes the
-        // last few levels of the chapter before it worth grinding stars for.
-        private float DrawChapterHeader(float y, float wide, int ch, bool open, float headH)
+        // =====================================================================
+        // 1c — THE DORM
+        // Tap an animal. Feed, pet, tuck in.
+        // =====================================================================
+        // Where each friend sleeps. Fixed anchors (they drift a little around them)
+        // so the room has a shape you learn, rather than animals sliding around
+        // under your thumb while you try to tap one.
+        private static readonly float[,] Spots =
         {
-            var strip = new Rect(0, y + 6f, wide, headH - 18f);
-            GUI.color = open ? new Color(0.99f, 0.93f, 0.82f, 0.96f) : new Color(0.72f, 0.68f, 0.72f, 0.45f);
-            GUI.DrawTexture(strip, _dimTex);
-            GUI.color = new Color(0.86f, 0.74f, 0.56f, open ? 0.9f : 0.4f);
-            GUI.DrawTexture(new Rect(strip.x, strip.yMax - 3f, strip.width, 3f), _dimTex);
-            GUI.color = Color.white;
+            { 14, 6 }, { 140, 96 }, { 258, 14 }, { 22, 212 }, { 210, 220 },
+            { 128, 306 }, { 262, 130 }, { 16, 116 }, { 250, 300 }, { 128, 196 },
+        };
 
-            string name = open ? SleepyZoo.PuzzleGame.ChapterName(ch) : "? ? ?";
-            GUI.Label(new Rect(strip.x + 16, strip.y + 6, strip.width - 32, 38),
-                      $"Chapter {ch + 1}  -  {name}", _chapTitle);
+        private void DrawDorm()
+        {
+            float H = Ui.H;
+            Ui.Backdrop(13, (0f, Ui.DormTop), (0.46f, Ui.DormMid), (1f, Ui.DormBot));
 
-            if (open)
+            // lamplight: the one thing Decorate changes
+            var lamp = Dorm.ThemeColor;
+            Ui.Glow(Ui.R(60, 150, Ui.W - 120, 150), 60f, new Color(lamp.r, lamp.g, lamp.b, 0.20f));
+
+            // ---- header ----
+            if (Ui.GhostDisc(18, 58, 40, Icons.Chevron, 0.45f))
+            { Sfx.Click(); _screen = Screen2.Home; _sel = -1; }
+            GUI.Label(Ui.R(70, 58, 220, 22), "The dorm", Ui.Head(20, Ui.Hex(0xfff4e4), TextAnchor.MiddleLeft));
+            GUI.Label(Ui.R(70, 78, 240, 16),
+                      $"{Zoo.UnlockedCount()} friends home · {Nightly.Lanterns} lanterns lit",
+                      Ui.Bold(11, new Color(1f, 0.925f, 0.816f, 0.6f), TextAnchor.MiddleLeft));
+            Ui.Chip(Ui.W - 92, 58, 32, Dorm.Snacks.ToString(), Icons.Snack, Ui.Snack,
+                    Ui.Hex(0xffe9bd), Ui.Hex(0xffd166, 0.16f), 14f);
+
+            // two lanterns on the wall, breathing
+            for (int i = 0; i < 2; i++)
             {
-                GUI.Label(new Rect(strip.x + 16, strip.y + 46, strip.width - 32, 32),
-                          SleepyZoo.PuzzleGame.ChapterBlurb(ch), _cellSub);
+                float x = i == 0 ? 26 : Ui.W - 48;
+                float b = 0.28f + 0.12f * Mathf.Sin(Time.time * 1.4f + i * 2f);
+                Ui.Glow(Ui.R(x, 126, 22, 30), 22f, new Color(lamp.r, lamp.g, lamp.b, b));
+                Ui.Round(Ui.R(x, 126, 22, 30), 8, Ui.Hex(0xffcf8d));
             }
+
+            // ---- the friends ----
+            float roomTop = 172f, roomBot = H - 150f;
+            for (int i = 0; i < Zoo.Count; i++)
+            {
+                if (!Zoo.Unlocked(i)) continue;
+                float ax = Spots[i, 0], ay = Spots[i, 1];
+                // keep everyone inside the room however tall the phone is
+                ay = Mathf.Min(ay, Mathf.Max(0f, roomBot - roomTop - 110f));
+                DrawPal(i, ax, roomTop + ay);
+            }
+
+            DrawHeartFlourish();
+
+            // a gentle fade so names never fight the buttons underneath
+            GUI.DrawTexture(Ui.R(0, H - 168, Ui.W, 64),
+                Ui.VGrad(14, (0f, new Color(0.141f, 0.094f, 0.075f, 0f)),
+                             (1f, new Color(0.141f, 0.094f, 0.075f, 0.9f))), ScaleMode.StretchToFill);
+
+            if (_sel >= 0) DrawFriendSheet();
             else
             {
-                int need = SleepyZoo.PuzzleGame.ChapterRequiredStars(ch);
-                int have = SleepyZoo.PuzzleGame.TotalStars();
-                GUI.Label(new Rect(strip.x + 16, strip.y + 44, strip.width - 32, 24),
-                          SleepyZoo.PuzzleGame.ChapterTease(ch), _cellSub);
-                GUI.Label(new Rect(strip.x + 16, strip.y + 68, strip.width - 32, 24),
-                          $"Opens at {need} stars  -  {Mathf.Max(0, need - have)} to go", _cellSub);
+                GUI.Label(Ui.R(20, H - 104, Ui.W - 40, 18), Dorm.Hint(),
+                          Ui.Bold(12, new Color(1f, 0.925f, 0.816f, 0.62f)));
+                float bw = (Ui.W - 40 - 11) / 2f;
+                if (Ui.Primary(20, H - 80, bw, 52, "Tuck everyone in", 16f))
+                { Sfx.Sleep(); Dorm.TuckEveryone(); }
+                if (Ui.Outline(20 + bw + 11, H - 80, bw, 52, "Decorate", 18f, 999f, true))
+                { Sfx.Tap(); _screen = Screen2.Decorate; }
             }
-            return y + headH;
         }
 
-        private void EnsureStyles()
+        private void DrawPal(int i, float x, float y)
         {
-            if (_title != null) return;
-            _title = new GUIStyle(GUI.skin.label) { fontSize = 74, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-            _big = new GUIStyle(GUI.skin.label) { fontSize = 34, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-            _mid = new GUIStyle(GUI.skin.label) { fontSize = 26, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-            _btn = new GUIStyle(GUI.skin.button) { fontSize = 24, fontStyle = FontStyle.Bold };
-            _cellNum = new GUIStyle(GUI.skin.label) { fontSize = 40, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-            _title.normal.textColor = _big.normal.textColor = _mid.normal.textColor = Color.white;
+            var pal = Zoo.Pals[i];
+            bool asleep = Dorm.Asleep(i);
+            // asleep animals breathe; awake ones bob. Both are slow — this is a
+            // bedroom, not an idle-animation showreel.
+            float t = Time.time * (asleep ? 0.6f : 0.9f) + i * 1.4f;
+            float bob = asleep ? 0f : Mathf.Sin(t) * 3f;
+            float breathe = asleep ? 1f + Mathf.Sin(t) * 0.03f : 1f;
 
-            // Cozy pill button reused for the "Levels" tab and close/X.
-            _pillTex = Resources.Load<Texture2D>("Art/ui_button");
-            _pill = new GUIStyle(GUI.skin.button) { fontSize = 26, fontStyle = FontStyle.Bold, border = new RectOffset(0, 0, 0, 0), padding = new RectOffset(6, 6, 4, 8) };
-            var brown = new Color(0.36f, 0.21f, 0.10f);
-            _pill.normal.textColor = _pill.hover.textColor = _pill.active.textColor = brown;
-            if (_pillTex != null) { _pill.normal.background = _pill.hover.background = _pill.active.background = _pillTex; }
+            // the bed: a coloured back and a cream turned-down sheet
+            Ui.Round(Ui.R(x + 6, y + 30, 100, 44), 16, pal.col);
+            Ui.Round(Ui.R(x + 6, y + 52, 100, 22), 12, new Color(1f, 0.973f, 0.925f, 0.9f));
 
-            // Big cozy pill for the main-stack "Levels" button.
-            _bigPill = new GUIStyle(GUI.skin.button) { fontSize = 46, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, border = new RectOffset(0, 0, 0, 0), padding = new RectOffset(8, 8, 6, 12) };
-            _bigPill.normal.textColor = _bigPill.hover.textColor = _bigPill.active.textColor = brown;
-            if (_pillTex != null) { _bigPill.normal.background = _bigPill.hover.background = _bigPill.active.background = _pillTex; }
-            _cellNum.normal.textColor = brown;
+            var art = Zoo.Art(i);
+            if (art != null)
+            {
+                float aw = 60f * breathe, ah = aw * art.height / (float)art.width;
+                GUI.DrawTexture(Ui.R(x + 56 - aw * 0.5f, y + 58 - ah + bob, aw, ah), art);
+            }
 
-            // small brown caption used for the star totals and gate labels
-            _note = new GUIStyle(GUI.skin.label) { fontSize = 24, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-            _note.normal.textColor = new Color(0.40f, 0.24f, 0.12f);
-            _cellSub = new GUIStyle(GUI.skin.label) { fontSize = 22, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft, wordWrap = true };
-            _cellSub.normal.textColor = brown;
-            // centred twin of _cellSub, used on cream cards
-            _cellSub2 = new GUIStyle(_cellSub) { alignment = TextAnchor.MiddleCenter };
-            _cellSub2.normal.textColor = brown;
-            // The panels are dark now, so anything drawn on one needs light text.
-            var cream = new Color(0.98f, 0.94f, 0.86f);
-            _cellSub3 = new GUIStyle(_cellSub) { alignment = TextAnchor.MiddleCenter };
-            _cellSub3.normal.textColor = cream;
-            _noteLight = new GUIStyle(_note) { };
-            _noteLight.normal.textColor = new Color(1f, 0.88f, 0.60f);
-            _big2 = new GUIStyle(GUI.skin.label) { fontSize = 27, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-            _big2.normal.textColor = cream;
-            _chapTitle = new GUIStyle(GUI.skin.label) { fontSize = 25, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft, wordWrap = false };
-            _chapTitle.normal.textColor = brown;
+            if (asleep)
+                GUI.Label(Ui.R(x + 70, y + 8, 40, 24), "z",
+                          Ui.Bold(22, new Color(1f, 0.925f, 0.816f, 0.5f + 0.2f * Mathf.Sin(t))));
 
-            _starTex = Resources.Load<Texture2D>("Art/star_full");
-            _cardTex = Resources.Load<Texture2D>("Art/tile_bed");   // warm cream card, matches the puzzle
-            _dimTex = Texture2D.whiteTexture;
-            _dotTex = SoftDot();
+            GUI.Label(Ui.R(x - 2, y + 78, 118, 20), pal.name, Ui.Head(15, Ui.Hex(0xfff4e4)));
+            GUI.Label(Ui.R(x - 2, y + 96, 118, 16), Dorm.MoodWord(i), Ui.Bold(10.5f, Dorm.MoodColor(i)));
 
-            var font = Resources.Load<Font>("Fonts/Fredoka");   // cozy rounded font, consistent with the puzzle
-            if (font != null) foreach (var st in new[] { _title, _big, _big2, _mid, _btn, _pill, _bigPill, _cellNum, _note, _noteLight, _cellSub, _cellSub2, _cellSub3, _chapTitle }) st.font = font;
+            if (GUI.Button(Ui.R(x, y, 118, 112), GUIContent.none, GUIStyle.none))
+            { Sfx.Tap(); _sel = i; }
         }
 
-        // A soft round dot, generated once: the path's stitching, the "you are here"
-        // halo and the zoo's bed glows are all this one texture, tinted.
-        private static Texture2D _softDot;
-        private static Texture2D SoftDot()
+        /// The bottom sheet for one friend: who they are, what they are dreaming
+        /// about, and the three things you can do. Feed costs a snack, Pet is always
+        /// free — so an empty jar never means there is nothing to do here.
+        private void DrawFriendSheet()
         {
-            if (_softDot != null) return _softDot;
-            const int S = 64;
-            var tex = new Texture2D(S, S, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
-            var px = new Color32[S * S];
-            float c = (S - 1) * 0.5f;
-            for (int y = 0; y < S; y++)
-                for (int x = 0; x < S; x++)
-                {
-                    float d = Mathf.Sqrt((x - c) * (x - c) + (y - c) * (y - c)) / c;
-                    float a = Mathf.Clamp01(1f - d);
-                    a = a * a * (3f - 2f * a);                 // smooth edge, no hard rim
-                    px[y * S + x] = new Color(1f, 1f, 1f, a);
-                }
-            tex.SetPixels32(px); tex.Apply();
-            _softDot = tex; return tex;
+            float H = Ui.H;
+            int i = _sel;
+            var pal = Zoo.Pals[i];
+            float sh = 250f;
+            float y = H - sh;
+
+            Ui.Round(Ui.R(0, y, Ui.W, sh + 40), 30, Ui.Cream);
+            Ui.Round(Ui.R(Ui.W * 0.5f - 21, y + 12, 42, 5), 3, Ui.Line);
+
+            Ui.Round(Ui.R(22, y + 28, 74, 74), 24, pal.col);
+            var art = Zoo.Art(i);
+            if (art != null)
+            {
+                float aw = 54f, ah = aw * art.height / (float)art.width;
+                GUI.DrawTexture(Ui.R(22 + (74 - aw) * 0.5f, y + 28 + (74 - ah) * 0.5f, aw, ah), art);
+            }
+
+            GUI.Label(Ui.R(110, y + 32, 200, 28), pal.name, Ui.Head(26, Ui.Ink900, TextAnchor.MiddleLeft));
+            GUI.Label(Ui.R(110, y + 60, Ui.W - 130, 18),
+                      char.ToUpper(pal.dream[0]) + pal.dream.Substring(1) + ".",
+                      Ui.Bold(12.5f, Ui.Ink700, TextAnchor.MiddleLeft, true));
+
+            // two quiet tags: how settled they are, and how they feel
+            Tag(110, y + 82, Zoo.StageWord(Zoo.Stage(i)), Ui.Hex(0xf6dcc4), Ui.Hex(0x8a5730));
+            Tag(110 + TagW(Zoo.StageWord(Zoo.Stage(i))) + 6, y + 82, Dorm.MoodWord(i),
+                Ui.Hex(0xdfeaf2), Ui.Hex(0x3a5a72));
+
+            // the three actions
+            float bw = (Ui.W - 44 - 20) / 3f;
+            bool canFeed = Dorm.Snacks > 0;
+            if (ActionTile(22, y + 118, bw, 76, Icons.Snack, "Feed", "1 snack",
+                           Ui.Hex(0xf6dcc4), Ui.Hex(0xe9c39b), Ui.Hex(0x8a5730), canFeed))
+            {
+                if (Dorm.Feed(i)) { Sfx.Tap(); Flourish(i, Icons.Snack, Ui.Hex(0xd67f48)); }
+                else Sfx.Locked();
+            }
+            if (ActionTile(22 + bw + 10, y + 118, bw, 76, Icons.Heart, "Pet", "free",
+                           Ui.Hex(0xffdfe7), Ui.Hex(0xf7c2ce), Ui.Hex(0xa8425c), true))
+            { Sfx.Tap(); Dorm.Pet(i); Flourish(i, Icons.Heart, Ui.Hex(0xee7c9b)); }
+            if (ActionTile(22 + (bw + 10) * 2, y + 118, bw, 76, Icons.Bed, "Tuck in", "goodnight",
+                           Ui.Hex(0xe9e2d4), Ui.Line, Ui.Ink800, true))
+            { Sfx.Sleep(); Dorm.Tuck(i); _sel = -1; }
+
+            if (GUI.Button(Ui.R(0, y + 202, Ui.W, 30), "Close", Ui.Bold(13, Ui.Ink600)))
+            { Sfx.Click(); _sel = -1; }
+        }
+
+        private float TagW(string s) => Ui.Bold(10.5f, Color.white).CalcSize(new GUIContent(s)).x / Ui.S + 20f;
+        private void Tag(float x, float y, string s, Color bg, Color ink)
+        {
+            float w = TagW(s);
+            Ui.Round(Ui.R(x, y, w, 20), 999, bg);
+            GUI.Label(Ui.R(x, y, w, 20), s, Ui.Bold(10.5f, ink));
+        }
+
+        private bool ActionTile(float x, float y, float w, float h, Texture2D icon, string label,
+                                string sub, Color bg, Color border, Color ink, bool enabled)
+        {
+            var r = Ui.R(x, y, w, h);
+            float a = enabled ? 1f : 0.45f;
+            Ui.RoundOutline(r, 22, 2, new Color(border.r, border.g, border.b, a),
+                            new Color(bg.r, bg.g, bg.b, a));
+            var pc = GUI.color; GUI.color = new Color(ink.r, ink.g, ink.b, a);
+            GUI.DrawTexture(Ui.R(x + w * 0.5f - 12.5f, y + 14, 25, 25), icon);
+            GUI.color = pc;
+            GUI.Label(Ui.R(x, y + 42, w, 16), label, Ui.Bold(12, new Color(ink.r, ink.g, ink.b, a)));
+            GUI.Label(Ui.R(x, y + 56, w, 14), sub, Ui.Bold(10, new Color(ink.r, ink.g, ink.b, a * 0.7f)));
+            return GUI.Button(r, GUIContent.none, GUIStyle.none);
+        }
+
+        /// A snack or a heart floating up off whoever you just touched. One second,
+        /// then gone — the smallest possible "that did something".
+        private void Flourish(int i, Texture2D icon, Color col)
+        {
+            _heartAt = Time.time;
+            _heartPos = new Vector2(Spots[i, 0] + 76, 172f + Spots[i, 1] + 10);
+            _heartCol = col;
+            _heartIcon = icon;
+        }
+
+        private void DrawHeartFlourish()
+        {
+            if (_heartIcon == null) return;
+            float t = (Time.time - _heartAt) / 1f;
+            if (t >= 1f) { _heartIcon = null; return; }
+            var pc = GUI.color;
+            GUI.color = new Color(_heartCol.r, _heartCol.g, _heartCol.b, 1f - t);
+            GUI.DrawTexture(Ui.R(_heartPos.x, _heartPos.y - t * 40f, 30, 30), _heartIcon);
+            GUI.color = pc;
+        }
+
+        // =====================================================================
+        // DECORATE
+        // =====================================================================
+        // The one screen the redesign names but never draws. Kept deliberately
+        // small and made of colours the game already owns, so it cannot introduce
+        // art that fights the rest of the room.
+        private void DrawDecorate()
+        {
+            float H = Ui.H;
+            Ui.Backdrop(13, (0f, Ui.DormTop), (0.46f, Ui.DormMid), (1f, Ui.DormBot));
+            var lamp = Dorm.ThemeColor;
+            Ui.Glow(Ui.R(60, 150, Ui.W - 120, 200), 70f, new Color(lamp.r, lamp.g, lamp.b, 0.22f));
+
+            if (Ui.GhostDisc(18, 58, 40, Icons.Chevron, 0.45f))
+            { Sfx.Click(); _screen = Screen2.Dorm; }
+            GUI.Label(Ui.R(70, 58, 240, 22), "Decorate", Ui.Head(20, Ui.Hex(0xfff4e4), TextAnchor.MiddleLeft));
+            GUI.Label(Ui.R(70, 78, 260, 16), "Choose the lamplight.",
+                      Ui.Bold(11, new Color(1f, 0.925f, 0.816f, 0.6f), TextAnchor.MiddleLeft));
+
+            for (int i = 0; i < Dorm.ThemeNames.Length; i++)
+            {
+                float y = 150 + i * 78;
+                bool on = Dorm.Theme == i;
+                var r = Ui.R(24, y, Ui.W - 48, 64);
+                Ui.RoundOutline(r, 22, 2, on ? Ui.Hex(0xffd166, 0.8f) : Ui.Ghost(0.2f),
+                                Ui.Ghost(on ? 0.12f : 0.06f));
+                var c = i == Dorm.Theme ? lamp : ThemeSwatch(i);
+                Ui.Glow(Ui.R(46, y + 18, 28, 28), 18f, new Color(c.r, c.g, c.b, 0.4f));
+                Ui.Circle(Ui.R(46, y + 18, 28, 28), c);
+                GUI.Label(Ui.R(94, y, 200, 64), Dorm.ThemeNames[i],
+                          Ui.Head(18, Ui.Hex(0xfff4e4), TextAnchor.MiddleLeft));
+                if (on) GUI.Label(Ui.R(Ui.W - 130, y, 90, 64), "lit now",
+                                  Ui.Bold(11, Ui.Hex(0xffd166), TextAnchor.MiddleRight));
+                if (GUI.Button(r, GUIContent.none, GUIStyle.none)) { Sfx.Tap(); Dorm.Theme = i; }
+            }
+
+            if (Ui.Primary(24, H - 92, Ui.W - 48, 56, "Back to the dorm", 18f))
+            { Sfx.Click(); _screen = Screen2.Dorm; }
+        }
+
+        private static Color ThemeSwatch(int i)
+        {
+            int saved = Dorm.Theme;
+            Dorm.Theme = i;             // read the palette without a second table
+            var c = Dorm.ThemeColor;
+            Dorm.Theme = saved;
+            return c;
+        }
+
+        // =====================================================================
+        // SETTINGS
+        // =====================================================================
+        private void DrawSettings()
+        {
+            float H = Ui.H;
+            Ui.Backdrop(10, (0f, Ui.NightTop), (0.34f, Ui.NightMid), (0.62f, Ui.NightWarm),
+                        (0.84f, Ui.NightGlow), (1f, Ui.NightLow));
+
+            if (Ui.GhostDisc(18, 58, 40, Icons.Chevron, 0.45f))
+            { Sfx.Click(); _screen = Screen2.Home; }
+            GUI.Label(Ui.R(70, 58, 240, 22), "Settings", Ui.Head(20, Ui.Hex(0xfff4e4), TextAnchor.MiddleLeft));
+
+            float y = 140;
+            if (Row(y, Sfx.SoundOn ? Icons.Speaker : Icons.SpeakerOff, "Sound", Sfx.SoundOn ? "On" : "Off"))
+            { Sfx.SoundOn = !Sfx.SoundOn; Sfx.Click(); }
+            y += 76;
+            if (Row(y, Icons.Buzz, "Vibration", Haptics.Enabled ? "On" : "Off"))
+            {
+                Haptics.Enabled = !Haptics.Enabled;
+                Sfx.Tap();
+                if (Haptics.Enabled) Haptics.Soft();   // let them feel what they turned on
+            }
+            y += 76;
+            if (Row(y, Icons.Share, "Tell a friend", ""))
+            { Sfx.Click(); NativeShare.ShareText(ShareMessage); }
+
+            GUI.Label(Ui.R(0, H - 70, Ui.W, 20), $"Tuck In  {Application.version}",
+                      Ui.Bold(12, new Color(1f, 0.925f, 0.816f, 0.45f)));
+        }
+
+        private bool Row(float y, Texture2D icon, string label, string value)
+        {
+            var r = Ui.R(24, y, Ui.W - 48, 60);
+            Ui.RoundOutline(r, 22, 1.5f, Ui.Ghost(0.26f), Ui.Ghost(0.08f));
+            var pc = GUI.color; GUI.color = Ui.Ghost(0.9f);
+            GUI.DrawTexture(Ui.R(44, y + 19, 22, 22), icon);
+            GUI.color = pc;
+            GUI.Label(Ui.R(80, y, 200, 60), label, Ui.Head(18, Ui.Hex(0xfff4e4), TextAnchor.MiddleLeft));
+            if (!string.IsNullOrEmpty(value))
+                GUI.Label(Ui.R(Ui.W - 110, y, 66, 60), value,
+                          Ui.Bold(14, Ui.Hex(0xffd166), TextAnchor.MiddleRight));
+            return GUI.Button(r, GUIContent.none, GUIStyle.none);
+        }
+
+        // Plain sentences only. The old copy used an em dash and it came through as a
+        // stray glyph in the share sheet on a real phone.
+        private const string ShareMessage =
+            "I'm playing Tuck In, a cozy bedtime puzzle where one swipe slides every "
+            + "animal until something stops them. You just tuck them all into bed. "
+            + "It's very relaxing.";
+
+        // =====================================================================
+        // ARRIVAL — the "someone moved in" moment (shared with the win screen)
+        // =====================================================================
+        private void DrawArrivalCard()
+        {
+            int i = Zoo.PendingArrival();
+            if (i < 0) return;
+            var pal = Zoo.Pals[i];
+            float H = Ui.H;
+
+            Ui.Fill(new Rect(0, 0, UnityEngine.Screen.width, UnityEngine.Screen.height),
+                    new Color(0, 0, 0, 0.66f));
+
+            float h = 330f, y = (H - h) * 0.5f;
+            Ui.Round(Ui.R(24, y, Ui.W - 48, h), 30, Ui.Hex(0x2b1c15));
+            Ui.RoundOutline(Ui.R(24, y, Ui.W - 48, h), 30, 1.5f, Ui.Hex(0xffe1be, 0.24f),
+                            new Color(0, 0, 0, 0f));
+
+            GUI.Label(Ui.R(24, y + 26, Ui.W - 48, 18), Ui.Track("someone moved in"),
+                      Ui.Bold(11, Ui.Hex(0xffd166)));
+
+            float pulse = 8f + 4f * Mathf.Sin(Time.time * 2.4f);
+            var tile = Ui.R(Ui.W * 0.5f - 48, y + 62, 96, 96);
+            Ui.RoundOutline(new Rect(tile.x - Ui.P(pulse), tile.y - Ui.P(pulse),
+                                     tile.width + Ui.P(pulse * 2), tile.height + Ui.P(pulse * 2)),
+                            34, 2, Ui.Hex(0xffd166, 0.5f), new Color(0, 0, 0, 0f));
+            Ui.RoundGrad(tile, 28, Ui.VGrad(21, (0f, Ui.Hex(0xffdca6)), (1f, Ui.Hex(0xf2a95c))));
+            var art = Zoo.Art(i);
+            if (art != null)
+            {
+                float bob = Mathf.Sin(Time.time * 2.2f) * 4f;
+                float aw = 70f, ah = aw * art.height / (float)art.width;
+                GUI.DrawTexture(Ui.R(Ui.W * 0.5f - aw * 0.5f, y + 62 + (96 - ah) * 0.5f + bob, aw, ah), art);
+            }
+
+            GUI.Label(Ui.R(24, y + 176, Ui.W - 48, 30), $"{pal.name} is here",
+                      Ui.Head(24, Ui.Hex(0xfff4e4)));
+            GUI.Label(Ui.R(44, y + 206, Ui.W - 88, 34),
+                      char.ToUpper(pal.dream[0]) + pal.dream.Substring(1) + ".",
+                      Ui.Bold(12.5f, new Color(1f, 0.925f, 0.816f, 0.68f), TextAnchor.UpperCenter, true));
+
+            if (Ui.Primary(44, y + h - 82, Ui.W - 88, 54, "Say hello", 20f))
+            {
+                Sfx.Win();
+                Zoo.MarkArrivalSeen();
+                _screen = Screen2.Dorm;
+                _sel = -1;
+            }
         }
     }
 }

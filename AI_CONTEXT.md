@@ -10,7 +10,7 @@
 
 ## Project Identity
 
-- **Name:** Wobble Zoo (Android applicationId `com.wobblegames.wobblezoo`; company "Wobble Games")
+- **Name:** Tuck In (renamed from "Wobble Zoo" in the design pass — the old name described a physics game two pivots ago). The Android applicationId is deliberately **still** `com.wobblegames.wobblezoo`: it is the app's permanent identity on Play and changing it would orphan every existing install. Company "Wobble Games".
 - **Purpose:** A cozy, deterministic mobile puzzle game for the Google Play Store — swipe to slide sleepy animals into their beds.
 - **Status:** Prototype / pre-release. No store listing yet. Core loop, **130 levels across 8 chapters**, menu, blanket-path level select and the zoo are built and building cleanly. Never shipped to Play Store.
 
@@ -23,7 +23,8 @@
 - **Package manager:** Unity Package Manager (`Packages/manifest.json`) — stock Unity modules only, no third-party packages, no npm/pip involved in the game itself.
 - **Important directories:**
   - `Assets/Scripts/SleepyZoo/` — the puzzle game itself. **Only one file: `PuzzleGame.cs`** (~845 lines). This is the core gameplay.
-  - `Assets/Scripts/ChonkyMerge/` — everything else runtime: `MainMenu.cs` (landing page + level picker), `MenuButton.cs`, `Sfx.cs` (procedural audio), `NativeShare.cs` (Android share sheet). Also contains **dead code** — see Known Gotchas.
+  - `Assets/Scripts/UI/` — **the design system.** `Ui.cs` (virtual 390x844 canvas, palette, fonts, primitives, widgets) and `Icons.cs` (every icon rasterised in code from 24-unit SVG coordinates). **Every screen outside the board goes through these two files.** Do not hand-roll a colour, a font size or a rounded rect anywhere else.
+  - `Assets/Scripts/ChonkyMerge/` — everything else runtime: `MainMenu.cs` (home, map, dorm, decorate, settings), `Dorm.cs` (snacks/moods/asleep), `Zoo.cs`, `Sfx.cs`, `NativeShare.cs` (Android share sheet). Also contains **dead code** — see Known Gotchas.
   - `Assets/Editor/` — editor-only build tooling, run via `-executeMethod` in batch mode (see Environment Requirements): `PuzzleSceneBuilder.cs`, `ApkBuilder.cs`, `StandaloneBuilder.cs`, `ArtImportSettings.cs`.
   - `Assets/Scenes/` — `MainMenu.unity` and `Puzzle.unity`. Both scenes are built entirely from code at `Start()` — there is no manual GameObject wiring to preserve; the scenes just hold one empty GameObject with the relevant MonoBehaviour attached.
   - `Assets/Resources/Art/` — all sprites, loaded at runtime via `Resources.Load`. Subfolder `Art/pets/` holds the 10 sprites the current puzzle uses (`dog, rabbit, panda, owl, pig, frog, penguin, bear, duck, cow`). Subfolder `Art/animals/` (`tier1..tier14`) is **leftover from a retired mechanic** — see Known Gotchas.
@@ -32,7 +33,7 @@
   - `docs/` — two Markdown handoff docs, both **stale** (predate the current mechanic). See Known Gotchas.
   - `tools/gen_levels.py` — **the level generator and verifier.** Mirrors `SlideSim` for both chapter rule sets; `verifycs` re-proves every par in `PuzzleGame.cs`. Run it after touching the `Levels` array.
   - `tools/process_animals.py` — a Python art-processing script for the retired `Art/raw` → `Art/animals` pipeline. Its input folder (`Assets/Resources/Art/raw/`) no longer exists in the repo. Effectively dead/historical.
-  - `Builds/` — git-ignored build output (`WobbleZoo.apk`, `Win/`).
+  - `Builds/` — git-ignored build output (`TuckIn.apk`, `Win/`).
 - **Database/storage:** None. All persistence is `PlayerPrefs` (local device key-value store) — see keys list below.
 - **External services/APIs:** None. No backend, no analytics SDK wired in, no ads SDK, no IAP. `NativeShare.cs` calls the OS share sheet only (no network call).
 
@@ -55,9 +56,11 @@ Before that, Phases 3 and 4. Phase 3 took the game from 40 levels to **130** —
 - **In-game optimal-move hint solver** (`SolveFrom`, `PuzzleGame.cs:486`) — reused for both the level-1 tutorial demo arrow and the in-play "Need a hint?" button. Same BFS also used for design-time level validation.
 - **Star economy with checkpoints**: 1–3 stars per level (3★ = `par`, 2★ = `TwoStarMoves(par)` = par + half again, minimum +3 — deliberately generous now that pars are short); a running total gates every 4th level behind a cumulative star threshold (`Gates` / `RequiredStars` / `IsUnlocked`). The big one is **level 21 = 36 of a possible 60 stars**, which is the door into chapter 2. 390 stars total across 130 levels. Gates are **built, not typed** (`BuildGates`): one every 4 levels at 1.55× the level index, a heavier one on each chapter door at 1.8×, and a running-max pass so a later checkpoint can never ask for less than an earlier one.
 - **Chapter reveal as the retention hook**: the level picker shows a locked chapter as `Chapter 2 — ? ? ?` with only a tease ("One bedtime rule you know by heart is about to change") and the star cost. Clearing level 20 shows a "Chapter complete!" panel whose button reads **See what changed**. Level 21 gets its own guided-arrow tutorial (`TaughtKey(chapter)`), same as level 1.
-- **Main menu**: background, bobbing floater critters, logo, Play/Settings buttons, sound toggle, share button, a top-left **Zoo** tab, and a **Levels** picker (`Assets/Scripts/ChonkyMerge/MainMenu.cs`).
-- **The blanket path** replaced the 4-column level grid: each chapter is a winding, dotted-stitch path of pillow-shaped level nodes (`DrawPillow` / `DrawStitches` / `PathX`). The level the player is up to gets a soft gold halo; unreached stitching is faded; the locked-chapter `? ? ?` tease is unchanged. A star-gated node is tappable and explains itself (`DrawGateHelp`) with a one-tap replay of `PuzzleGame.EasiestTopUpLevel()`.
-- **The zoo** (`Assets/Scripts/ChonkyMerge/Zoo.cs` + `DrawZooPanel`/`DrawBed`/`DrawArrivalCard`): 10 animals that move in on a schedule the player can see — star totals and chapter completions, never randomness. Each has a signature colour matching its board colour, a tier (Friend/Special/Guest) that only changes how it *looks*, and a settling stage (Visiting -> Snuggled -> Dreaming) derived from stars earned since it arrived. **The zoo owns no save data** — every answer is derived from `zoo_stars_*`; the sole exception is `zoo_seen` (how many arrivals have been announced), which drives the one-time "Someone moved in!" card. The win panel shows `Zoo.NextLine()` so stars visibly buy something.
+- **The full visual redesign** (`design/wobble-zoo-redesign/`, implemented across `Assets/Scripts/UI/` + `MainMenu.cs` + `PuzzleGame.cs`). Everything is laid out on a **virtual 390x844 canvas** (`Ui.Frame`/`Ui.R`) mapped onto the safe area, which is what stopped text colliding with the logo on narrow phones. The system rules: **one primary per screen** (chunky terracotta with a pressable bottom edge — nothing else gets it), secondary = outline pill, tertiary = round icon on a ghost disc; cream is day and deep umber is night; **Caprasimo** for numbers/names/titles and **Figtree** for reading; **stars are gold (progress), snacks are amber (affection), and they never mix.**
+- **Home** is one door: a terracotta *Continue* that names the level and room you are heading into, a dorm shelf showing who actually lives with you, and a permanent three-item bottom rail (Map / Dorm / Tonight).
+- **The map** replaced the blanket path: each chapter is a full-width coloured **band** in its own room's palette, with a winding dotted path of level nodes through it; the level you are up to is a bigger terracotta node with a breathing halo and a "4 animals · par 6" tag. Locked chapters go dark and keep the `? ? ?` tease. (The older description below is kept because the node/stitch maths is unchanged.) Previously: each chapter is a winding, dotted-stitch path of pillow-shaped level nodes (`DrawPillow` / `DrawStitches` / `PathX`). The level the player is up to gets a soft gold halo; unreached stitching is faded; the locked-chapter `? ? ?` tease is unchanged. A star-gated node is tappable and explains itself (`DrawGateHelp`) with a one-tap replay of `PuzzleGame.EasiestTopUpLevel()`.
+- **The dorm** (was "the zoo") is now a room you visit rather than a list you scroll: friends sit in their own beds around a lamplit room, and tapping one opens a sheet with **Feed** (1 snack), **Pet** (always free) and **Tuck in**. `Dorm.cs` owns snacks/moods/asleep. Two rules it must keep: **nothing decays** (a fed animal never gets hungry again on a timer — this is a bedtime game), and **snacks are not progress** (they gate nothing, so skipping the dorm entirely costs the player nothing). `Decorate` recolours the dorm's lamplight — it is the one screen the design named but never drew, so it was kept deliberately small and built only from colours the game already owns.
+- **The zoo's schedule** (`Assets/Scripts/ChonkyMerge/Zoo.cs`): 10 animals that move in on a schedule the player can see — star totals and chapter completions, never randomness. Each has a signature colour matching its board colour, a tier (Friend/Special/Guest) that only changes how it *looks*, and a settling stage (Visiting -> Snuggled -> Dreaming) derived from stars earned since it arrived. **The zoo owns no save data** — every answer is derived from `zoo_stars_*`; the sole exception is `zoo_seen` (how many arrivals have been announced), which drives the one-time "Someone moved in!" card. The win panel shows `Zoo.NextLine()` so stars visibly buy something.
 - **A room per chapter**: `Rooms` in `PuzzleGame.cs` holds eight painted skies (nursery, treehouse, meadow, snow cabin, pantry, garden, library, under the stars) — sky gradient, moon position/size, three hill silhouettes, and a twinkle colour/density that doubles as stars, fireflies or snow. `BgGradient(chapter)` paints and caches one per chapter, and the camera clear colour follows. The photo-real `Art/bg_*.png` images are from an older art direction and stay unused on purpose (they clash with the flat pastel style).
 - **Feel pass**: animals squash on landing and breathe while idle, a thump plays pitched by how far each one skidded (max two per swipe), sleeping animals get a soft puff of motes, and the win panel rings its stars one at a time. Short Android vibrations via `Haptics.cs` (own `haptics_on` setting, toggled in Settings; no-op off-device).
 - **Fully procedural visuals for the puzzle screen** — board tiles, bed glow rings, arrow, button pill fallback, background gradient/moon are all generated in code (`RoundedTile`, `SoftDisc`, `ArrowSprite`, `BgGradient`, `MakeButtonTex` in `PuzzleGame.cs`), so the puzzle scene has minimal art dependencies.
@@ -80,6 +83,11 @@ Before that, Phases 3 and 4. Phase 3 took the game from 40 levels to **130** —
 
 ---
 
+## Two traps this codebase has already sprung
+
+1. **IMGUI always draws on top of the camera.** The puzzle screen's sky, moon and hills are WORLD-space sprites behind the board (`SpawnBackground`/`BgGradient`). Painting a full-screen gradient in `OnGUI` hides the board completely. Only the win panel is allowed to cover the screen.
+2. **Texture row 0 is the BOTTOM.** `Icons.Raster` and `Ui.StarTex` both take y-down SVG coordinates, so both flip y explicitly. Forget it and every asymmetric icon (bed, lock, drop, arrows) and the star ship upside down — which is subtle enough to survive a casual look.
+
 ## Active Problems / TODOs
 
 ### 0. Burrow pairs are told apart by colour alone (accessibility)
@@ -100,7 +108,7 @@ Before that, Phases 3 and 4. Phase 3 took the game from 40 levels to **130** —
 - **Recommended next step:** Confirm nothing references them (a fresh grep before deleting, in case a scene or a WIP branch does), then delete. Low risk, pure cleanup.
 
 ### 3. `ButtonId.HighScore` is a vestigial enum case
-- **Problem:** `MenuButton.cs`'s `ButtonId` enum still has `HighScore`, and `MainMenu.cs` still has a `Panel.HighScore` case with UI for it, but **no button in the current menu ever triggers it** — the old high-score button slot was replaced by the "Levels" button. It's unreachable dead UI.
+- **RESOLVED.** `MenuButton.cs` was deleted in the design pass: the new `MainMenu.cs` draws every control through `Ui`, so the sprite-button component (and its vestigial `HighScore` enum case) had no callers left.
 - **Suspected cause:** Same incremental-pivot leftover as #2.
 - **Files involved:** `Assets/Scripts/ChonkyMerge/MenuButton.cs:5`, `Assets/Scripts/ChonkyMerge/MainMenu.cs:212`, `MainMenu.cs:259-265`.
 - **Recommended next step:** Either wire a real "best/stats" entry point to it, or remove the enum case and its panel branch. Low priority, cosmetic.
@@ -168,7 +176,7 @@ After any change to `PuzzleGame.cs` or `MainMenu.cs`, before considering work "d
 8. **Any UI change must be looked at, not reasoned about.** Build the Windows player and run the screenshot tour — it is the only way to catch overlap and clipping, and it has caught real bugs every single time (the arrival card's button printed straight through its own text; the Tonight pill printed over the speaker icon):
    ```
    Unity.exe -batchmode -quit -projectPath . -executeMethod ChonkyMerge.EditorTools.StandaloneBuilder.BuildWin
-   Builds/Win/WobbleZoo.exe -screen-width 900 -screen-height 1600 -screen-fullscreen 0 -shots <folder> -shotstars 60
+   Builds/Win/TuckIn.exe -screen-width 900 -screen-height 1600 -screen-fullscreen 0 -shots <folder> -shotstars 60
    ```
    Note the method is `BuildWin`, not `BuildWindows`. The tour fakes progress in memory and hard-kills the process so a real save is untouched — but **Unity can still flush PlayerPrefs behind your back**, so the tour explicitly resets `zoo_seen` rather than assuming it starts clean.
 
@@ -192,7 +200,7 @@ All Unity commands below assume Windows and the default Hub install path; adjust
 "/c/Program Files/Unity/Hub/Editor/6000.4.11f1/Editor/Unity.exe" -batchmode -quit -nographics -projectPath "<repo-root>" -logFile "<logfile-path>" -executeMethod ChonkyMerge.EditorTools.PuzzleSceneBuilder.Build
 ```
 
-**Build the Android APK** (output: `Builds/WobbleZoo.apk`):
+**Build the Android APK** (output: `Builds/TuckIn.apk`):
 ```bash
 "/c/Program Files/Unity/Hub/Editor/6000.4.11f1/Editor/Unity.exe" -batchmode -quit -projectPath "<repo-root>" -executeMethod ChonkyMerge.EditorTools.ApkBuilder.BuildAndroid -logFile "<logfile-path>"
 ```
@@ -216,8 +224,10 @@ Check the log for `"APK build result: Succeeded"`. Exits with code 1 on failure 
 | File | One-line description |
 |---|---|
 | `Assets/Scripts/SleepyZoo/PuzzleGame.cs` | The entire puzzle game: levels, slide-simulation mechanic, BFS hint solver, star economy, all runtime-generated visuals and IMGUI. |
-| `Assets/Scripts/ChonkyMerge/MainMenu.cs` | Landing page: background/floaters/logo/buttons, Settings panel, and the Levels picker panel with per-level stars. |
-| `Assets/Scripts/ChonkyMerge/MenuButton.cs` | Tappable sprite-button component with squash/bounce feedback; defines `ButtonId` enum. |
+| `Assets/Scripts/ChonkyMerge/MainMenu.cs` | Home, the chapter-band map, the interactive dorm, Decorate, Settings and the arrival card. All drawn through `Ui`. |
+| `Assets/Scripts/UI/Ui.cs` | The design system: virtual 390x844 canvas, palette, Caprasimo/Figtree, rounded-rect/gradient/star primitives, and the Primary/Outline/GhostDisc/Chip/Bar widgets. |
+| `Assets/Scripts/UI/Icons.cs` | Every UI icon, rasterised at startup from 24-unit SVG coordinates. All white — tint at draw time. |
+| `Assets/Scripts/ChonkyMerge/Dorm.cs` | Snacks, moods and who is asleep; the feed/pet/tuck actions and the lamplight theme. |
 | `Assets/Scripts/ChonkyMerge/Sfx.cs` | The game's sound bank: seven CC0 clips from `Resources/Audio` + a code-generated swipe whoosh; reads/writes `sound_on`. |
 | `Assets/Scripts/ChonkyMerge/Haptics.cs` | Short Android vibrations (8-26ms) for landing/sleeping/winning; own `haptics_on` flag; no-op in editor and off-device. |
 | `Assets/Resources/Audio/` | The seven shipped sound effects (Kenney, CC0 — see `docs/CREDITS.md`). |
@@ -227,7 +237,7 @@ Check the log for `"APK build result: Succeeded"`. Exits with code 1 on failure 
 | `Assets/Scripts/ChonkyMerge/AnimalSprites.cs` | **Dead code** — unused sprite loader for the retired tier system. See TODO #2. |
 | `Assets/Scripts/ChonkyMerge/SpriteFactory.cs` | **Dead code** — unused procedural-circle sprite generator from the original merge-game prototype. See TODO #2. |
 | `Assets/Editor/PuzzleSceneBuilder.cs` | Editor script: rebuilds `Puzzle.unity` from code, sets build settings/scenes, product name, bundle id, icon. |
-| `Assets/Editor/ApkBuilder.cs` | Editor script: builds the Android APK to `Builds/WobbleZoo.apk` (IL2CPP, ARM64, min SDK 24). |
+| `Assets/Editor/ApkBuilder.cs` | Editor script: builds the Android APK to `Builds/TuckIn.apk` (IL2CPP, ARM64, min SDK 24). |
 | `Assets/Editor/StandaloneBuilder.cs` | Windows build, for *looking* at the IMGUI screens. Run the exe with `-shots <folder> -shotstars <n>` for an automatic screenshot tour (`MainMenu.ShotTour`); faked stars are never written to disk. |
 | `Assets/Scripts/ChonkyMerge/Zoo.cs` | The animal roster, arrival rules, settling stages and the arrival-card bookkeeping. Derived from stars; owns only `zoo_seen`. |
 | `Assets/Editor/ArtImportSettings.cs` | `AssetPostprocessor` that auto-configures every PNG under `Resources/Art/` as an uncompressed Sprite. |
@@ -239,7 +249,7 @@ Check the log for `"APK build result: Succeeded"`. Exits with code 1 on failure 
 | `docs/ART_PROMPTS.md` | **Stale** — art-generation prompts tied to the retired mechanic/level-select map plan. |
 | `tools/gen_levels.py` | **Live and important** — generates and BFS-verifies levels for both chapter rule sets. `verifycs` re-proves every par in `PuzzleGame.cs`. |
 | `tools/process_animals.py` | **Broken/historical** — art-processing script pointing at a folder that no longer exists. See TODO #4. |
-| `ProjectSettings/ProjectSettings.asset` | Unity project settings — product name "Wobble Zoo", bundle version, Android SDK settings live here. |
+| `ProjectSettings/ProjectSettings.asset` | Unity project settings — product name "Tuck In", bundle version, Android SDK settings live here. |
 | `Packages/manifest.json` | UPM dependency manifest — stock Unity modules only, no third-party packages. |
 
 ---

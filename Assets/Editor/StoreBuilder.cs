@@ -72,7 +72,7 @@ namespace ChonkyMerge.EditorTools
             var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
             {
                 scenes = scenes,
-                locationPathName = "Builds/WobbleZoo.aab",
+                locationPathName = "Builds/TuckIn.aab",
                 target = BuildTarget.Android,
                 targetGroup = BuildTargetGroup.Android,
                 options = BuildOptions.None

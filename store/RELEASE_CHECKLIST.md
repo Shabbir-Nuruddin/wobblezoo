@@ -1,4 +1,4 @@
-# Publishing Wobble Zoo to Google Play
+# Publishing Tuck In to Google Play
 
 Written for someone who has never shipped an Android app. Follow it top to bottom.
 
@@ -23,7 +23,7 @@ It will ask you to invent a password, then repeat it, then ask for your name and
 location (any of that can be left blank by pressing Enter).
 
 > **This file and its password ARE your app.** If you lose either one, you can
-> never publish an update to Wobble Zoo again — not with a support ticket, not
+> never publish an update to Tuck In again — not with a support ticket, not
 > with anything. Google cannot reset it.
 >
 > Back up `wobblezoo-upload.keystore` somewhere that isn't this computer, and put
@@ -52,7 +52,7 @@ into the project, so a password can never end up on GitHub.
 Takes about ten minutes. **Close the Unity Editor first** — a batch build fails if
 the editor is open on this project.
 
-You get `Builds/WobbleZoo.aab`. Check `aab.log` for the line `AAB build result:
+You get `Builds/TuckIn.aab`. Check `aab.log` for the line `AAB build result:
 Succeeded`. If it also says **DEBUG-SIGNED**, step 2 didn't take — Play will
 reject that file, so fix the variables and build again.
 
@@ -61,7 +61,7 @@ reject that file, so fix the variables and build again.
 1. Go to <https://play.google.com/console> and pay the one-time $25 registration
    fee. Google will verify your identity; for a personal account this can take a
    few days, so start it early.
-2. **Create app** → name `Wobble Zoo: Bedtime Puzzle`, English, **Game**, **Free**.
+2. **Create app** → name `Tuck In: Bedtime Puzzle`, English, **Game**, **Free**.
 3. Work through the left-hand checklist. The answers are all in
    `store/LISTING.md` — app category, tags, content rating questionnaire, and the
    full description are written out ready to paste.
@@ -115,7 +115,7 @@ Then in Play Console → **App content** → **Privacy policy**, paste the URL.
 Start with **Internal testing**, not production:
 
 1. Play Console → **Testing → Internal testing → Create new release**
-2. Upload `Builds/WobbleZoo.aab`
+2. Upload `Builds/TuckIn.aab`
 3. Add your own email as a tester, save, and use the opt-in link Play gives you
 4. Install it on your phone from the Play Store and play it for a day
 

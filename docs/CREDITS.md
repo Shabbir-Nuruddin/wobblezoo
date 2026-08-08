@@ -46,6 +46,17 @@ needs a CC0 or licensed loop.
   style the game actually uses, so chapter rooms are painted in code instead.
   Left in the repo, unused.
 
-## Font
+## Fonts
 
-- **Fredoka** (SemiBold) — Open Font Licence.
+All three ship inside the APK. All are SIL Open Font Licence 1.1, which permits
+embedding in a commercial application; the OFL requires that they are not sold on
+their own and that any modified version is not released under the reserved name.
+None of that is a problem here — they are embedded unmodified.
+
+- **Caprasimo** (Regular) — OFL 1.1. Copyright 2023 The Caprasimo Project Authors
+  (https://github.com/docrepair-fonts/caprasimo-fonts). The display face: level
+  numbers, animal names, screen titles.
+- **Figtree** (SemiBold and Bold) — OFL 1.1. Copyright 2022 The Figtree Project
+  Authors (https://github.com/erikdkennedy/figtree). Everything you read.
+- **Fredoka** (SemiBold) — OFL 1.1. Superseded by the two above in the design
+  pass, but kept as the fallback `Ui.cs` loads if a face is ever missing.

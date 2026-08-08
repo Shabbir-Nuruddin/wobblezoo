@@ -5,7 +5,7 @@ using UnityEngine;
 namespace ChonkyMerge.EditorTools
 {
     /// <summary>
-    /// One-command Android build. Produces Builds/WobbleZoo.apk (debug-signed, so it
+    /// One-command Android build. Produces Builds/TuckIn.apk (debug-signed, so it
     /// installs directly on a phone for testing). Run via -executeMethod or the menu.
     /// </summary>
     public static class ApkBuilder
@@ -30,7 +30,7 @@ namespace ChonkyMerge.EditorTools
             var opts = new BuildPlayerOptions
             {
                 scenes = scenes,
-                locationPathName = "Builds/WobbleZoo.apk",
+                locationPathName = "Builds/TuckIn.apk",
                 target = BuildTarget.Android,
                 targetGroup = BuildTargetGroup.Android,
                 options = BuildOptions.None

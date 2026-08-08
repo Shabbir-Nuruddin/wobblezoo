@@ -1,4 +1,4 @@
-# Wobble Zoo — Animal Art Prompt Pack (v1)
+# Tuck In — Animal Art Prompt Pack (v1)
 
 Goal: 8 original, **stylized-realistic** (Pixar/3D-render) fluffy animals for the merge
 chain. Legally safe to ship because each is a brand-new AI creation (not derived from any

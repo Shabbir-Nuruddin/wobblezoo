@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/organic-4765741d-ccb6-42dc-b065-815219e5ac76/styles.css">
+<style>
+body{margin:0;background:#e7dcc6;font-family:var(--font-body)}
+a{color:var(--color-accent-700)}a:hover{color:var(--color-accent-600)}
+.dv-turn{padding:44px 48px 40px;border-bottom:1px solid rgba(0,0,0,.08)}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 22px}
+.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#2e2b25;color:#fff;border-radius:4px;text-decoration:none}
+.dv-tname{font:600 13px/1.2 var(--font-body);color:#2e2b25}
+.dv-opts{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.09);color:#2e2b25;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11.5px/1.3 var(--font-body);color:rgba(0,0,0,.55)}
+.dv-opt:target .dv-oid{background:var(--color-accent);color:#fff}
+.dv-next{margin:26px 0 0;font:12px/1.6 var(--font-body);color:rgba(0,0,0,.5)}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
+@keyframes bobC{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-5px)}}
+@keyframes breatheC{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.045)}}
+@keyframes halo{0%,100%{opacity:.45;transform:scale(1)}50%{opacity:.9;transform:scale(1.12)}}
+@keyframes zdrift{0%{opacity:0;transform:translate(0,0) scale(.7)}30%{opacity:.9}100%{opacity:0;transform:translate(14px,-26px) scale(1.1)}}
+@keyframes pop{0%{transform:scale(1)}35%{transform:scale(1.22) translateY(-10px)}70%{transform:scale(.94)}100%{transform:scale(1)}}
+@keyframes heartUp{0%{opacity:0;transform:translateY(0) scale(.6)}20%{opacity:1}100%{opacity:0;transform:translateY(-64px) scale(1.15)}}
+@keyframes twinkle{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Full redesign — brief, name, and five screens</span></div>
+
+<div style="display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap;margin:0 0 30px">
+  <div style="width:520px;background:var(--color-neutral-100);border:1px solid var(--color-divider);border-radius:var(--radius-lg);padding:26px 28px">
+    <div style="font:600 10.5px/1 var(--font-body);letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:10px">The read</div>
+    <h3 style="font-family:var(--font-heading);font-size:23px;margin:0 0 12px;color:var(--color-neutral-900)">The game is good. The screens are apologising for it.</h3>
+    <p style="margin:0 0 12px;font-size:13.5px;line-height:1.65;color:var(--color-neutral-800)">Three things are wrong today, and they are all the same thing. <b>Everything is a stack of pills.</b> Play, Levels, Settings, Hint, Undo, Reset — same shape, same weight, no hierarchy, so nothing feels like the main event. <b>Nothing has a place.</b> The zoo, the picker and the settings are panels dropped over the menu; text collides with the logo and with itself. <b>The zoo is a list, not a home</b> — a horizontal scroll of portraits that you cannot touch.</p>
+    <p style="margin:0;font-size:13.5px;line-height:1.65;color:var(--color-neutral-800)">So: one warm, lamplit world with <b>rooms</b> instead of panels. One primary action per screen, big and unmistakable. And a zoo that is a dorm you visit — animals awake, wandering, hungry, tuckable.</p>
+  </div>
+
+  <div style="width:400px;background:var(--color-neutral-100);border:1px solid var(--color-divider);border-radius:var(--radius-lg);padding:26px 28px">
+    <div style="font:600 10.5px/1 var(--font-body);letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:10px">The name</div>
+    <p style="margin:0 0 14px;font-size:13px;line-height:1.6;color:var(--color-neutral-800)">"Wobble" describes a physics game you deleted two pivots ago. Three that describe <i>this</i> game:</p>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;gap:12px;align-items:baseline"><span style="font-family:var(--font-heading);font-size:22px;color:var(--color-accent-700);min-width:118px">Tuck In</span><span style="font-size:12.5px;line-height:1.5;color:var(--color-neutral-700)">The verb of the game. Two syllables, warm, searchable-ish.</span></div>
+      <div style="display:flex;gap:12px;align-items:baseline"><span style="font-family:var(--font-heading);font-size:22px;color:var(--color-accent-700);min-width:118px">Moonpile</span><span style="font-size:12.5px;line-height:1.5;color:var(--color-neutral-700)">Odd, memorable, ownable. Reads as animals in a heap.</span></div>
+      <div style="display:flex;gap:12px;align-items:baseline"><span style="font-family:var(--font-heading);font-size:22px;color:var(--color-accent-700);min-width:118px">Sleepy Shuffle</span><span style="font-size:12.5px;line-height:1.5;color:var(--color-neutral-700)">Says the mechanic out loud. Safest of the three.</span></div>
+    </div>
+    <p style="margin:14px 0 0;font-size:12px;line-height:1.55;color:var(--color-neutral-600)">Screens below use <b>Tuck In</b>. It's a one-line swap if you'd rather keep Wobble Zoo.</p>
+  </div>
+
+  <div style="width:300px;background:var(--color-accent-900);border-radius:var(--radius-lg);padding:26px 28px;color:var(--color-neutral-200)">
+    <div style="font:600 10.5px/1 var(--font-body);letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-300);margin-bottom:12px">System</div>
+    <div style="display:flex;flex-direction:column;gap:11px;font-size:12.5px;line-height:1.5">
+      <div><b style="color:#fff">One primary per screen.</b> Terracotta, chunky, with a pressable bottom edge. Nothing else gets that treatment.</div>
+      <div><b style="color:#fff">Secondary = outline pill.</b> Tertiary = round icon on a ghost disc.</div>
+      <div><b style="color:#fff">Cream is day, deep umber is night.</b> Home and zoo are lamplit warm; the puzzle rooms stay night.</div>
+      <div><b style="color:#fff">Caprasimo</b> for numbers, names, level titles. <b>Figtree</b> for everything you read.</div>
+      <div><b style="color:#fff">Stars are gold, snacks are amber.</b> One is progress, one is affection. They never mix.</div>
+    </div>
+  </div>
+</div>
+
+<div class="dv-opts">
+
+<!-- ============ 1a HOME ============ -->
+<div class="dv-opt" id="1a">
+  <div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Home — one door, one hero, no collisions</div>
+  <div style="width:390px;height:844px;border-radius:44px;overflow:hidden;position:relative;background:#2a1a14;box-shadow:0 18px 50px rgba(46,43,37,.32);border:1px solid rgba(0,0,0,.15)">
+    <div style="position:absolute;inset:0;background:linear-gradient(#2a1a14 0%,#4a2a18 34%,#8c491a 62%,#c98d4e 84%,#e6bb84 100%)"></div>
+    <div style="position:absolute;left:298px;top:258px;width:70px;height:70px;border-radius:50%;background:#ffeecd;box-shadow:0 0 64px 24px rgba(255,226,178,.34)"></div>
+    <div style="position:absolute;left:44px;top:78px;width:4px;height:4px;border-radius:50%;background:#ffe9c8;animation:twinkle 3.4s ease-in-out infinite"></div>
+    <div style="position:absolute;left:120px;top:132px;width:3px;height:3px;border-radius:50%;background:#ffe9c8;animation:twinkle 4.2s ease-in-out .6s infinite"></div>
+    <div style="position:absolute;left:196px;top:64px;width:3px;height:3px;border-radius:50%;background:#ffe9c8;animation:twinkle 2.8s ease-in-out 1.2s infinite"></div>
+
+    <div style="position:absolute;left:0;right:0;top:0;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font:600 12px var(--font-body);color:rgba(255,240,220,.85)">
+      <span>9:41</span><span style="letter-spacing:2px">▮▮▮ ᯤ ▰</span>
+    </div>
+
+    <div style="position:absolute;left:18px;right:18px;top:58px;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:7px;background:rgba(255,238,214,.14);border:1px solid rgba(255,238,214,.22);border-radius:999px;padding:7px 14px 7px 11px;backdrop-filter:blur(6px)">
+        <span style="width:16px;height:16px;display:block;background:#ffd166;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)"></span>
+        <span style="font-family:var(--font-heading);font-size:15px;color:#fff2e2;letter-spacing:.02em">140</span>
+        <span style="font:600 11px var(--font-body);color:rgba(255,240,220,.5)">/ 390</span>
+      </div>
+      <div style="display:flex;gap:9px">
+        <div style="width:38px;height:38px;border-radius:50%;background:rgba(255,238,214,.14);border:1px solid rgba(255,238,214,.22);display:grid;place-items:center;color:#ffeed6"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></div>
+        <div style="width:38px;height:38px;border-radius:50%;background:rgba(255,238,214,.14);border:1px solid rgba(255,238,214,.22);display:grid;place-items:center;color:#ffeed6"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H7a1.7 1.7 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V7a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></div>
+      </div>
+    </div>
+
+    <div style="position:absolute;left:0;right:0;top:132px;text-align:center">
+      <div style="font-family:var(--font-heading);font-size:70px;line-height:.92;color:#fff4e4;letter-spacing:-.02em;text-shadow:0 5px 0 rgba(64,35,16,.45)">Tuck</div>
+      <div style="font-family:var(--font-heading);font-size:70px;line-height:.92;color:#ffcf8d;letter-spacing:-.02em;text-shadow:0 5px 0 rgba(64,35,16,.45)">In</div>
+      <div style="margin-top:9px;font:600 12.5px var(--font-body);letter-spacing:.16em;text-transform:uppercase;color:rgba(255,236,208,.6)">a bedtime puzzle</div>
+    </div>
+
+    <div style="position:absolute;left:-30px;right:-30px;bottom:236px;height:180px;border-radius:50% 50% 0 0/72px 72px 0 0;background:#5b3a1e"></div>
+    <div style="position:absolute;left:44px;bottom:300px;width:302px;height:150px;border-radius:26px 26px 14px 14px;background:#7a4a25;border:3px solid #935a2c;box-shadow:0 -8px 30px rgba(255,196,120,.18)">
+      <div style="position:absolute;left:-16px;right:-16px;top:-26px;height:34px;background:#a9682f;border-radius:14px 14px 4px 4px;box-shadow:0 3px 0 rgba(64,35,16,.3)"></div>
+      <div style="position:absolute;left:20px;top:26px;display:flex;gap:14px">
+        <div style="width:60px;height:52px;border-radius:12px;background:radial-gradient(circle at 50% 40%,#ffdca6,#f2a95c);display:grid;place-items:center;overflow:hidden"><img src="assets/pets/rabbit.png" alt="" style="width:38px;animation:bob 3.6s ease-in-out infinite"></div>
+        <div style="width:60px;height:52px;border-radius:12px;background:radial-gradient(circle at 50% 40%,#ffdca6,#f2a95c);display:grid;place-items:center;overflow:hidden"><img src="assets/pets/frog.png" alt="" style="width:38px;animation:bob 3.1s ease-in-out .5s infinite"></div>
+        <div style="width:60px;height:52px;border-radius:12px;background:radial-gradient(circle at 50% 40%,#ffdca6,#f2a95c);display:grid;place-items:center;overflow:hidden"><img src="assets/pets/owl.png" alt="" style="width:38px;animation:bob 4s ease-in-out .9s infinite"></div>
+        <div style="width:60px;height:52px;border-radius:12px;background:#6b3f20;border:2px solid #8a5228"></div>
+      </div>
+      <div style="position:absolute;left:0;right:0;bottom:12px;text-align:center;font:700 12px var(--font-body);color:rgba(255,232,198,.72)">the dorm · 5 of 10 home</div>
+    </div>
+
+    <div style="position:absolute;left:22px;right:22px;bottom:96px">
+      <div style="position:relative;border-radius:999px;background:#8c491a;box-shadow:0 7px 0 #5e2f0f,0 16px 30px rgba(46,20,6,.4)">
+        <div style="border-radius:999px;background:linear-gradient(#e08b46,#c67139);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;transform:translateY(-4px)">
+          <div style="text-align:left">
+            <div style="font:700 11px var(--font-body);letter-spacing:.14em;text-transform:uppercase;color:rgba(255,240,222,.72)">continue</div>
+            <div style="font-family:var(--font-heading);font-size:27px;line-height:1.05;color:#fff6ea">Level 62</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="text-align:right"><div style="font:700 11px var(--font-body);color:rgba(255,240,222,.72)">The meadow</div><div style="display:flex;gap:3px;justify-content:flex-end;margin-top:4px"><span style="width:11px;height:11px;background:rgba(255,255,255,.35);clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)"></span><span style="width:11px;height:11px;background:rgba(255,255,255,.35);clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)"></span><span style="width:11px;height:11px;background:rgba(255,255,255,.35);clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)"></span></div></div>
+            <div style="width:46px;height:46px;border-radius:50%;background:rgba(255,246,234,.16);display:grid;place-items:center;color:#fff6ea"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 0 0 1.54.84l10.1-6.86a1 1 0 0 0 0-1.68L9.54 4.3A1 1 0 0 0 8 5.14Z"/></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="position:absolute;left:22px;right:22px;bottom:26px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div style="border-radius:22px;background:rgba(64,35,16,.24);border:1.5px solid rgba(255,225,190,.3);padding:12px 6px;text-align:center;color:#ffeed6"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Z"/><path d="M9 3v15M15 6v15"/></svg><div style="font:700 12px var(--font-body);margin-top:4px">Map</div></div>
+      <div style="position:relative;border-radius:22px;background:rgba(64,35,16,.24);border:1.5px solid rgba(255,225,190,.3);padding:12px 6px;text-align:center;color:#ffeed6"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18v-6a4 4 0 0 1 4-4h12a4 4 0 0 1 4 4v6"/><path d="M2 15h20M6 8V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/></svg><div style="font:700 12px var(--font-body);margin-top:4px">Dorm</div><div style="position:absolute;top:-6px;right:-4px;background:#c67139;border:2px solid #4a2a18;color:#fff;border-radius:999px;font:700 10px var(--font-body);padding:2px 7px">5/10</div></div>
+      <div style="position:relative;border-radius:22px;background:rgba(64,35,16,.24);border:1.5px solid rgba(255,225,190,.3);padding:12px 6px;text-align:center;color:#ffeed6"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg><div style="font:700 12px var(--font-body);margin-top:4px">Tonight</div><div style="position:absolute;top:-6px;right:-4px;background:#ffd166;border:2px solid #4a2a18;color:#402310;border-radius:999px;font:700 10px var(--font-body);padding:2px 7px">6</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1b MAP ============ -->
+<div class="dv-opt" id="1b">
+  <div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Map — a quilt you scroll, chapters as bands</div>
+  <div style="width:390px;height:844px;border-radius:44px;overflow:hidden;position:relative;background:#f5ead8;box-shadow:0 18px 50px rgba(46,43,37,.32);border:1px solid rgba(0,0,0,.15)">
+    <div onScroll="{{ noop }}" style="position:absolute;inset:0;overflow-y:auto;overflow-x:hidden">
+      <div style="height:118px"></div>
+
+      <!-- chapter 4 band (current) -->
+      <div style="position:relative;padding:0 0 22px;background:linear-gradient(#dfeaf2,#eef1e6)">
+        <div style="padding:20px 24px 6px;display:flex;align-items:center;gap:12px">
+          <div style="width:46px;height:46px;border-radius:16px;background:#3a5a72;display:grid;place-items:center;color:#dfeaf2;font-family:var(--font-heading);font-size:20px">4</div>
+          <div>
+            <div style="font-family:var(--font-heading);font-size:19px;color:var(--color-neutral-900);line-height:1.1">Slippery Rugs</div>
+            <div style="font:600 11.5px var(--font-body);color:var(--color-neutral-700)">The meadow · 9 of 15 tucked in</div>
+          </div>
+        </div>
+        <div style="position:relative;height:300px;margin:4px 12px 0">
+          <svg viewBox="0 0 366 300" style="position:absolute;inset:0;width:100%;height:100%"><path d="M60 280 C150 268 130 214 66 200 C4 186 32 132 122 122 C214 112 200 62 288 48" fill="none" stroke="#c0b6a5" stroke-width="4" stroke-linecap="round" stroke-dasharray="2 13"/><path d="M60 280 C150 268 130 214 66 200 C4 186 32 132 122 122" fill="none" stroke="#c67139" stroke-width="4" stroke-linecap="round" stroke-dasharray="2 13"/></svg>
+          <div style="position:absolute;left:26px;top:246px;width:64px;height:60px;border-radius:18px;background:#fff8ec;border:2px solid #dcd3c4;box-shadow:0 3px 0 #dcd3c4;display:grid;place-items:center"><div style="font-family:var(--font-heading);font-size:22px;color:var(--color-neutral-800);margin-top:-8px">57</div><div style="position:absolute;bottom:7px;display:flex;gap:2px"><span style="width:10px;height:10px;background:#ffb703;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)"></span><span style="width:10px;height:10px;background:#ffb703;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)"></span><span style="width:10px;height:10px;background:#ffb703;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)"></span></div></div>
+          <div style="position:absolute;left:30px;top:166px;width:64px;height:60px;border-radius:18px;background:#fff8ec;border:2px solid #dcd3c4;box-shadow:0 3px 0 #dcd3c4;display:grid;place-items:center"><div style="font-family:var(--font-heading);font-size:22px;color:var(--color-neutral-800);margin-top:-8px">58</div><div style="position:absolute;bottom:7px;display:flex;gap:2px"><span style="width:10px;height:10px;background:#ffb703;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)"></span><span style="width:10px;height:10px;background:#ffb703;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)"></span><span style="width:10px;height:10px;background:#dcd3c4;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)"></span></div></div>
+          <div style="position:absolute;left:88px;top:88px;width:78px;height:74px;border-radius:22px;background:linear-gradient(#e08b46,#c67139);box-shadow:0 5px 0 #8c491a,0 0 0 8px rgba(198,113,57,.18);display:grid;place-items:center">
+            <div style="position:absolute;inset:-16px;border-radius:34px;border:2px solid rgba(198,113,57,.35);animation:halo 2.6s ease-in-out infinite"></div>
+            <div style="font-family:var(--font-heading);font-size:28px;color:#fff6ea;margin-top:-6px">59</div>
+            <div style="position:absolute;bottom:8px;font:700 10px var(--font-body);color:rgba(255,246,234,.8);letter-spacing:.1em">NEXT</div>
+          </div>
+          <div style="position:absolute;left:98px;top:172px;background:#402310;color:#ffeed6;font:700 11px var(--font-body);padding:7px 12px;border-radius:12px">4 animals · par 6</div>
+          <div style="position:absolute;left:206px;top:24px;width:64px;height:60px;border-radius:18px;background:#e9e2d4;border:2px solid #dcd3c4;display:grid;place-items:center;color:#a19786"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+          <div style="position:absolute;left:262px;top:22px;width:64px;height:60px;border-radius:18px;background:#e9e2d4;border:2px solid #dcd3c4;display:grid;place-items:center;color:#a19786;transform:translateY(38px)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+        </div>
+      </div>
+
+      <!-- locked chapter 5 -->
+      <div style="margin:0;padding:26px 24px 30px;background:#3a2b22;color:#f0e6d4">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:46px;height:46px;border-radius:16px;background:rgba(240,230,212,.12);display:grid;place-items:center;font-family:var(--font-heading);font-size:20px;color:#f0e6d4">5</div>
+          <div>
+            <div style="font-family:var(--font-heading);font-size:19px;line-height:1.1;letter-spacing:.16em">? ? ?</div>
+            <div style="font:600 11.5px var(--font-body);color:rgba(240,230,212,.62)">Someone has been careless in the pantry.</div>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;align-items:center;gap:12px">
+          <div style="flex:1;height:12px;border-radius:999px;background:rgba(240,230,212,.14);overflow:hidden"><div style="width:74%;height:100%;background:linear-gradient(90deg,#e08b46,#ffd166)"></div></div>
+          <div style="font:700 12px var(--font-body);color:#ffd166">140 / 188 ★</div>
+        </div>
+        <div style="margin-top:12px;font:600 12px var(--font-body);color:rgba(240,230,212,.7)">48 stars away. Replay level 44 for an easy three.</div>
+      </div>
+      <div style="height:40px"></div>
+    </div>
+
+    <div style="position:absolute;left:0;right:0;top:0;height:118px;background:linear-gradient(#f5ead8 62%,rgba(245,234,216,0));padding:52px 20px 0;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:40px;height:40px;border-radius:50%;background:var(--color-neutral-200);display:grid;place-items:center;color:var(--color-neutral-800)"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></div>
+        <div><div style="font-family:var(--font-heading);font-size:20px;line-height:1;color:var(--color-neutral-900)">The map</div><div style="font:600 11px var(--font-body);color:var(--color-neutral-600)">8 chapters · 130 nights</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;background:var(--color-neutral-200);border-radius:999px;padding:7px 13px 7px 10px">
+        <span style="width:15px;height:15px;background:#ffb703;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)"></span>
+        <span style="font-family:var(--font-heading);font-size:14px;color:var(--color-neutral-900)">140</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1c DORM ============ -->
+<div class="dv-opt" id="1c">
+  <div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>The dorm — tap an animal. Feed, pet, tuck in. <b style="color:var(--color-accent-700)">Interactive</b></div>
+  <div style="width:390px;height:844px;border-radius:44px;overflow:hidden;position:relative;background:#31211a;box-shadow:0 18px 50px rgba(46,43,37,.32);border:1px solid rgba(0,0,0,.15)">
+    <div style="position:absolute;inset:0;background:linear-gradient(#241813 0%,#3d2619 46%,#5b3a1e 100%)"></div>
+    <div style="position:absolute;left:0;right:0;top:150px;height:150px;background:radial-gradient(ellipse at 50% 40%,rgba(255,196,120,.20),transparent 68%)"></div>
+
+    <div style="position:absolute;left:0;right:0;top:0;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font:600 12px var(--font-body);color:rgba(255,240,220,.85)"><span>9:41</span><span style="letter-spacing:2px">▮▮▮ ᯤ ▰</span></div>
+
+    <div style="position:absolute;left:18px;right:18px;top:58px;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:11px">
+        <div onClick="{{ noop }}" style="width:40px;height:40px;border-radius:50%;background:rgba(255,238,214,.14);display:grid;place-items:center;color:#ffeed6"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></div>
+        <div><div style="font-family:var(--font-heading);font-size:20px;line-height:1;color:#fff4e4">The dorm</div><div style="font:600 11px var(--font-body);color:rgba(255,236,208,.6)">5 friends home · 3 lanterns lit</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;background:rgba(255,209,102,.16);border:1px solid rgba(255,209,102,.3);border-radius:999px;padding:7px 12px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="#ffd166"><path d="M12 3c3 2 5 4.4 5 7.6A5 5 0 0 1 7 11c0-1.4.5-2.4 1.3-3.4C9 9 10 9.4 10.6 9.4c-.6-2.3.2-4.6 1.4-6.4Z"/></svg>
+        <span style="font-family:var(--font-heading);font-size:14px;color:#ffe9bd">{{ snacks }}</span>
+      </div>
+    </div>
+
+    <div style="position:absolute;left:26px;top:126px;width:22px;height:30px;border-radius:6px 6px 10px 10px;background:#ffcf8d;box-shadow:0 0 26px 10px rgba(255,196,120,.35);animation:breathe 4s ease-in-out infinite"></div>
+    <div style="position:absolute;right:26px;top:126px;width:22px;height:30px;border-radius:6px 6px 10px 10px;background:#ffcf8d;box-shadow:0 0 26px 10px rgba(255,196,120,.35);animation:breathe 4.6s ease-in-out .8s infinite"></div>
+
+    <div style="position:absolute;left:0;right:0;top:172px;bottom:150px">
+      <sc-for list="{{ dorm }}" as="pal" hint-placeholder-count="5">
+        <div onClick="{{ pal.pick }}" style="position:absolute;width:118px;text-align:center;cursor:pointer;left:{{ pal.x }};top:{{ pal.y }}">
+          <div style="position:relative;width:112px;height:74px;margin:0 auto">
+            <div style="position:absolute;left:6px;right:6px;bottom:0;height:44px;border-radius:14px 14px 18px 18px;background:{{ pal.bedBack }};box-shadow:0 4px 0 rgba(0,0,0,.22)"></div>
+            <div style="position:absolute;left:6px;right:6px;bottom:0;height:22px;border-radius:8px 8px 18px 18px;background:{{ pal.bedFront }}"></div>
+            <img src="{{ pal.img }}" alt="" style="position:absolute;left:50%;bottom:16px;width:60px;transform:translateX(-50%);animation:{{ pal.anim }}">
+            <div style="position:absolute;inset:auto 0 6px 0;font:700 22px var(--font-body);color:rgba(255,236,208,.5);text-align:right;padding-right:10px">{{ pal.zzz }}</div>
+          </div>
+          <div style="font-family:var(--font-heading);font-size:15px;color:#fff4e4;margin-top:6px">{{ pal.name }}</div>
+          <div style="font:700 10.5px var(--font-body);color:{{ pal.moodCol }};letter-spacing:.04em">{{ pal.mood }}</div>
+        </div>
+      </sc-for>
+      <sc-if value="{{ heart }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;left:{{ heartX }};top:{{ heartY }};animation:heartUp 1s ease-out forwards;pointer-events:none">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="{{ heartCol }}" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="{{ heartPath }}"></path></svg>
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="position:absolute;left:0;right:0;bottom:104px;height:64px;background:linear-gradient(transparent,rgba(36,24,19,.9));pointer-events:none"></div>
+
+    <sc-if value="{{ !sheet }}" hint-placeholder-val="{{ true }}">
+      <div style="position:absolute;left:20px;right:20px;bottom:26px">
+        <div style="text-align:center;font:600 12px var(--font-body);color:rgba(255,236,208,.62);margin-bottom:12px">{{ hint }}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px">
+          <div onClick="{{ tuckAll }}" style="border-radius:999px;background:#8c491a;box-shadow:0 6px 0 #5e2f0f"><div style="border-radius:999px;background:linear-gradient(#e08b46,#c67139);padding:16px;text-align:center;font-family:var(--font-heading);font-size:18px;color:#fff6ea;transform:translateY(-3px)">Tuck everyone in</div></div>
+          <div onClick="{{ noop }}" style="border-radius:999px;border:2px solid rgba(255,225,190,.34);padding:16px;text-align:center;font-family:var(--font-heading);font-size:18px;color:#ffeed6">Decorate</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ sheet }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;left:0;right:0;bottom:0;background:#f5ead8;border-radius:30px 30px 44px 44px;padding:18px 22px 28px;animation:sheetUp .28s cubic-bezier(.2,.9,.3,1);box-shadow:0 -14px 40px rgba(0,0,0,.4)">
+        <div style="width:42px;height:5px;border-radius:999px;background:var(--color-neutral-300);margin:0 auto 16px"></div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:74px;height:74px;border-radius:24px;background:{{ selTint }};display:grid;place-items:center"><img src="{{ selImg }}" alt="" style="width:54px"></div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px"><div style="font-family:var(--font-heading);font-size:26px;color:var(--color-neutral-900);line-height:1">{{ selName }}</div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#82796a" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></div>
+            <div style="font:600 12.5px var(--font-body);color:var(--color-neutral-700);margin-top:3px">{{ selDream }}</div>
+            <div style="display:flex;gap:6px;margin-top:8px"><span style="background:var(--color-accent-200);color:var(--color-accent-800);border-radius:999px;padding:3px 10px;font:700 10.5px var(--font-body)">{{ selStage }}</span><span style="background:var(--color-accent-2-200);color:var(--color-accent-2-800);border-radius:999px;padding:3px 10px;font:700 10.5px var(--font-body)">{{ selMood }}</span></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:18px">
+          <div onClick="{{ doFeed }}" style="border-radius:22px;background:var(--color-accent-200);border:2px solid var(--color-accent-300);padding:14px 6px;text-align:center;color:var(--color-accent-800);cursor:pointer"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.7 6.5 9.5a7 7 0 1 0 11 0Z"/></svg><div style="font:700 12px var(--font-body);margin-top:5px">Feed</div><div style="font:600 10px var(--font-body);opacity:.7">1 snack</div></div>
+          <div onClick="{{ doPet }}" style="border-radius:22px;background:var(--color-accent-2-200);border:2px solid var(--color-accent-2-300);padding:14px 6px;text-align:center;color:var(--color-accent-2-800);cursor:pointer"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.5-1.5 2.5-3.2 2.5-5.2A4.8 4.8 0 0 0 12 6.6 4.8 4.8 0 0 0 2.5 8.8c0 2 1 3.7 2.5 5.2l7 7Z"/></svg><div style="font:700 12px var(--font-body);margin-top:5px">Pet</div><div style="font:600 10px var(--font-body);opacity:.7">free</div></div>
+          <div onClick="{{ doTuck }}" style="border-radius:22px;background:var(--color-neutral-200);border:2px solid var(--color-neutral-300);padding:14px 6px;text-align:center;color:var(--color-neutral-800);cursor:pointer"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18v-6a4 4 0 0 1 4-4h12a4 4 0 0 1 4 4v6"/><path d="M2 15h20M6 8V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/></svg><div style="font:700 12px var(--font-body);margin-top:5px">Tuck in</div><div style="font:600 10px var(--font-body);opacity:.7">goodnight</div></div>
+        </div>
+        <div onClick="{{ close }}" style="margin-top:14px;text-align:center;font:700 13px var(--font-body);color:var(--color-neutral-600);cursor:pointer">Close</div>
+      </div>
+    </sc-if>
+  </div>
+</div>
+
+<!-- ============ 1d WIN ============ -->
+<div class="dv-opt" id="1d">
+  <div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Win + arrival — the payoff, one beat at a time</div>
+  <div style="width:390px;height:844px;border-radius:44px;overflow:hidden;position:relative;background:#241813;box-shadow:0 18px 50px rgba(46,43,37,.32);border:1px solid rgba(0,0,0,.15)">
+    <div style="position:absolute;inset:0;background:linear-gradient(#1d1526,#3a2440 62%,#5b3a1e)"></div>
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 34%,rgba(255,209,102,.22),transparent 62%)"></div>
+    <div style="position:absolute;left:60px;top:120px;width:5px;height:5px;border-radius:50%;background:#ffe9c8;animation:twinkle 3s ease-in-out infinite"></div>
+    <div style="position:absolute;left:300px;top:180px;width:4px;height:4px;border-radius:50%;background:#ffe9c8;animation:twinkle 2.4s ease-in-out .7s infinite"></div>
+
+    <div style="position:absolute;left:0;right:0;top:98px;text-align:center">
+      <div style="font:700 12px var(--font-body);letter-spacing:.2em;text-transform:uppercase;color:rgba(255,236,208,.55)">Level 59 · Slippery Rugs</div>
+      <div style="font-family:var(--font-heading);font-size:44px;color:#fff4e4;margin-top:6px;line-height:1.05">Everyone's<br>asleep</div>
+      <div style="display:flex;justify-content:center;gap:14px;margin-top:22px">
+        <span style="width:52px;height:52px;background:#ffb703;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);animation:pop .6s ease-out"></span>
+        <span style="width:64px;height:64px;background:#ffd166;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);margin-top:-8px;animation:pop .6s .2s ease-out both;filter:drop-shadow(0 0 16px rgba(255,209,102,.7))"></span>
+        <span style="width:52px;height:52px;background:rgba(255,246,234,.18);clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)"></span>
+      </div>
+      <div style="margin-top:16px;font:700 13.5px var(--font-body);color:rgba(255,236,208,.75)">7 moves · 6 for the third star</div>
+    </div>
+
+    <div style="position:absolute;left:22px;right:22px;top:404px;border-radius:28px;background:rgba(255,244,228,.1);border:1.5px solid rgba(255,225,190,.24);padding:18px 20px;display:flex;align-items:center;gap:16px">
+      <div style="position:relative;width:76px;height:76px;border-radius:24px;background:radial-gradient(circle at 50% 40%,#ffdca6,#f2a95c);display:grid;place-items:center;flex:none">
+        <div style="position:absolute;inset:-8px;border-radius:32px;border:2px solid rgba(255,209,102,.5);animation:halo 2.4s ease-in-out infinite"></div>
+        <img src="assets/pets/duck.png" alt="" style="width:58px;animation:bob 3s ease-in-out infinite">
+      </div>
+      <div style="flex:1">
+        <div style="font:700 11px var(--font-body);letter-spacing:.16em;text-transform:uppercase;color:#ffd166">Someone moved in</div>
+        <div style="font-family:var(--font-heading);font-size:24px;color:#fff4e4;line-height:1.15;margin-top:2px">Biscuit is here</div>
+        <div style="font:600 12.5px var(--font-body);color:rgba(255,236,208,.68);margin-top:3px">Dreams of a pond that's all his.</div>
+      </div>
+    </div>
+
+    <div style="position:absolute;left:22px;right:22px;top:534px">
+      <div style="display:flex;justify-content:space-between;font:700 11.5px var(--font-body);color:rgba(255,236,208,.6);margin-bottom:7px"><span>Next friend · Professor</span><span>140 / 188 ★</span></div>
+      <div style="height:12px;border-radius:999px;background:rgba(255,236,208,.14);overflow:hidden"><div style="width:74%;height:100%;background:linear-gradient(90deg,#e08b46,#ffd166)"></div></div>
+      <div style="margin-top:9px;font:600 12px var(--font-body);color:rgba(255,236,208,.55)">+2 snacks earned. The dorm is awake.</div>
+    </div>
+
+    <div style="position:absolute;left:22px;right:22px;bottom:100px">
+      <div style="border-radius:999px;background:#8c491a;box-shadow:0 7px 0 #5e2f0f,0 16px 30px rgba(46,20,6,.4)"><div style="border-radius:999px;background:linear-gradient(#e08b46,#c67139);padding:19px;text-align:center;font-family:var(--font-heading);font-size:24px;color:#fff6ea;transform:translateY(-4px)">Next level</div></div>
+    </div>
+    <div style="position:absolute;left:22px;right:22px;bottom:32px;display:grid;grid-template-columns:1fr 1fr;gap:11px">
+      <div style="border-radius:999px;border:2px solid rgba(255,225,190,.3);padding:14px;text-align:center;font:700 14px var(--font-body);color:#ffeed6">Visit the dorm</div>
+      <div style="border-radius:999px;border:2px solid rgba(255,225,190,.3);padding:14px;text-align:center;font:700 14px var(--font-body);color:#ffeed6">Replay for ★★★</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1e BOARD ============ -->
+<div class="dv-opt" id="1e">
+  <div class="dv-olabel"><a class="dv-oid" href="#1e">1e</a>The board — thumb rail at the bottom, board in the sweet spot</div>
+  <div style="width:390px;height:844px;border-radius:44px;overflow:hidden;position:relative;background:#1d1526;box-shadow:0 18px 50px rgba(46,43,37,.32);border:1px solid rgba(0,0,0,.15)">
+    <div style="position:absolute;inset:0;background:linear-gradient(#141024,#2a2140 54%,#4a3a52)"></div>
+    <div style="position:absolute;right:36px;bottom:154px;width:66px;height:66px;border-radius:50%;background:#ffeecd;box-shadow:0 0 58px 22px rgba(255,226,178,.28)"></div>
+    <div style="position:absolute;left:0;right:0;bottom:0;height:210px;background:#2c2338;border-radius:50% 50% 0 0/90px 90px 0 0"></div>
+
+    <div style="position:absolute;left:0;right:0;top:0;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font:600 12px var(--font-body);color:rgba(255,240,220,.85)"><span>9:41</span><span style="letter-spacing:2px">▮▮▮ ᯤ ▰</span></div>
+
+    <div style="position:absolute;left:18px;right:18px;top:58px;display:flex;align-items:center;justify-content:space-between">
+      <div style="width:40px;height:40px;border-radius:50%;background:rgba(255,238,214,.13);display:grid;place-items:center;color:#ffeed6"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></div>
+      <div style="text-align:center"><div style="font-family:var(--font-heading);font-size:21px;color:#fff4e4;line-height:1">Level 59</div><div style="font:600 11px var(--font-body);color:rgba(255,236,208,.55)">Slippery Rugs · the meadow</div></div>
+      <div style="display:flex;align-items:center;gap:5px;background:rgba(255,238,214,.13);border-radius:999px;padding:8px 12px"><span style="width:13px;height:13px;background:#ffd166;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)"></span><span style="font-family:var(--font-heading);font-size:13px;color:#ffe9bd">6</span></div>
+    </div>
+
+    <div style="position:absolute;left:0;right:0;top:118px;display:flex;justify-content:center;gap:7px;align-items:center">
+      <div style="font:700 11px var(--font-body);letter-spacing:.1em;color:rgba(255,236,208,.5);text-transform:uppercase">moves</div>
+      <div style="display:flex;gap:5px">
+        <span style="width:11px;height:11px;border-radius:50%;background:#ffd166"></span><span style="width:11px;height:11px;border-radius:50%;background:#ffd166"></span><span style="width:11px;height:11px;border-radius:50%;background:#ffd166"></span><span style="width:11px;height:11px;border-radius:50%;background:rgba(255,236,208,.2)"></span><span style="width:11px;height:11px;border-radius:50%;background:rgba(255,236,208,.2)"></span><span style="width:11px;height:11px;border-radius:50%;background:rgba(255,236,208,.2)"></span>
+      </div>
+      <div style="font:700 11px var(--font-body);color:rgba(255,236,208,.5)">3 / 6</div>
+    </div>
+
+    <div style="position:absolute;left:26px;right:26px;top:170px;border-radius:28px;background:rgba(255,244,228,.09);border:1px solid rgba(255,225,190,.18);padding:13px 16px;font:600 13px/1.45 var(--font-body);color:rgba(255,244,228,.86);text-align:center">You can cross a silk rug — you just can't stop on one.</div>
+
+    <div style="position:absolute;left:34px;right:34px;top:266px;aspect-ratio:1;border-radius:34px;background:#f7ecd8;box-shadow:0 14px 0 #d8c6a8,0 24px 44px rgba(0,0,0,.4);padding:12px">
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);gap:7px;width:100%;height:100%">
+        <div style="border-radius:13px;background:#fff8ec"></div>
+        <div style="border-radius:13px;background:#fff8ec;display:grid;place-items:center"><div style="width:74%;height:74%;border-radius:11px;background:repeating-linear-gradient(45deg,#dfeaf2,#dfeaf2 5px,#c9dbe8 5px,#c9dbe8 10px)"></div></div>
+        <div style="border-radius:13px;background:#fff8ec"></div>
+        <div style="border-radius:13px;background:#e0c9a3;box-shadow:inset 0 -3px 0 #c8ab7f"></div>
+        <div style="border-radius:13px;background:#fff8ec"></div>
+
+        <div style="border-radius:13px;background:#fff8ec;display:grid;place-items:center"><div style="width:80%;height:66%;border-radius:9px;background:#cfe0f7;border:2px dashed #7fa6dd;display:grid;place-items:center"><span style="width:11px;height:11px;border-radius:50%;background:#6b95d6"></span></div></div>
+        <div style="border-radius:13px;background:#fff8ec"></div>
+        <div style="border-radius:13px;background:#fff8ec;position:relative;display:grid;place-items:center"><div style="position:absolute;width:88%;height:88%;border-radius:50%;background:rgba(107,149,214,.28);animation:halo 2.6s ease-in-out infinite"></div><img src="assets/pets/dog.png" alt="" style="width:78%;position:relative;animation:breathe 3.4s ease-in-out infinite"></div>
+        <div style="border-radius:13px;background:#fff8ec"></div>
+        <div style="border-radius:13px;background:#fff8ec;display:grid;place-items:center"><div style="width:80%;height:66%;border-radius:9px;background:#ffd9e4;border:2px dashed #f090aa;display:grid;place-items:center"><span style="width:11px;height:11px;border-radius:50%;background:#ee7c9b"></span></div></div>
+
+        <div style="border-radius:13px;background:#e0c9a3;box-shadow:inset 0 -3px 0 #c8ab7f"></div>
+        <div style="border-radius:13px;background:#fff8ec"></div>
+        <div style="border-radius:13px;background:#fff8ec"></div>
+        <div style="border-radius:13px;background:#fff8ec;display:grid;place-items:center"><div style="width:74%;height:74%;border-radius:11px;background:repeating-linear-gradient(45deg,#dfeaf2,#dfeaf2 5px,#c9dbe8 5px,#c9dbe8 10px)"></div></div>
+        <div style="border-radius:13px;background:#fff8ec"></div>
+
+        <div style="border-radius:13px;background:#fff8ec"></div>
+        <div style="border-radius:13px;background:#fff8ec;position:relative;display:grid;place-items:center"><div style="position:absolute;width:88%;height:88%;border-radius:50%;background:rgba(238,124,155,.28);animation:halo 2.9s ease-in-out .4s infinite"></div><img src="assets/pets/rabbit.png" alt="" style="width:78%;position:relative;animation:breathe 3.8s ease-in-out infinite"></div>
+        <div style="border-radius:13px;background:#fff8ec"></div>
+        <div style="border-radius:13px;background:#fff8ec"></div>
+        <div style="border-radius:13px;background:#e0c9a3;box-shadow:inset 0 -3px 0 #c8ab7f"></div>
+
+        <div style="border-radius:13px;background:#fff8ec"></div>
+        <div style="border-radius:13px;background:#fff8ec"></div>
+        <div style="border-radius:13px;background:#fff8ec;display:grid;place-items:center"><div style="width:74%;height:74%;border-radius:11px;background:repeating-linear-gradient(45deg,#dfeaf2,#dfeaf2 5px,#c9dbe8 5px,#c9dbe8 10px)"></div></div>
+        <div style="border-radius:13px;background:#fff8ec"></div>
+        <div style="border-radius:13px;background:#fff8ec"></div>
+      </div>
+    </div>
+
+    <div style="position:absolute;left:22px;right:22px;bottom:34px;display:flex;align-items:center;gap:12px">
+      <div style="width:62px;height:62px;border-radius:50%;background:rgba(255,238,214,.12);border:1.5px solid rgba(255,225,190,.26);display:grid;place-items:center;color:#ffeed6"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-4"/></svg></div>
+      <div style="flex:1;border-radius:999px;background:#8c491a;box-shadow:0 6px 0 #5e2f0f"><div style="border-radius:999px;background:linear-gradient(#e08b46,#c67139);padding:16px;text-align:center;font-family:var(--font-heading);font-size:19px;color:#fff6ea;transform:translateY(-3px);display:flex;align-items:center;justify-content:center;gap:9px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0-4 10.5c.7.8 1 1.5 1 2.5h6c0-1 .3-1.7 1-2.5A6 6 0 0 0 12 3Z"/><path d="M10 20h4"/></svg>Hint</div></div>
+      <div style="width:62px;height:62px;border-radius:50%;background:rgba(255,238,214,.12);border:1.5px solid rgba(255,225,190,.26);display:grid;place-items:center;color:#ffeed6"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></div>
+    </div>
+  </div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "make the dorm feel busier — animals should wander" · "show the decorate screen and settings" · "give me a second, calmer take on <a class="dv-oid" href="#1a">1a</a>"</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:1100}}">
+class Component extends DCLogic {
+  state = {
+    snacks: 7, sel: null, heart: 0, heartPath: '', heartCol: '#ee7c9b', heartX: '0px', heartY: '0px',
+    pals: [
+      { key:'dog',    name:'Pip',       tint:'#6b95d6', x:14,  y:6,   mood:'Playful',  stage:'Dreaming',    dream:'Dreams of a garden with no fences', asleep:false },
+      { key:'rabbit', name:'Clover',    tint:'#ee7c9b', x:140, y:96,  mood:'Sleepy',   stage:'Dreaming',    dream:'Dreams of a very long carrot',      asleep:true  },
+      { key:'frog',   name:'Puddle',    tint:'#9ed666', x:258, y:14,  mood:'Hungry',   stage:'Snuggled in', dream:'Dreams of warm rain on a lilypad',  asleep:false },
+      { key:'duck',   name:'Biscuit',   tint:'#fbd65c', x:22,  y:212, mood:'Content',  stage:'Just visiting', dream:"Dreams of a pond that's all his",  asleep:false },
+      { key:'owl',    name:'Professor', tint:'#fcb85c', x:210, y:220, mood:'Curious',  stage:'Snuggled in', dream:'Dreams in questions, and answers them too', asleep:false }
+    ]
+  };
+
+  moodCol(m){ return m==='Hungry' ? '#ffb0a0' : m==='Sleepy' ? '#bda8ff' : m==='Playful' ? '#9ed666' : 'rgba(255,236,208,.55)'; }
+
+  fly(kind){
+    const i = this.state.sel ?? 0, p = this.state.pals[i];
+    const art = kind === 'feed'
+      ? { path: 'M12 2.7 6.5 9.5a7 7 0 1 0 11 0Z', col: '#d67f48' }
+      : { path: 'M19 14c1.5-1.5 2.5-3.2 2.5-5.2A4.8 4.8 0 0 0 12 6.6 4.8 4.8 0 0 0 2.5 8.8c0 2 1 3.7 2.5 5.2l7 7Z', col: '#ee7c9b' };
+    this.setState({ heart: Date.now(), heartPath: art.path, heartCol: art.col, heartX: (p.x + 46) + 'px', heartY: p.y + 'px' });
+    setTimeout(() => this.setState({ heart: 0 }), 1000);
+  }
+
+  renderVals() {
+    const s = this.state, sel = s.sel != null ? s.pals[s.sel] : null;
+    return {
+      noop: () => {},
+      snacks: s.snacks,
+      hint: sel ? '' : 'Tap a friend. They remember.',
+      dorm: s.pals.map((p, i) => ({
+        img: 'assets/pets/' + p.key + '.png',
+        name: p.name, mood: p.mood, moodCol: this.moodCol(p.mood),
+        x: p.x + 'px', y: p.y + 'px',
+        bedBack: p.tint, bedFront: 'rgba(255,248,236,.9)',
+        anim: p.asleep ? 'breatheC 4.4s ease-in-out infinite' : 'bobC ' + (3 + i * .3) + 's ease-in-out infinite',
+        zzz: p.asleep ? 'z' : '',
+        pick: () => this.setState({ sel: i })
+      })),
+      heart: !!s.heart, heartPath: s.heartPath, heartCol: s.heartCol, heartX: s.heartX, heartY: s.heartY,
+      sheet: sel != null,
+      selImg: sel ? 'assets/pets/' + sel.key + '.png' : '',
+      selName: sel ? sel.name : '', selDream: sel ? sel.dream : '',
+      selStage: sel ? sel.stage : '', selMood: sel ? sel.mood : '',
+      selTint: sel ? sel.tint : 'transparent',
+      doFeed: () => {
+        if (s.snacks <= 0) return;
+        const pals = s.pals.map((p, i) => i === s.sel ? { ...p, mood: 'Content' } : p);
+        this.setState({ snacks: s.snacks - 1, pals });
+        this.fly('feed');
+      },
+      doPet: () => {
+        const pals = s.pals.map((p, i) => i === s.sel ? { ...p, mood: 'Playful', asleep: false } : p);
+        this.setState({ pals });
+        this.fly('pet');
+      },
+      doTuck: () => {
+        const pals = s.pals.map((p, i) => i === s.sel ? { ...p, mood: 'Sleepy', asleep: true } : p);
+        this.setState({ pals, sel: null });
+      },
+      tuckAll: () => this.setState({ pals: s.pals.map(p => ({ ...p, mood: 'Sleepy', asleep: true })) }),
+      close: () => this.setState({ sel: null })
+    };
+  }
+}
+</script>
+</body>
+</html>

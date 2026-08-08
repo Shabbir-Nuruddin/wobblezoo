@@ -38,7 +38,7 @@ namespace ChonkyMerge.EditorTools
                 new EditorBuildSettingsScene(PuzzlePath, true),
             };
 
-            PlayerSettings.productName = "Wobble Zoo";
+            PlayerSettings.productName = "Tuck In";
             PlayerSettings.companyName = "Wobble Games";
             PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, "com.wobblegames.wobblezoo");
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.Portrait;
