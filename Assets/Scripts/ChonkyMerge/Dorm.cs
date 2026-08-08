@@ -3,12 +3,12 @@ using UnityEngine;
 namespace ChonkyMerge
 {
     /// <summary>
-    /// The dorm's interactive layer: snacks, moods, and who is asleep.
+    /// The dorm's state: snacks, moods, and who is asleep.
     ///
-    /// The zoo used to be a list of portraits you could look at but not touch. The
-    /// redesign turns it into a room you visit — tap a friend and you can Feed, Pet
-    /// or Tuck them in. This class owns the small amount of state that needs, and
-    /// nothing more.
+    /// The first pass of this screen let you tuck an animal in and nothing else, so
+    /// there was no reason to open it twice. It now carries four verbs — Feed, Pet,
+    /// Play, Tuck in — and Play is the one that matters, because it is where the
+    /// power-ups that make the levels easier actually come from (see PowerUps).
     ///
     /// Three rules, inherited from the rest of the game and deliberately kept:
     ///
@@ -18,25 +18,23 @@ namespace ChonkyMerge
     ///      comfort. Moods only ever change because the player touched something.
     ///
     ///   2. SNACKS ARE NOT PROGRESS. Stars gate chapters; snacks buy affection and
-    ///      nothing else. They can never unlock a level, so no amount of dorm play
-    ///      moves anybody past the levels that teach the rules — and skipping the
-    ///      dorm entirely costs the player nothing.
+    ///      furniture. They can never unlock a level, so no amount of dorm play moves
+    ///      anybody past the levels that teach the rules — and skipping the dorm
+    ///      entirely costs the player nothing they cannot get by playing on.
     ///
-    ///   3. NO CAP AND NO SINK ANXIETY. Snacks accumulate from levels you were
-    ///      going to play anyway. Petting is free precisely so an empty snack jar
-    ///      never means "there is nothing you can do here".
+    ///   3. PETTING IS ALWAYS FREE. An empty snack jar must never mean "there is
+    ///      nothing you can do in here".
     /// </summary>
     public static class Dorm
     {
         private const string SnackKey = "dorm_snacks";
         private const string MoodKey = "dorm_mood_";     // + index
         private const string SleepKey = "dorm_sleep_";    // + index
-        private const string ThemeKey = "dorm_theme";
 
         /// Snacks earned per level cleared. Matches the win screen's "+2 snacks".
         public const int SnacksPerLevel = 2;
 
-        // The moods from the design, in the order the enum is stored.
+        // The moods, in the order the enum is stored.
         public static readonly string[] Moods =
             { "Content", "Playful", "Sleepy", "Hungry", "Curious" };
 
@@ -45,7 +43,7 @@ namespace ChonkyMerge
 
         public static int Snacks
         {
-            get => PlayerPrefs.GetInt(SnackKey, 3);
+            get => PlayerPrefs.GetInt(SnackKey, 6);
             set { PlayerPrefs.SetInt(SnackKey, Mathf.Max(0, value)); PlayerPrefs.Save(); }
         }
 
@@ -60,32 +58,26 @@ namespace ChonkyMerge
 
         public static string MoodWord(int i) => Moods[MoodOf(i)];
 
-        /// Mood colours from the design: hungry reads warm-coral, sleepy lavender,
-        /// playful green, everything else a quiet cream.
+        /// Mood colours: hungry reads warm-coral, sleepy lavender, playful green,
+        /// everything else a quiet cream.
         public static Color MoodColor(int i)
         {
             switch (MoodOf(i))
             {
-                case 1: return Ui2.Hex(0x9ed666);   // Playful
-                case 2: return Ui2.Hex(0xbda8ff);   // Sleepy
-                case 3: return Ui2.Hex(0xffb0a0);   // Hungry
-                case 4: return Ui2.Hex(0xffd8a0);   // Curious
+                case 1: return Rgb(0x9ed666);   // Playful
+                case 2: return Rgb(0xbda8ff);   // Sleepy
+                case 3: return Rgb(0xffb0a0);   // Hungry
+                case 4: return Rgb(0xffd8a0);   // Curious
                 default: return new Color(1f, 0.925f, 0.816f, 0.62f);
             }
         }
 
         public static bool Asleep(int i) => PlayerPrefs.GetInt(SleepKey + i, 0) == 1;
 
-        private static void SetMood(int i, int mood)
-        {
-            PlayerPrefs.SetInt(MoodKey + i, mood);
-        }
-        private static void SetAsleep(int i, bool v)
-        {
-            PlayerPrefs.SetInt(SleepKey + i, v ? 1 : 0);
-        }
+        private static void SetMood(int i, int mood) => PlayerPrefs.SetInt(MoodKey + i, mood);
+        private static void SetAsleep(int i, bool v) => PlayerPrefs.SetInt(SleepKey + i, v ? 1 : 0);
 
-        // ---- the three things you can do ----
+        // ---- the four things you can do ----
         /// Costs a snack, and they are Content afterwards. Returns false (and does
         /// nothing) when the jar is empty, so the button can grey itself out.
         public static bool Feed(int i)
@@ -114,6 +106,18 @@ namespace ChonkyMerge
             PlayerPrefs.Save();
         }
 
+        /// A game together. Wakes them up, leaves them Playful, and hands back the
+        /// power-up they turned up — see PowerUps.PlayWith for why it is once a day
+        /// and why missing a day costs nothing.
+        public static PowerUps.Kind Play(int i)
+        {
+            SetMood(i, 1);
+            SetAsleep(i, false);
+            var k = PowerUps.PlayWith(i);
+            PlayerPrefs.Save();
+            return k;
+        }
+
         public static void TuckEveryone()
         {
             for (int i = 0; i < Zoo.Count; i++)
@@ -128,42 +132,25 @@ namespace ChonkyMerge
             return n;
         }
 
-        /// The one-line prompt under the dorm, from the design.
+        /// The one-line prompt under the room. It answers "what is there to do here?"
+        /// and it always has an answer.
         public static string Hint()
         {
+            int plays = PowerUps.PlaysAvailable();
+            if (plays > 0)
+                return plays == 1 ? "One friend still wants to play today."
+                                  : $"{plays} friends still want to play today.";
             int home = Zoo.UnlockedCount();
-            if (home <= 1) return "Tap a friend. They remember.";
-            if (AsleepCount() >= home) return "Everyone's asleep. Goodnight.";
+            if (AsleepCount() >= home && home > 0) return "Everyone's asleep. Goodnight.";
             if (Snacks <= 0) return "Out of snacks — petting is always free.";
             return "Tap a friend. They remember.";
         }
 
-        // ---- decorate ----
-        // The one screen the design names but never draws. Kept deliberately small:
-        // it recolours the dorm's lamplight, using colours the game already owns
-        // (each friend's signature colour), so it can never introduce art that
-        // clashes with the rest of the room.
-        public static readonly string[] ThemeNames =
-            { "Lamplight", "Moonlight", "Embers", "Meadow", "Blossom" };
-        private static readonly Color[] ThemeCols =
-        {
-            Ui2.Hex(0xffc478), Ui2.Hex(0x9fb8ff), Ui2.Hex(0xff9a5c),
-            Ui2.Hex(0x9ed666), Ui2.Hex(0xee7c9b)
-        };
+        /// The warm light in the room. Comes from the lamp if it has been bought,
+        /// and is stronger once it's actually dark outside.
+        public static Color LampColor => Decor.Lamp ? Rgb(0xffc478) : Rgb(0xffdcae);
 
-        public static int Theme
-        {
-            get => Mathf.Clamp(PlayerPrefs.GetInt(ThemeKey, 0), 0, ThemeNames.Length - 1);
-            set { PlayerPrefs.SetInt(ThemeKey, value); PlayerPrefs.Save(); }
-        }
-        public static Color ThemeColor => ThemeCols[Theme];
-    }
-
-    /// A tiny colour helper so this file does not have to reach across into the UI
-    /// assembly for one function.
-    internal static class Ui2
-    {
-        public static Color Hex(uint rgb) => new Color(
-            ((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
+        private static Color Rgb(uint c) => new Color(
+            ((c >> 16) & 0xFF) / 255f, ((c >> 8) & 0xFF) / 255f, (c & 0xFF) / 255f, 1f);
     }
 }

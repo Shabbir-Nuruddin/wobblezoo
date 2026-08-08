@@ -52,6 +52,10 @@ namespace TuckIn
         public static Texture2D Pencil => Get("pencil");
         public static Texture2D Close => Get("close");
         public static Texture2D Buzz => Get("buzz");
+        public static Texture2D Ball => Get("ball");
+        public static Texture2D Pillow => Get("pillow");
+        public static Texture2D Note => Get("note");
+        public static Texture2D Broom => Get("broom");
 
         // ---- geometry helpers (all in 24-unit SVG space) ----
         private static Vector2 V(float x, float y) => new Vector2(x, y);
@@ -241,6 +245,52 @@ namespace TuckIn
                     strokes.Add(new[] { V(8, 3), V(16, 3), V(16, 21), V(8, 21), V(8, 3) });
                     strokes.Add(Arc(12, 12, 8.6f, 140f, 220f, 14));
                     strokes.Add(Arc(12, 12, 8.6f, -40f, 40f, 14));
+                    break;
+
+                case "ball":
+                    // a play ball: a circle with a seam, so it never reads as a dot
+                    strokes.Add(Circle(12, 12, 8.6f));
+                    strokes.Add(Arc(4.6f, 12f, 8.4f, -62f, 62f, 18));
+                    strokes.Add(Arc(19.4f, 12f, 8.4f, 118f, 242f, 18));
+                    break;
+
+                case "pillow":
+                    {
+                        // the Pillow power-up: a plump cushion with dented corners.
+                        // Drawn as a closed curve rather than a rectangle, because a
+                        // rectangle with a mark in it just reads as a card.
+                        var pts = new List<Vector2>();
+                        for (int i = 0; i < 48; i++)
+                        {
+                            float a = i / 48f * Mathf.PI * 2f;
+                            // a superellipse, pinched in at the sides
+                            float cs = Mathf.Cos(a), sn = Mathf.Sin(a);
+                            float rx = 8.6f - 1.6f * Mathf.Abs(sn);
+                            float ry = 6.2f - 1.2f * Mathf.Abs(cs);
+                            pts.Add(V(12f + cs * rx, 12f + sn * ry));
+                        }
+                        strokes.Add(pts.ToArray());
+                        // the crease
+                        strokes.Add(Arc(12f, 16.6f, 4.4f, -140f, -40f, 12));
+                        w = 2.3f;
+                        break;
+                    }
+
+                case "note":
+                    // the Lullaby power-up: a single music note
+                    fills.Add(Circle(8.4f, 17.6f, 3.4f));
+                    strokes.Add(new[] { V(11.6f, 17.6f), V(11.6f, 4.6f), V(19.4f, 6.8f) });
+                    strokes.Add(new[] { V(11.6f, 9.6f), V(19.4f, 11.8f) });
+                    w = 2.2f;
+                    break;
+
+                case "broom":
+                    // the Tidy up power-up: sweep a block away
+                    strokes.Add(new[] { V(17.6f, 4.4f), V(10.4f, 11.6f) });
+                    strokes.Add(new[] { V(12.6f, 9.4f), V(16.4f, 13.2f) });
+                    fills.Add(new[] { V(11.2f, 12.4f), V(15.6f, 16.8f), V(9.4f, 21.2f),
+                                      V(4.2f, 19.4f), V(6.0f, 14.2f) });
+                    w = 2.4f;
                     break;
 
                 default:

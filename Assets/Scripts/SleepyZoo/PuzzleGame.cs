@@ -135,505 +135,505 @@ namespace SleepyZoo
         // Levels 21-40 = chapter 2, sticky beds (see StickyBeds / SlideSim).
         private static readonly Lv[] Levels =
         {
-            new Lv(4,4,2,"Swipe and your animal slides all the way to the wall.",
-                new Vector2Int[0],
-                new[]{ new EntDef(2,0, 0,3) }),
-            new Lv(4,4,3,"A toy block stops the slide. Use it to park where you want.",
-                new[]{ W2(3,0) },
-                new[]{ new EntDef(1,1, 2,3) }),
-            new Lv(4,4,4,"Two blocks make a pocket. Slide in from the open side.",
-                new[]{ W2(0,0),W2(3,1) },
-                new[]{ new EntDef(2,0, 0,2) }),
-            new Lv(4,4,4,"Two friends now - one swipe moves them both.",
-                new[]{ W2(2,3) },
-                new[]{ new EntDef(2,2, 1,0), new EntDef(3,3, 3,0) }),
-            new Lv(4,4,5,"Line them up first, then send them home together.",
-                new[]{ W2(2,0),W2(3,2) },
-                new[]{ new EntDef(2,2, 3,3), new EntDef(1,3, 3,0) }),
-            new Lv(5,5,5,"More room. A wrong-way swipe often sets up the right one.",
-                new[]{ W2(1,0),W2(2,0) },
-                new[]{ new EntDef(0,4, 3,0), new EntDef(4,1, 0,0) }),
-            new Lv(5,5,6,"Bump one into a block to hold it while you place the other.",
-                new[]{ W2(0,0),W2(1,3),W2(2,0) },
-                new[]{ new EntDef(2,4, 3,0), new EntDef(1,0, 0,1) }),
-            new Lv(5,5,6,"Three friends. Handle the trickiest one first.",
-                new[]{ W2(0,4),W2(4,2) },
-                new[]{ new EntDef(4,1, 4,3), new EntDef(0,1, 3,0), new EntDef(1,0, 4,4) }),
-            new Lv(5,5,7,"Use one animal as a wall for another.",
-                new[]{ W2(1,2),W2(3,2),W2(3,3) },
-                new[]{ new EntDef(0,1, 4,0), new EntDef(3,4, 4,1), new EntDef(2,1, 3,4) }),
-            new Lv(5,5,7,"Corners hold an animal still. Park someone in one.",
-                new[]{ W2(1,2),W2(3,1),W2(4,4) },
-                new[]{ new EntDef(2,2, 0,1), new EntDef(1,4, 0,3), new EntDef(0,3, 0,0) }),
-            new Lv(5,5,8,"Think one move ahead before you swipe.",
-                new[]{ W2(2,3),W2(3,1),W2(3,2),W2(3,3) },
-                new[]{ new EntDef(3,4, 2,0), new EntDef(1,1, 1,0), new EntDef(4,4, 0,0) }),
-            new Lv(6,6,8,"Bigger room, longer slides. Group them, then split them off.",
-                new[]{ W2(0,4),W2(2,5),W2(4,0) },
-                new[]{ new EntDef(0,3, 0,5), new EntDef(0,5, 3,5), new EntDef(5,2, 4,5) }),
-            new Lv(6,6,8,"A full den. Peel them off one at a time.",
-                new[]{ W2(0,0),W2(0,4),W2(4,0) },
-                new[]{ new EntDef(1,0, 3,5), new EntDef(5,0, 5,5), new EntDef(4,5, 5,3), new EntDef(0,2, 4,5) }),
-            new Lv(6,6,9,"Plan the last move first, then work backwards.",
-                new[]{ W2(1,4),W2(4,3),W2(5,1),W2(5,2) },
-                new[]{ new EntDef(3,1, 0,2), new EntDef(1,1, 0,5), new EntDef(4,0, 2,5), new EntDef(2,1, 1,5) }),
-            new Lv(6,6,9,"Every swipe counts now. Look before you slide.",
-                new[]{ W2(0,2),W2(1,2),W2(1,3),W2(3,0) },
-                new[]{ new EntDef(5,4, 4,5), new EntDef(1,0, 0,1), new EntDef(5,3, 0,5), new EntDef(5,0, 5,5) }),
-            new Lv(6,6,10,"Break the line up before you try to place anyone.",
-                new[]{ W2(0,0),W2(0,3),W2(3,0),W2(4,3),W2(5,5) },
-                new[]{ new EntDef(3,1, 0,2), new EntDef(2,0, 0,5), new EntDef(0,1, 1,4), new EntDef(2,5, 1,5) }),
-            new Lv(6,6,10,"Find the friend with only one way home.",
-                new[]{ W2(2,4),W2(2,5),W2(3,1),W2(3,2),W2(4,5) },
-                new[]{ new EntDef(3,5, 0,5), new EntDef(4,2, 5,5), new EntDef(5,0, 3,4), new EntDef(1,3, 1,5) }),
-            new Lv(6,6,10,"Five friends. Sweep them together, then sort them out.",
-                new[]{ W2(1,2),W2(1,5),W2(2,2),W2(5,1) },
-                new[]{ new EntDef(2,3, 4,5), new EntDef(0,0, 5,4), new EntDef(5,2, 5,5), new EntDef(3,1, 5,3), new EntDef(3,2, 0,5) }),
-            new Lv(7,7,11,"A bigger room. Decide the whole plan before the first swipe.",
-                new[]{ W2(1,2),W2(4,6),W2(5,0),W2(5,5),W2(6,1) },
-                new[]{ new EntDef(3,2, 0,0), new EntDef(5,2, 1,6), new EntDef(2,2, 0,5), new EntDef(5,4, 0,6), new EntDef(2,6, 0,1) }),
-            new Lv(7,7,12,"The whole zoo, one last time. Then something changes...",
-                new[]{ W2(0,0),W2(0,5),W2(4,0),W2(5,1),W2(6,2) },
-                new[]{ new EntDef(6,6, 2,6), new EntDef(0,6, 3,6), new EntDef(3,5, 0,6), new EntDef(6,0, 6,1), new EntDef(2,5, 1,6) }),
 
-            // ============================ CHAPTER 2 ============================
-            // STICKY BEDS. Touch your own bed - even mid-slide - and you're asleep
-            // for the night. Every level here is impossible (or strictly longer)
-            // under chapter 1's rules, so the twist isn't decoration: it's the only
-            // way through. The ramp restarts at two animals and a 3-move par,
-            // because sticky beds make this a new game to learn.
-            new Lv(4,4,3,"Sticky beds tonight! Touch your own bed and you're in.",
-                new Vector2Int[0],
-                new[]{ new EntDef(0,1, 2,3), new EntDef(3,3, 3,1) }),
-            new Lv(4,4,4,"You don't have to stop on your bed - sliding across it is enough.",
-                new[]{ W2(1,1) },
-                new[]{ new EntDef(3,1, 0,2), new EntDef(2,3, 0,1) }),
-            new Lv(4,4,4,"Blocks and sticky beds. Pick your approach carefully.",
-                new[]{ W2(3,0),W2(3,3) },
-                new[]{ new EntDef(2,3, 2,0), new EntDef(2,2, 0,0) }),
-            new Lv(5,5,5,"Choose who goes to bed first. It changes everything after.",
-                new[]{ W2(2,0) },
-                new[]{ new EntDef(2,1, 1,3), new EntDef(3,2, 3,3) }),
-            new Lv(5,5,5,"A sleeping friend never gets up again - so they make a handy wall.",
-                new[]{ W2(0,1),W2(0,4) },
-                new[]{ new EntDef(4,3, 4,2), new EntDef(4,0, 2,3), new EntDef(0,3, 3,0) }),
-            new Lv(5,5,6,"You can't slide past your own bed any more. Plan the approach.",
-                new[]{ W2(0,3),W2(2,4) },
-                new[]{ new EntDef(0,2, 3,3), new EntDef(2,3, 3,0), new EntDef(2,0, 3,2) }),
-            new Lv(5,5,6,"Tuck the far ones in first - they leave the room emptier.",
-                new[]{ W2(0,3),W2(0,4),W2(4,4) },
-                new[]{ new EntDef(4,3, 2,4), new EntDef(1,3, 0,2), new EntDef(3,2, 3,0) }),
-            new Lv(5,5,7,"A sleeper in the middle splits the room in two.",
-                new[]{ W2(2,3),W2(3,3),W2(4,2) },
-                new[]{ new EntDef(0,1, 3,0), new EntDef(1,0, 0,2), new EntDef(4,3, 1,3) }),
-            new Lv(6,6,7,"Line them up and one long swipe can put two to bed.",
-                new[]{ W2(0,0),W2(0,3),W2(3,5) },
-                new[]{ new EntDef(3,0, 2,1), new EntDef(1,2, 4,4), new EntDef(3,1, 0,4) }),
-            new Lv(6,6,8,"Wrong one asleep? Undo - a sleeper never gets up.",
-                new[]{ W2(2,0),W2(2,2),W2(4,2) },
-                new[]{ new EntDef(5,4, 3,5), new EntDef(5,0, 4,1), new EntDef(0,1, 1,4), new EntDef(3,4, 0,0) }),
-            new Lv(6,6,8,"Order matters more than direction here.",
-                new[]{ W2(1,3),W2(2,3),W2(3,4),W2(3,5) },
-                new[]{ new EntDef(1,0, 4,5), new EntDef(4,3, 0,0), new EntDef(0,4, 1,2), new EntDef(1,5, 5,0) }),
-            new Lv(6,6,9,"Build a wall of sleepers, then slide the last one along it.",
-                new[]{ W2(1,4),W2(2,5),W2(3,5),W2(5,0) },
-                new[]{ new EntDef(1,2, 0,2), new EntDef(2,3, 4,5), new EntDef(1,5, 4,4), new EntDef(4,3, 3,1) }),
-            new Lv(6,6,9,"Look for the animal whose bed is already in its path.",
-                new[]{ W2(2,2),W2(3,3),W2(4,1),W2(4,5) },
-                new[]{ new EntDef(3,0, 0,0), new EntDef(3,1, 1,3), new EntDef(3,4, 3,2), new EntDef(0,3, 1,2) }),
-            new Lv(6,6,10,"The awkward one usually needs a sleeper to stop against.",
-                new[]{ W2(0,1),W2(0,3),W2(3,5),W2(5,1),W2(5,4) },
-                new[]{ new EntDef(2,3, 0,4), new EntDef(1,4, 4,1), new EntDef(0,0, 5,0), new EntDef(1,0, 3,2) }),
-            new Lv(6,6,10,"Five friends, five beds. Find the one that has to go last.",
-                new[]{ W2(0,0),W2(2,3),W2(3,0),W2(5,2) },
-                new[]{ new EntDef(3,5, 0,4), new EntDef(4,5, 3,3), new EntDef(2,2, 0,1), new EntDef(5,3, 1,2), new EntDef(0,5, 5,0) }),
-            new Lv(7,7,10,"Crowded room. Clear the corner before it fills up.",
-                new[]{ W2(2,0),W2(4,3),W2(6,2),W2(6,4) },
-                new[]{ new EntDef(1,0, 3,0), new EntDef(0,6, 5,1), new EntDef(3,1, 2,1), new EntDef(5,2, 3,4), new EntDef(0,1, 1,5) }),
-            new Lv(7,7,11,"Use the edges to line everyone up before you tuck anyone in.",
-                new[]{ W2(3,3),W2(3,5),W2(6,0),W2(6,4),W2(6,6) },
-                new[]{ new EntDef(0,4, 4,3), new EntDef(1,2, 1,0), new EntDef(1,4, 3,4), new EntDef(2,0, 2,1), new EntDef(5,1, 4,0) }),
-            new Lv(7,7,11,"Every sleeper you place is a new wall. Place them kindly.",
-                new[]{ W2(1,4),W2(3,4),W2(5,0),W2(5,4),W2(6,2) },
-                new[]{ new EntDef(1,3, 6,1), new EntDef(4,3, 5,6), new EntDef(6,5, 0,6), new EntDef(4,4, 0,4), new EntDef(2,0, 1,1) }),
-            new Lv(7,7,12,"Almost the last night. Take it slow.",
-                new[]{ W2(1,1),W2(1,4),W2(3,2),W2(4,1),W2(5,0),W2(5,6) },
-                new[]{ new EntDef(4,4, 6,2), new EntDef(2,2, 3,1), new EntDef(1,0, 6,5), new EntDef(5,2, 2,3), new EntDef(5,5, 6,4) }),
-            new Lv(7,7,12,"The whole zoo, sticky beds and all. Sweet dreams.",
-                new[]{ W2(0,3),W2(1,2),W2(1,3),W2(2,3),W2(3,2),W2(5,1) },
-                new[]{ new EntDef(6,2, 3,5), new EntDef(1,1, 2,4), new EntDef(2,1, 2,5), new EntDef(6,1, 1,5), new EntDef(5,2, 4,4) }),
 
-            // ===================== CHAPTER 3 =====================  (anybed)
-            new Lv(4,4,3,"Sticky beds - but tonight nobody minds whose bed is whose.",
-                new Vector2Int[0],
-                new[]{ new EntDef(1,0, 2,3), new EntDef(3,2, 2,0) }),
-            new Lv(4,4,4,"Any animal, any bed. Just fill them all.",
-                new[]{ W2(0,0) },
-                new[]{ new EntDef(1,0, 3,1), new EntDef(2,0, 0,1) }),
-            new Lv(5,5,4,"Two friends, two beds, either way round.",
-                new[]{ W2(3,2) },
-                new[]{ new EntDef(0,4, 3,0), new EntDef(3,4, 2,0) }),
-            new Lv(5,5,5,"Sometimes the far bed is the easy one.",
-                new[]{ W2(1,0),W2(3,2) },
-                new[]{ new EntDef(2,4, 3,3), new EntDef(2,3, 0,2), new EntDef(1,3, 3,0) }),
-            new Lv(5,5,5,"Fill the awkward bed first.",
-                new[]{ W2(1,2),W2(2,0) },
-                new[]{ new EntDef(3,3, 0,0), new EntDef(4,0, 1,1), new EntDef(4,3, 3,2) }),
-            new Lv(5,5,6,"Swapping who goes where can save you three swipes.",
-                new[]{ W2(1,1),W2(2,0),W2(3,2) },
-                new[]{ new EntDef(0,4, 3,1), new EntDef(1,3, 3,4), new EntDef(1,4, 0,1) }),
-            new Lv(6,6,7,"Count the beds, not the animals.",
-                new[]{ W2(0,3),W2(2,0),W2(4,5) },
-                new[]{ new EntDef(2,3, 5,3), new EntDef(3,2, 1,4), new EntDef(4,3, 5,5) }),
-            new Lv(6,6,7,"One bed is harder to reach than the rest. Start there.",
-                new[]{ W2(1,1),W2(4,1),W2(4,3) },
-                new[]{ new EntDef(4,5, 3,0), new EntDef(0,5, 4,2), new EntDef(5,4, 5,2), new EntDef(0,0, 2,3) }),
-            new Lv(6,6,8,"Whoever goes first decides the rest.",
-                new[]{ W2(0,3),W2(2,1),W2(2,5),W2(3,0) },
-                new[]{ new EntDef(4,5, 3,5), new EntDef(2,4, 3,4), new EntDef(1,5, 2,2), new EntDef(1,0, 3,3) }),
-            new Lv(6,6,8,"Any order you like - but only one order is short.",
-                new[]{ W2(1,3),W2(2,5),W2(3,1),W2(4,2) },
-                new[]{ new EntDef(3,0, 5,1), new EntDef(0,3, 0,2), new EntDef(0,5, 3,2), new EntDef(3,4, 2,2) }),
-            new Lv(6,6,9,"Leave the open bed for last.",
-                new[]{ W2(1,2),W2(2,0),W2(3,3),W2(4,0) },
-                new[]{ new EntDef(5,0, 3,0), new EntDef(4,5, 3,5), new EntDef(1,5, 4,1), new EntDef(5,4, 2,3) }),
-            new Lv(7,7,9,"Five beds, five friends, no name tags.",
-                new[]{ W2(2,6),W2(3,0),W2(4,0),W2(5,6),W2(6,3) },
-                new[]{ new EntDef(0,0, 5,0), new EntDef(4,5, 3,2), new EntDef(5,4, 2,3), new EntDef(3,1, 5,3), new EntDef(4,3, 2,2) }),
-            new Lv(7,7,10,"Look for the bed only one animal can reach.",
-                new[]{ W2(0,5),W2(2,6),W2(3,2),W2(3,6),W2(6,1) },
-                new[]{ new EntDef(0,1, 3,5), new EntDef(5,1, 4,0), new EntDef(0,6, 4,2), new EntDef(1,6, 3,4), new EntDef(2,3, 5,5) }),
-            new Lv(7,7,11,"Nearly there. Fill the corner first.",
-                new[]{ W2(0,3),W2(1,3),W2(3,6),W2(4,0),W2(5,6) },
-                new[]{ new EntDef(5,4, 4,6), new EntDef(2,4, 0,1), new EntDef(3,0, 6,5), new EntDef(1,5, 6,0), new EntDef(5,0, 6,2) }),
-            new Lv(7,7,12,"Every bed full, everybody asleep. That's the whole job.",
-                new[]{ W2(1,2),W2(1,6),W2(3,4),W2(4,2),W2(5,0),W2(6,3) },
-                new[]{ new EntDef(0,5, 2,0), new EntDef(5,2, 2,3), new EntDef(3,3, 2,4), new EntDef(5,3, 3,0), new EntDef(2,6, 1,3) }),
+            // ===================== CHAPTER 1 =====================
 
-            // ===================== CHAPTER 4 =====================  (rugs)
-            new Lv(4,4,3,"Silk is too slippery to sleep on - you always slide back off.",
+            // ===================== CHAPTER 1 =====================
+            new Lv(4,4,2,"Swipe any direction. Everyone slides until something stops them.",
                 new Vector2Int[0],
-                new[]{ new EntDef(2,0, 1,2), new EntDef(3,3, 3,0) },
-                rugs: new[]{ W2(2,3) }),
-            new Lv(4,4,4,"Cross the rug. Don't try to stop on it.",
-                new[]{ W2(3,0) },
-                new[]{ new EntDef(2,2, 0,3), new EntDef(0,0, 1,3) },
-                rugs: new[]{ W2(3,3) }),
-            new Lv(5,5,4,"A rug can carry you straight past your own bed. Careful.",
-                new[]{ W2(4,0) },
-                new[]{ new EntDef(4,2, 3,3), new EntDef(0,0, 2,1) },
-                rugs: new[]{ W2(0,2),W2(2,3) }),
-            new Lv(5,5,5,"Use the rug to reach somewhere you couldn't stop before.",
-                new[]{ W2(1,1),W2(2,3) },
-                new[]{ new EntDef(1,4, 1,3), new EntDef(2,0, 3,0), new EntDef(4,0, 3,2) },
-                rugs: new[]{ W2(0,2),W2(4,1) }),
-            new Lv(5,5,5,"Rugs turn short slides into long ones.",
-                new[]{ W2(2,3),W2(4,1) },
-                new[]{ new EntDef(1,3, 1,0), new EntDef(3,3, 2,1), new EntDef(3,2, 1,4) },
-                rugs: new[]{ W2(0,3),W2(4,0) }),
-            new Lv(5,5,6,"Come at the bed from the other side.",
-                new[]{ W2(0,1),W2(1,2),W2(4,2) },
-                new[]{ new EntDef(2,4, 4,3), new EntDef(3,1, 3,2), new EntDef(4,0, 4,4) },
-                rugs: new[]{ W2(0,0),W2(1,0) }),
-            new Lv(6,6,7,"The rug is a corridor, not a room.",
-                new[]{ W2(1,4),W2(2,4),W2(4,5) },
-                new[]{ new EntDef(5,4, 2,1), new EntDef(4,1, 3,3), new EntDef(5,3, 3,2) },
-                rugs: new[]{ W2(2,5),W2(5,0) }),
-            new Lv(6,6,7,"Two rugs in a row is just a longer corridor.",
-                new[]{ W2(0,3),W2(2,2),W2(4,4) },
-                new[]{ new EntDef(3,1, 4,1), new EntDef(3,3, 5,5), new EntDef(4,2, 0,1), new EntDef(1,2, 4,0) },
-                rugs: new[]{ W2(2,0),W2(2,1),W2(5,2) }),
-            new Lv(6,6,8,"Stop before the silk, not on it.",
-                new[]{ W2(2,0),W2(3,2),W2(4,4),W2(5,2) },
-                new[]{ new EntDef(1,0, 0,5), new EntDef(5,0, 0,2), new EntDef(0,0, 4,0), new EntDef(2,4, 3,5) },
-                rugs: new[]{ W2(1,4),W2(2,1),W2(2,2) }),
-            new Lv(6,6,8,"Sometimes the rug is the only way across.",
-                new[]{ W2(2,2),W2(3,3),W2(4,4),W2(5,0) },
-                new[]{ new EntDef(1,0, 5,3), new EntDef(0,0, 5,1), new EntDef(0,1, 4,3), new EntDef(2,3, 1,1) },
-                rugs: new[]{ W2(0,3),W2(3,2),W2(3,4) }),
-            new Lv(6,6,9,"A friend parked on the far side gives you something to stop against.",
-                new[]{ W2(0,3),W2(2,2),W2(4,0),W2(5,3) },
-                new[]{ new EntDef(0,1, 2,3), new EntDef(3,1, 5,2), new EntDef(2,4, 5,5), new EntDef(3,5, 1,2) },
-                rugs: new[]{ W2(0,5),W2(1,4),W2(4,2) }),
-            new Lv(7,7,9,"Plan where you'll land, not where you'll pass.",
-                new[]{ W2(2,6),W2(3,2),W2(4,5),W2(5,1),W2(6,3) },
-                new[]{ new EntDef(3,3, 2,2), new EntDef(5,6, 6,4), new EntDef(0,1, 5,5), new EntDef(3,0, 6,0), new EntDef(4,1, 0,4) },
-                rugs: new[]{ W2(1,0),W2(2,1),W2(3,5),W2(6,5) }),
-            new Lv(7,7,10,"Silk never lets go until something solid does.",
-                new[]{ W2(2,3),W2(2,5),W2(3,3),W2(5,5),W2(6,6) },
-                new[]{ new EntDef(4,5, 6,2), new EntDef(2,0, 6,3), new EntDef(0,6, 1,3), new EntDef(5,0, 3,1), new EntDef(6,4, 2,6) },
-                rugs: new[]{ W2(0,3),W2(2,1),W2(5,1),W2(5,6) }),
-            new Lv(7,7,11,"Almost the last of the rugs. Take it slowly.",
-                new[]{ W2(0,1),W2(0,6),W2(2,1),W2(2,2),W2(6,6) },
-                new[]{ new EntDef(5,3, 2,4), new EntDef(3,0, 6,4), new EntDef(4,4, 1,6), new EntDef(2,5, 4,0), new EntDef(4,2, 0,4) },
-                rugs: new[]{ W2(2,3),W2(5,2),W2(5,5),W2(6,5) }),
-            new Lv(7,7,12,"One room, four rugs, five sleepy animals.",
-                new[]{ W2(0,6),W2(1,3),W2(2,2),W2(2,4),W2(5,1),W2(6,0) },
-                new[]{ new EntDef(3,3, 5,4), new EntDef(6,5, 0,0), new EntDef(5,0, 4,1), new EntDef(0,2, 3,5), new EntDef(2,1, 4,2) },
-                rugs: new[]{ W2(1,0),W2(1,4),W2(3,0),W2(5,5) }),
-
-            // ===================== CHAPTER 5 =====================  (honey)
-            new Lv(4,4,3,"Honey is sticky. Touch it and that's where you stay.",
-                new Vector2Int[0],
-                new[]{ new EntDef(2,1, 1,2), new EntDef(2,0, 0,0) },
-                honey: new[]{ W2(1,3) }),
-            new Lv(4,4,4,"Honey stops you dead - useful, if you aim it.",
-                new[]{ W2(2,1) },
-                new[]{ new EntDef(1,3, 0,1), new EntDef(0,3, 3,3) },
-                honey: new[]{ W2(0,2) }),
-            new Lv(5,5,4,"Park someone in the honey on purpose.",
+                new[]{ new EntDef(2,2, 3,3) }),
+            new Lv(4,4,2,"Walls stop you. So does the edge of the room.",
                 new[]{ W2(3,3) },
-                new[]{ new EntDef(2,2, 4,3), new EntDef(1,2, 2,1) },
-                honey: new[]{ W2(2,0),W2(4,2) }),
-            new Lv(5,5,5,"Honey beats a long slide every time.",
-                new[]{ W2(2,2),W2(4,4) },
-                new[]{ new EntDef(4,0, 0,3), new EntDef(0,0, 4,1), new EntDef(4,3, 1,2) },
-                honey: new[]{ W2(0,1),W2(2,4) }),
-            new Lv(5,5,5,"Use the honey to stop short of a bed.",
-                new[]{ W2(2,2),W2(4,0) },
-                new[]{ new EntDef(3,3, 4,3), new EntDef(0,4, 4,2), new EntDef(1,2, 2,4) },
-                honey: new[]{ W2(0,3),W2(2,1) }),
-            new Lv(5,5,6,"The honey is a brake, not a wall.",
-                new[]{ W2(0,2),W2(0,4),W2(4,1) },
-                new[]{ new EntDef(2,2, 4,4), new EntDef(0,0, 4,2), new EntDef(3,1, 2,4) },
-                honey: new[]{ W2(3,2),W2(4,0) }),
-            new Lv(6,6,7,"Two puddles make a very short corridor.",
-                new[]{ W2(2,5),W2(3,4),W2(5,5) },
-                new[]{ new EntDef(0,4, 4,2), new EntDef(1,2, 0,5), new EntDef(4,1, 1,3) },
-                honey: new[]{ W2(3,1),W2(5,3) }),
-            new Lv(6,6,7,"Whoever reaches the honey first blocks everyone behind.",
-                new[]{ W2(1,3),W2(3,0),W2(5,0) },
-                new[]{ new EntDef(5,2, 2,5), new EntDef(4,0, 3,5), new EntDef(1,1, 3,3), new EntDef(2,2, 1,2) },
-                honey: new[]{ W2(0,1),W2(0,5),W2(4,1) }),
-            new Lv(6,6,8,"Send the wrong one into the honey and you're stuck.",
-                new[]{ W2(0,2),W2(1,4),W2(3,1),W2(5,0) },
-                new[]{ new EntDef(4,1, 3,5), new EntDef(0,1, 2,2), new EntDef(4,5, 1,2), new EntDef(3,2, 2,5) },
-                honey: new[]{ W2(1,3),W2(2,3),W2(4,0) }),
-            new Lv(6,6,8,"Honey first, beds after.",
-                new[]{ W2(0,3),W2(2,1),W2(2,5),W2(5,5) },
-                new[]{ new EntDef(0,5, 3,2), new EntDef(1,5, 4,1), new EntDef(4,5, 0,0), new EntDef(2,3, 3,3) },
-                honey: new[]{ W2(1,2),W2(3,1),W2(4,4) }),
-            new Lv(6,6,9,"A sleeper and a puddle make a pocket.",
-                new[]{ W2(0,4),W2(1,0),W2(3,4),W2(4,4) },
-                new[]{ new EntDef(2,1, 2,5), new EntDef(5,1, 5,0), new EntDef(2,0, 5,4), new EntDef(3,0, 2,4) },
-                honey: new[]{ W2(0,0),W2(1,4),W2(3,3) }),
-            new Lv(7,7,9,"Think about who must NOT touch the honey.",
-                new[]{ W2(0,6),W2(2,4),W2(2,6),W2(3,3) },
-                new[]{ new EntDef(6,2, 3,2), new EntDef(3,1, 5,6), new EntDef(3,0, 4,0), new EntDef(1,3, 1,4), new EntDef(2,3, 3,6) },
-                honey: new[]{ W2(0,1),W2(0,4),W2(5,3),W2(6,5),W2(6,6) }),
-            new Lv(7,7,10,"The honey is doing half the work. Let it.",
-                new[]{ W2(0,2),W2(1,1),W2(1,6),W2(3,5),W2(6,4) },
-                new[]{ new EntDef(4,2, 1,2), new EntDef(3,4, 3,1), new EntDef(6,3, 2,4), new EntDef(6,2, 1,3), new EntDef(0,1, 0,0) },
-                honey: new[]{ W2(3,6),W2(4,5),W2(5,4),W2(5,6) }),
-            new Lv(7,7,11,"Nearly the last of the mess. Mind your step.",
-                new[]{ W2(0,6),W2(2,2),W2(5,0),W2(6,0),W2(6,2) },
-                new[]{ new EntDef(2,6, 5,1), new EntDef(4,6, 2,3), new EntDef(5,6, 3,1), new EntDef(4,3, 6,4), new EntDef(6,6, 3,2) },
-                honey: new[]{ W2(0,0),W2(0,5),W2(1,0),W2(4,1) }),
-            new Lv(6,6,12,"Five friends, and honey everywhere.",
-                new[]{ W2(0,0),W2(0,2),W2(2,2),W2(4,3),W2(5,2),W2(5,3) },
-                new[]{ new EntDef(3,0, 1,1), new EntDef(1,0, 3,2), new EntDef(4,4, 2,0), new EntDef(1,2, 4,0), new EntDef(0,1, 3,4) },
-                honey: new[]{ W2(0,5),W2(2,3),W2(4,1),W2(5,0) }),
-
-            // ===================== CHAPTER 6 =====================  (holes)
-            new Lv(4,4,3,"Burrows come in pairs. In one, out the other, still sliding.",
-                new Vector2Int[0],
-                new[]{ new EntDef(1,0, 2,1), new EntDef(2,3, 0,0) },
-                holes: new[]{ W2(2,2),W2(0,3) }),
-            new Lv(4,4,4,"You keep your speed all the way through a burrow.",
+                new[]{ new EntDef(3,1, 0,3) }),
+            new Lv(4,4,3,"Two friends now. One swipe moves them both.",
+                new[]{ W2(0,3) },
+                new[]{ new EntDef(0,1, 1,3) }),
+            new Lv(4,4,3,"Line them up, then send them home.",
+                new[]{ W2(1,3) },
+                new[]{ new EntDef(3,1, 0,2), new EntDef(1,1, 0,3) }),
+            new Lv(4,4,3,"Animals stop each other too - use that.",
                 new[]{ W2(2,3) },
-                new[]{ new EntDef(1,1, 2,2), new EntDef(0,3, 0,2) },
-                holes: new[]{ W2(2,0),W2(3,3) }),
-            new Lv(5,5,4,"A burrow can put you where no swipe could reach.",
-                new[]{ W2(3,2) },
-                new[]{ new EntDef(4,0, 0,1), new EntDef(2,3, 0,0) },
-                holes: new[]{ W2(4,2),W2(2,4) }),
-            new Lv(5,5,5,"Follow the colours - a pair shares one colour.",
-                new[]{ W2(0,0),W2(0,2) },
-                new[]{ new EntDef(4,4, 3,1), new EntDef(1,2, 4,1), new EntDef(4,2, 1,3) },
-                holes: new[]{ W2(0,1),W2(0,4) }),
-            new Lv(5,5,5,"Sometimes the long way round is underground.",
-                new[]{ W2(2,3),W2(3,1) },
-                new[]{ new EntDef(1,0, 1,2), new EntDef(4,1, 0,0), new EntDef(4,2, 2,2) },
-                holes: new[]{ W2(1,1),W2(4,4) }),
-            new Lv(5,5,6,"A friend standing on the far end blocks the burrow.",
-                new[]{ W2(0,4),W2(4,1),W2(4,2) },
-                new[]{ new EntDef(3,2, 2,1), new EntDef(0,0, 2,2), new EntDef(4,4, 3,4) },
-                holes: new[]{ W2(0,3),W2(0,2) }),
-            new Lv(6,6,7,"Go in the near one to come out of the far one.",
-                new[]{ W2(2,2),W2(4,2),W2(4,3) },
-                new[]{ new EntDef(1,0, 3,4), new EntDef(4,5, 3,1), new EntDef(5,1, 1,2) },
-                holes: new[]{ W2(1,3),W2(5,3) }),
-            new Lv(6,6,7,"Two pairs means two ways across.",
-                new[]{ W2(2,2),W2(2,4),W2(4,4) },
-                new[]{ new EntDef(3,5, 3,1), new EntDef(5,3, 1,5), new EntDef(4,0, 0,1), new EntDef(1,3, 4,5) },
-                holes: new[]{ W2(4,2),W2(5,1) }),
-            new Lv(6,6,8,"Sometimes you want to miss the burrow.",
-                new[]{ W2(0,0),W2(1,2),W2(3,0),W2(4,5) },
-                new[]{ new EntDef(0,5, 4,3), new EntDef(1,1, 2,5), new EntDef(0,1, 4,4), new EntDef(0,3, 3,1) },
-                holes: new[]{ W2(4,2),W2(4,0) }),
-            new Lv(6,6,8,"The exit decides where you stop, not the entrance.",
-                new[]{ W2(0,4),W2(0,5),W2(3,3),W2(4,4) },
-                new[]{ new EntDef(2,4, 5,0), new EntDef(5,3, 3,4), new EntDef(2,0, 5,1), new EntDef(1,5, 4,0) },
-                holes: new[]{ W2(0,3),W2(1,2) }),
-            new Lv(6,6,9,"Line them up before you dive.",
-                new[]{ W2(2,2),W2(4,2),W2(4,4),W2(5,2) },
-                new[]{ new EntDef(5,1, 0,3), new EntDef(2,5, 3,2), new EntDef(0,5, 1,3), new EntDef(1,2, 4,1) },
-                holes: new[]{ W2(1,4),W2(0,0) }),
-            new Lv(7,7,9,"One burrow, one bed, one swipe - if you set it up right.",
-                new[]{ W2(0,2),W2(2,4),W2(3,3),W2(4,3),W2(6,4) },
-                new[]{ new EntDef(1,1, 2,1), new EntDef(1,0, 5,3), new EntDef(5,1, 0,6), new EntDef(3,6, 4,5), new EntDef(2,6, 0,1) },
-                holes: new[]{ W2(4,0),W2(2,5),W2(5,0),W2(0,4) }),
-            new Lv(7,7,10,"Watch what the burrow does to the animal behind you.",
-                new[]{ W2(0,5),W2(0,6),W2(1,1),W2(3,6),W2(4,2) },
-                new[]{ new EntDef(6,4, 1,2), new EntDef(1,0, 4,1), new EntDef(5,1, 5,5), new EntDef(3,2, 4,6), new EntDef(1,5, 0,4) },
-                holes: new[]{ W2(3,1),W2(2,4),W2(6,3),W2(3,0) }),
-            new Lv(7,7,11,"Nearly through. Where does that exit put you?",
-                new[]{ W2(1,1),W2(2,2),W2(4,6),W2(6,2),W2(6,5) },
-                new[]{ new EntDef(3,3, 4,2), new EntDef(0,1, 3,2), new EntDef(3,5, 1,2), new EntDef(0,3, 3,4), new EntDef(6,1, 4,0) },
-                holes: new[]{ W2(1,4),W2(5,4),W2(1,5),W2(2,4) }),
-            new Lv(7,7,12,"The whole warren, all at once.",
-                new[]{ W2(0,4),W2(2,0),W2(4,0),W2(4,4),W2(6,2),W2(6,3) },
-                new[]{ new EntDef(1,0, 2,4), new EntDef(5,6, 1,2), new EntDef(5,5, 4,3), new EntDef(4,5, 1,3), new EntDef(5,2, 2,2) },
-                holes: new[]{ W2(5,0),W2(3,4),W2(1,5),W2(6,4) }),
+                new[]{ new EntDef(2,0, 3,3), new EntDef(1,1, 2,2) }),
+            new Lv(4,4,3,"A bigger room. Same one rule.",
+                new[]{ W2(1,2),W2(2,3) },
+                new[]{ new EntDef(1,0, 0,3), new EntDef(2,0, 0,1) }),
+            new Lv(5,5,4,"Sometimes the long way round is the short way.",
+                new[]{ W2(3,0) },
+                new[]{ new EntDef(0,1, 0,4), new EntDef(1,1, 4,4) }),
+            new Lv(5,5,4,"Blocks are just walls you can plan around.",
+                new[]{ W2(1,2),W2(3,1) },
+                new[]{ new EntDef(0,1, 0,0), new EntDef(2,1, 0,4) }),
+            new Lv(5,5,4,"Send the far one first.",
+                new[]{ W2(1,0),W2(3,3) },
+                new[]{ new EntDef(1,4, 0,0), new EntDef(4,4, 4,0) }),
+            new Lv(5,5,4,"Corners are good places to park somebody.",
+                new[]{ W2(3,3),W2(4,1) },
+                new[]{ new EntDef(2,0, 4,2), new EntDef(0,4, 4,4) }),
+            new Lv(5,5,4,"Three friends. Nobody gets left out.",
+                new[]{ W2(0,3),W2(3,1) },
+                new[]{ new EntDef(4,4, 1,3), new EntDef(3,2, 0,4) }),
+            new Lv(5,5,4,"One swipe, three animals. Watch where they all end up.",
+                new[]{ W2(1,2),W2(4,0) },
+                new[]{ new EntDef(2,3, 4,4), new EntDef(3,3, 4,1) }),
+            new Lv(5,5,4,"Use a friend as a wall for another friend.",
+                new[]{ W2(3,4) },
+                new[]{ new EntDef(3,1, 0,4), new EntDef(3,0, 0,3), new EntDef(2,3, 4,4) }),
+            new Lv(5,5,4,"The order they stop in is the whole puzzle.",
+                new[]{ W2(2,0),W2(4,2) },
+                new[]{ new EntDef(0,1, 0,4), new EntDef(3,0, 3,4), new EntDef(4,1, 0,3) }),
+            new Lv(5,5,5,"Take your time. Nothing here is in a hurry.",
+                new[]{ W2(3,4),W2(4,4) },
+                new[]{ new EntDef(0,3, 0,1), new EntDef(3,1, 0,0), new EntDef(0,4, 1,0) }),
+            new Lv(5,5,4,"If it looks stuck, undo and try the other way.",
+                new[]{ W2(0,0),W2(2,2) },
+                new[]{ new EntDef(1,3, 4,4), new EntDef(1,4, 3,4), new EntDef(1,0, 4,3) }),
+            new Lv(5,5,5,"Get one home, then work on the rest.",
+                new[]{ W2(0,1),W2(1,4),W2(4,3) },
+                new[]{ new EntDef(0,3, 0,0), new EntDef(2,4, 1,0), new EntDef(3,1, 0,2) }),
+            new Lv(5,5,4,"Every bed wants its own animal.",
+                new[]{ W2(0,1),W2(1,2),W2(3,0) },
+                new[]{ new EntDef(3,4, 4,0), new EntDef(2,4, 4,1), new EntDef(0,3, 2,0) }),
+            new Lv(5,5,5,"Almost the end of the first room.",
+                new[]{ W2(0,0),W2(2,3),W2(4,2) },
+                new[]{ new EntDef(2,1, 2,0), new EntDef(2,2, 3,3), new EntDef(1,2, 1,0) }),
+            new Lv(5,5,5,"Last one here. Then something changes.",
+                new[]{ W2(0,2),W2(1,0),W2(2,4) },
+                new[]{ new EntDef(1,2, 4,0), new EntDef(2,2, 3,0), new EntDef(3,2, 0,3) }),
 
-            // ===================== CHAPTER 7 =====================  (heavy)
-            new Lv(4,4,3,"The big one is fast asleep. It only moves if somebody bumps it.",
+            // ===================== CHAPTER 2 =====================
+            new Lv(4,4,2,"Beds are sticky now. Touch yours and you're asleep for good.",
                 new Vector2Int[0],
-                new[]{ new EntDef(3,3, 3,2), new EntDef(1,0, 3,0), new EntDef(0,2, 2,2) },
+                new[]{ new EntDef(0,0, 1,0), new EntDef(0,2, 2,1) }),
+            new Lv(5,5,3,"An animal that's asleep never moves again.",
+                new[]{ W2(4,2) },
+                new[]{ new EntDef(4,0, 0,3), new EntDef(3,3, 2,4) }),
+            new Lv(5,5,3,"A sleeping friend is a wall. That's useful.",
+                new[]{ W2(2,3) },
+                new[]{ new EntDef(0,3, 2,4), new EntDef(4,4, 4,1) }),
+            new Lv(5,5,3,"Park somebody in their bed, then use them.",
+                new[]{ W2(3,3) },
+                new[]{ new EntDef(3,1, 0,2), new EntDef(0,4, 2,4) }),
+            new Lv(5,5,4,"Who should fall asleep first?",
+                new[]{ W2(0,4),W2(2,4) },
+                new[]{ new EntDef(0,3, 2,3), new EntDef(4,0, 1,1) }),
+            new Lv(5,5,3,"Sometimes you want to NOT land on your bed yet.",
+                new[]{ W2(2,4) },
+                new[]{ new EntDef(1,0, 1,1), new EntDef(0,2, 4,0), new EntDef(1,3, 1,4) }),
+            new Lv(5,5,4,"Three friends and sticky beds.",
+                new[]{ W2(2,3),W2(4,4) },
+                new[]{ new EntDef(1,3, 1,2), new EntDef(0,2, 3,3), new EntDef(0,1, 3,0) }),
+            new Lv(5,5,4,"Wake nobody. Once they're in, they're in.",
+                new[]{ W2(3,0),W2(4,2) },
+                new[]{ new EntDef(1,3, 4,4), new EntDef(3,1, 1,2), new EntDef(1,0, 0,1) }),
+            new Lv(5,5,4,"Build a wall out of sleepers.",
+                new[]{ W2(2,0),W2(2,1) },
+                new[]{ new EntDef(1,4, 3,0), new EntDef(3,1, 4,3), new EntDef(3,2, 1,3) }),
+            new Lv(5,5,6,"The first one to bed changes everything after.",
+                new[]{ W2(2,3),W2(3,2),W2(4,4) },
+                new[]{ new EntDef(3,1, 3,4), new EntDef(1,0, 2,0), new EntDef(1,3, 4,2) }),
+            new Lv(6,6,4,"Try it the other way round.",
+                new[]{ W2(5,3),W2(5,4) },
+                new[]{ new EntDef(3,1, 5,0), new EntDef(3,2, 1,5), new EntDef(0,3, 0,2) }),
+            new Lv(6,6,5,"Slow is fine. Undo is free.",
+                new[]{ W2(1,3),W2(2,1),W2(2,4) },
+                new[]{ new EntDef(3,4, 3,5), new EntDef(4,3, 3,2), new EntDef(2,5, 5,2) }),
+            new Lv(6,6,4,"Nearly there.",
+                new[]{ W2(1,2),W2(2,2) },
+                new[]{ new EntDef(0,2, 0,0), new EntDef(0,4, 4,5), new EntDef(3,1, 0,5), new EntDef(5,0, 1,4) }),
+            new Lv(6,6,4,"Four friends now. Same idea.",
+                new[]{ W2(1,2),W2(3,0),W2(5,2) },
+                new[]{ new EntDef(4,4, 2,4), new EntDef(3,5, 5,5), new EntDef(2,3, 0,0), new EntDef(5,1, 4,0) }),
+            new Lv(6,6,5,"One at a time, in the right order.",
+                new[]{ W2(0,1),W2(2,2),W2(2,5) },
+                new[]{ new EntDef(3,5, 4,0), new EntDef(5,4, 0,4), new EntDef(2,0, 5,3), new EntDef(1,5, 1,1) }),
+            new Lv(6,6,5,"The awkward one usually goes first.",
+                new[]{ W2(0,3),W2(1,5),W2(3,4) },
+                new[]{ new EntDef(4,0, 5,5), new EntDef(1,2, 1,0), new EntDef(4,2, 5,2), new EntDef(5,4, 2,3) }),
+            new Lv(6,6,5,"A sleeper in the right spot solves the rest.",
+                new[]{ W2(1,1),W2(3,0),W2(5,2) },
+                new[]{ new EntDef(2,0, 5,1), new EntDef(3,3, 1,4), new EntDef(1,3, 3,5), new EntDef(3,2, 2,2) }),
+            new Lv(6,6,5,"Think about who blocks who.",
+                new[]{ W2(0,5),W2(3,1),W2(3,4),W2(5,5) },
+                new[]{ new EntDef(4,4, 4,2), new EntDef(3,0, 1,4), new EntDef(0,4, 0,1), new EntDef(2,0, 4,3) }),
+            new Lv(6,6,5,"Second-to-last in this room.",
+                new[]{ W2(0,0),W2(4,4),W2(4,5),W2(5,4) },
+                new[]{ new EntDef(1,1, 3,5), new EntDef(4,1, 1,3), new EntDef(2,1, 2,4), new EntDef(2,3, 3,1) }),
+            new Lv(6,6,5,"Last one. Then the rules move again.",
+                new[]{ W2(1,5),W2(4,2),W2(4,4),W2(5,5) },
+                new[]{ new EntDef(2,5, 5,0), new EntDef(0,4, 2,1), new EntDef(3,5, 3,3), new EntDef(1,3, 1,4) }),
+
+            // ===================== CHAPTER 3 =====================
+            new Lv(5,5,3,"Sticky beds - but tonight nobody minds whose bed is whose.",
+                new Vector2Int[0],
+                new[]{ new EntDef(4,0, 0,1), new EntDef(0,4, 1,2) }),
+            new Lv(5,5,3,"Any animal, any bed. Just fill them all.",
+                new[]{ W2(1,4) },
+                new[]{ new EntDef(3,3, 0,0), new EntDef(2,2, 4,3) }),
+            new Lv(5,5,3,"Two friends, two beds, either way round.",
+                new[]{ W2(0,4) },
+                new[]{ new EntDef(0,0, 4,3), new EntDef(2,4, 3,1) }),
+            new Lv(5,5,3,"Sometimes the far bed is the easy one.",
+                new[]{ W2(3,1) },
+                new[]{ new EntDef(4,4, 1,2), new EntDef(1,0, 3,0), new EntDef(1,4, 2,4) }),
+            new Lv(5,5,7,"Fill the awkward bed first.",
+                new[]{ W2(0,3),W2(1,2),W2(2,3) },
+                new[]{ new EntDef(2,1, 0,2), new EntDef(2,2, 0,4), new EntDef(3,0, 1,3) }),
+            new Lv(5,5,4,"Swapping who goes where can save you three swipes.",
+                new[]{ W2(1,0),W2(2,3) },
+                new[]{ new EntDef(1,4, 1,2), new EntDef(2,1, 0,1), new EntDef(4,1, 2,0) }),
+            new Lv(6,6,4,"Count the beds, not the animals.",
+                new[]{ W2(1,4),W2(3,2) },
+                new[]{ new EntDef(0,5, 1,3), new EntDef(0,0, 5,0), new EntDef(0,4, 4,5) }),
+            new Lv(6,6,4,"One bed is harder to reach than the rest. Start there.",
+                new[]{ W2(1,3),W2(3,2) },
+                new[]{ new EntDef(0,4, 3,5), new EntDef(0,2, 3,1), new EntDef(2,1, 0,0) }),
+            new Lv(6,6,4,"Whoever goes first decides the rest.",
+                new[]{ W2(0,2),W2(2,4),W2(4,1) },
+                new[]{ new EntDef(0,5, 5,1), new EntDef(3,2, 2,0), new EntDef(4,4, 5,4) }),
+            new Lv(6,6,4,"Any order you like - but only one order is short.",
+                new[]{ W2(4,3),W2(5,0) },
+                new[]{ new EntDef(3,4, 1,4), new EntDef(3,5, 1,2), new EntDef(0,2, 2,5), new EntDef(2,0, 5,2) }),
+            new Lv(6,6,5,"Leave the open bed for last.",
+                new[]{ W2(0,5),W2(1,5),W2(3,1) },
+                new[]{ new EntDef(5,1, 4,1), new EntDef(5,0, 3,5), new EntDef(5,2, 4,5), new EntDef(4,2, 4,4) }),
+            new Lv(6,6,5,"Five beds, five friends, no name tags.",
+                new[]{ W2(0,5),W2(5,3),W2(5,4) },
+                new[]{ new EntDef(2,3, 2,4), new EntDef(1,1, 2,0), new EntDef(4,2, 1,2), new EntDef(3,1, 0,4) }),
+            new Lv(6,6,5,"Look for the bed only one animal can reach.",
+                new[]{ W2(0,4),W2(2,5),W2(3,3) },
+                new[]{ new EntDef(5,3, 2,0), new EntDef(2,2, 1,5), new EntDef(3,0, 5,1), new EntDef(0,3, 4,4) }),
+            new Lv(6,6,5,"Nearly there. Fill the corner first.",
+                new[]{ W2(1,3),W2(1,4),W2(2,0),W2(2,5) },
+                new[]{ new EntDef(5,5, 5,0), new EntDef(5,3, 1,2), new EntDef(2,1, 4,3), new EntDef(5,2, 2,4) }),
+            new Lv(6,6,5,"Every bed full, everybody asleep. That's the whole job.",
+                new[]{ W2(0,0),W2(1,2),W2(3,4),W2(5,3) },
+                new[]{ new EntDef(0,5, 1,0), new EntDef(1,1, 4,1), new EntDef(0,4, 3,0), new EntDef(1,3, 3,5) }),
+
+            // ===================== CHAPTER 4 =====================
+            new Lv(5,5,3,"Silk is too slippery to sleep on - you always slide back off.",
+                new Vector2Int[0],
+                new[]{ new EntDef(4,2, 0,2), new EntDef(4,1, 3,2) },
+                rugs: new[]{ W2(4,4) }),
+            new Lv(5,5,3,"Cross the rug. Don't try to stop on it.",
+                new[]{ W2(4,1) },
+                new[]{ new EntDef(4,4, 3,3), new EntDef(0,4, 2,0) },
+                rugs: new[]{ W2(4,2) }),
+            new Lv(5,5,3,"A rug can carry you straight past your own bed. Careful.",
+                new[]{ W2(0,2) },
+                new[]{ new EntDef(2,2, 3,4), new EntDef(1,0, 3,2) },
+                rugs: new[]{ W2(1,4),W2(4,0) }),
+            new Lv(5,5,3,"Use the rug to reach somewhere you couldn't stop before.",
+                new[]{ W2(4,0) },
+                new[]{ new EntDef(2,2, 0,1), new EntDef(2,0, 1,2), new EntDef(1,0, 1,1) },
+                rugs: new[]{ W2(2,3),W2(3,2) }),
+            new Lv(5,5,6,"Rugs turn short slides into long ones.",
+                new[]{ W2(2,1),W2(3,0) },
+                new[]{ new EntDef(2,2, 4,3), new EntDef(3,1, 1,3), new EntDef(0,3, 4,2) },
+                rugs: new[]{ W2(0,0),W2(1,2) }),
+            new Lv(5,5,4,"Come at the bed from the other side.",
+                new[]{ W2(1,4),W2(4,0) },
+                new[]{ new EntDef(3,4, 0,1), new EntDef(4,2, 3,0), new EntDef(4,3, 1,3) },
+                rugs: new[]{ W2(1,2),W2(2,0) }),
+            new Lv(6,6,4,"The rug is a corridor, not a room.",
+                new[]{ W2(4,5),W2(5,0) },
+                new[]{ new EntDef(0,1, 0,4), new EntDef(1,3, 2,3), new EntDef(2,1, 4,4) },
+                rugs: new[]{ W2(0,2),W2(1,5) }),
+            new Lv(6,6,4,"Two rugs in a row is just a longer corridor.",
+                new[]{ W2(1,2),W2(3,0) },
+                new[]{ new EntDef(0,1, 0,2), new EntDef(5,4, 2,0), new EntDef(2,2, 3,4) },
+                rugs: new[]{ W2(0,5),W2(1,3) }),
+            new Lv(6,6,4,"Stop before the silk, not on it.",
+                new[]{ W2(4,1),W2(4,2),W2(4,5) },
+                new[]{ new EntDef(2,3, 1,3), new EntDef(5,4, 2,2), new EntDef(2,1, 0,3) },
+                rugs: new[]{ W2(3,2),W2(3,5),W2(4,0) }),
+            new Lv(6,6,4,"Sometimes the rug is the only way across.",
+                new[]{ W2(2,3),W2(5,3) },
+                new[]{ new EntDef(3,0, 1,4), new EntDef(4,5, 4,0), new EntDef(0,3, 0,1), new EntDef(2,1, 3,2) },
+                rugs: new[]{ W2(3,5),W2(4,3),W2(5,0) }),
+            new Lv(6,6,5,"A friend parked on the far side gives you something to stop against.",
+                new[]{ W2(0,1),W2(1,3),W2(2,1) },
+                new[]{ new EntDef(4,0, 2,3), new EntDef(3,0, 4,4), new EntDef(3,1, 4,5), new EntDef(2,4, 5,0) },
+                rugs: new[]{ W2(3,2),W2(5,1),W2(5,4) }),
+            new Lv(6,6,5,"Plan where you'll land, not where you'll pass.",
+                new[]{ W2(1,5),W2(2,5),W2(5,0) },
+                new[]{ new EntDef(3,0, 3,2), new EntDef(3,5, 4,4), new EntDef(1,3, 4,0), new EntDef(4,1, 1,1) },
+                rugs: new[]{ W2(0,3),W2(1,0),W2(4,5) }),
+            new Lv(6,6,5,"Silk never lets go until something solid does.",
+                new[]{ W2(1,0),W2(4,3),W2(4,4) },
+                new[]{ new EntDef(0,2, 2,1), new EntDef(3,1, 3,4), new EntDef(5,3, 2,2), new EntDef(1,1, 1,3) },
+                rugs: new[]{ W2(0,0),W2(0,5),W2(5,1) }),
+            new Lv(6,6,5,"Almost the last of the rugs. Take it slowly.",
+                new[]{ W2(1,3),W2(4,0),W2(4,3),W2(5,3) },
+                new[]{ new EntDef(3,3, 0,1), new EntDef(0,5, 4,5), new EntDef(2,5, 2,1), new EntDef(0,3, 3,4) },
+                rugs: new[]{ W2(1,2),W2(2,2),W2(5,1) }),
+            new Lv(6,6,5,"One room, four rugs, five sleepy animals.",
+                new[]{ W2(2,2),W2(2,5),W2(4,3),W2(5,5) },
+                new[]{ new EntDef(2,1, 1,0), new EntDef(5,4, 4,2), new EntDef(4,5, 4,0), new EntDef(0,4, 0,2) },
+                rugs: new[]{ W2(3,2),W2(5,0),W2(5,1),W2(5,3) }),
+
+            // ===================== CHAPTER 5 =====================
+            new Lv(5,5,3,"Honey is sticky. Touch it and that's where you stay.",
+                new Vector2Int[0],
+                new[]{ new EntDef(1,2, 2,3), new EntDef(4,1, 1,1) },
+                honey: new[]{ W2(0,3) }),
+            new Lv(5,5,3,"Honey stops you dead - useful, if you aim it.",
+                new[]{ W2(4,4) },
+                new[]{ new EntDef(3,4, 2,2), new EntDef(2,0, 2,3) },
+                honey: new[]{ W2(3,2) }),
+            new Lv(5,5,3,"Park someone in the honey on purpose.",
+                new[]{ W2(2,3) },
+                new[]{ new EntDef(1,3, 0,2), new EntDef(2,4, 2,0) },
+                honey: new[]{ W2(1,4),W2(4,0) }),
+            new Lv(5,5,3,"Honey beats a long slide every time.",
+                new[]{ W2(0,2) },
+                new[]{ new EntDef(4,1, 4,0), new EntDef(2,1, 2,0), new EntDef(3,1, 1,3) },
+                honey: new[]{ W2(2,2),W2(3,3) }),
+            new Lv(5,5,4,"Use the honey to stop short of a bed.",
+                new[]{ W2(1,1),W2(1,2) },
+                new[]{ new EntDef(4,3, 4,1), new EntDef(0,2, 2,1), new EntDef(0,1, 0,3) },
+                honey: new[]{ W2(2,3),W2(2,4) }),
+            new Lv(5,5,4,"The honey is a brake, not a wall.",
+                new[]{ W2(0,4),W2(3,1) },
+                new[]{ new EntDef(2,2, 3,2), new EntDef(3,3, 0,2), new EntDef(2,0, 1,3) },
+                honey: new[]{ W2(1,0),W2(2,1) }),
+            new Lv(6,6,4,"Two puddles make a very short corridor.",
+                new[]{ W2(4,1),W2(4,2) },
+                new[]{ new EntDef(3,2, 2,1), new EntDef(5,1, 0,2), new EntDef(4,3, 3,3) },
+                honey: new[]{ W2(0,5),W2(2,0) }),
+            new Lv(6,6,4,"Whoever reaches the honey first blocks everyone behind.",
+                new[]{ W2(2,3),W2(2,4) },
+                new[]{ new EntDef(2,0, 0,3), new EntDef(3,1, 2,1), new EntDef(5,2, 0,1) },
+                honey: new[]{ W2(2,2),W2(4,1) }),
+            new Lv(6,6,4,"Send the wrong one into the honey and you're stuck.",
+                new[]{ W2(2,3),W2(3,0),W2(3,3) },
+                new[]{ new EntDef(1,0, 3,4), new EntDef(5,5, 1,5), new EntDef(3,2, 3,1) },
+                honey: new[]{ W2(0,3),W2(1,4),W2(5,2) }),
+            new Lv(6,6,4,"Honey first, beds after.",
+                new[]{ W2(2,3),W2(3,3) },
+                new[]{ new EntDef(2,5, 3,4), new EntDef(1,1, 0,2), new EntDef(2,0, 4,4), new EntDef(5,5, 5,4) },
+                honey: new[]{ W2(0,5),W2(4,0),W2(4,5) }),
+            new Lv(6,6,5,"A sleeper and a puddle make a pocket.",
+                new[]{ W2(0,0),W2(3,5),W2(5,2) },
+                new[]{ new EntDef(0,5, 1,1), new EntDef(1,2, 4,0), new EntDef(5,1, 2,3), new EntDef(4,3, 0,2) },
+                honey: new[]{ W2(4,1),W2(4,2),W2(4,5) }),
+            new Lv(6,6,5,"Think about who must NOT touch the honey.",
+                new[]{ W2(2,3),W2(4,0),W2(4,1) },
+                new[]{ new EntDef(5,0, 3,1), new EntDef(1,2, 5,4), new EntDef(3,5, 3,0), new EntDef(1,4, 0,3) },
+                honey: new[]{ W2(2,1),W2(3,4),W2(5,5) }),
+            new Lv(6,6,5,"The honey is doing half the work. Let it.",
+                new[]{ W2(0,1),W2(5,2),W2(5,5) },
+                new[]{ new EntDef(2,2, 3,3), new EntDef(4,0, 1,3), new EntDef(5,0, 1,1), new EntDef(2,5, 2,4) },
+                honey: new[]{ W2(1,5),W2(2,3),W2(3,0) }),
+            new Lv(6,6,5,"Nearly the last of the mess. Mind your step.",
+                new[]{ W2(0,4),W2(1,5),W2(3,0),W2(5,1) },
+                new[]{ new EntDef(3,2, 4,1), new EntDef(0,3, 3,5), new EntDef(1,3, 4,4), new EntDef(5,0, 4,0) },
+                honey: new[]{ W2(2,5),W2(4,2),W2(4,3) }),
+            new Lv(6,6,7,"Five friends, and honey everywhere.",
+                new[]{ W2(3,5),W2(4,0),W2(4,4),W2(5,4),W2(5,5) },
+                new[]{ new EntDef(3,0, 2,4), new EntDef(5,1, 4,3), new EntDef(2,1, 0,0), new EntDef(1,3, 3,2) },
+                honey: new[]{ W2(1,0),W2(1,5),W2(3,3),W2(4,2) }),
+
+            // ===================== CHAPTER 6 =====================
+            new Lv(5,5,3,"Burrows come in pairs. In one, out the other, still sliding.",
+                new Vector2Int[0],
+                new[]{ new EntDef(0,2, 4,4), new EntDef(2,2, 0,1) },
+                holes: new[]{ W2(3,4),W2(0,4) }),
+            new Lv(5,5,3,"You keep your speed all the way through a burrow.",
+                new[]{ W2(1,4) },
+                new[]{ new EntDef(1,2, 4,4), new EntDef(4,2, 0,0) },
+                holes: new[]{ W2(1,0),W2(2,4) }),
+            new Lv(5,5,3,"A burrow can put you where no swipe could reach.",
+                new[]{ W2(1,2) },
+                new[]{ new EntDef(3,1, 1,0), new EntDef(2,0, 4,3) },
+                holes: new[]{ W2(4,2),W2(2,1) }),
+            new Lv(5,5,3,"Follow the colours - a pair shares one colour.",
+                new[]{ W2(0,2) },
+                new[]{ new EntDef(4,2, 0,3), new EntDef(1,0, 1,1), new EntDef(2,1, 2,4) },
+                holes: new[]{ W2(3,4),W2(4,3) }),
+            new Lv(5,5,6,"Sometimes the long way round is underground.",
+                new[]{ W2(2,4),W2(3,2) },
+                new[]{ new EntDef(0,3, 1,1), new EntDef(0,2, 0,0), new EntDef(1,2, 3,1) },
+                holes: new[]{ W2(1,4),W2(4,0) }),
+            new Lv(5,5,4,"A friend standing on the far end blocks the burrow.",
+                new[]{ W2(1,4),W2(2,0) },
+                new[]{ new EntDef(4,3, 3,1), new EntDef(0,3, 1,2), new EntDef(2,2, 3,4) },
+                holes: new[]{ W2(4,2),W2(3,3) }),
+            new Lv(6,6,4,"Go in the near one to come out of the far one.",
+                new[]{ W2(1,0),W2(3,0) },
+                new[]{ new EntDef(5,2, 4,5), new EntDef(0,3, 5,1), new EntDef(0,2, 2,4) },
+                holes: new[]{ W2(4,2),W2(2,0) }),
+            new Lv(6,6,4,"Two pairs means two ways across.",
+                new[]{ W2(2,5),W2(5,5) },
+                new[]{ new EntDef(4,3, 0,3), new EntDef(2,4, 0,2), new EntDef(0,4, 1,0) },
+                holes: new[]{ W2(4,4),W2(2,2) }),
+            new Lv(6,6,4,"Sometimes you want to miss the burrow.",
+                new[]{ W2(2,3),W2(3,4),W2(3,5) },
+                new[]{ new EntDef(4,1, 5,5), new EntDef(5,4, 1,0), new EntDef(5,0, 5,2) },
+                holes: new[]{ W2(5,3),W2(0,4) }),
+            new Lv(6,6,4,"The exit decides where you stop, not the entrance.",
+                new[]{ W2(1,0),W2(3,3) },
+                new[]{ new EntDef(1,4, 0,5), new EntDef(0,2, 1,3), new EntDef(4,1, 0,3), new EntDef(5,0, 2,1) },
+                holes: new[]{ W2(1,5),W2(5,1) }),
+            new Lv(6,6,5,"Line them up before you dive.",
+                new[]{ W2(3,3),W2(4,2),W2(4,3) },
+                new[]{ new EntDef(5,3, 1,1), new EntDef(3,5, 5,2), new EntDef(0,3, 0,4), new EntDef(3,2, 1,3) },
+                holes: new[]{ W2(2,0),W2(3,1) }),
+            new Lv(6,6,5,"One burrow, one bed, one swipe - if you set it up right.",
+                new[]{ W2(0,0),W2(2,0),W2(5,2) },
+                new[]{ new EntDef(1,1, 4,5), new EntDef(4,3, 1,4), new EntDef(3,5, 5,1), new EntDef(2,1, 4,1) },
+                holes: new[]{ W2(2,3),W2(1,0) }),
+            new Lv(6,6,5,"Watch what the burrow does to the animal behind you.",
+                new[]{ W2(3,1),W2(3,5),W2(4,5) },
+                new[]{ new EntDef(1,2, 2,5), new EntDef(2,1, 1,3), new EntDef(4,2, 5,2), new EntDef(4,3, 0,0) },
+                holes: new[]{ W2(5,0),W2(0,2) }),
+            new Lv(6,6,5,"Nearly through. Where does that exit put you?",
+                new[]{ W2(0,3),W2(2,3),W2(4,4),W2(5,3) },
+                new[]{ new EntDef(5,1, 3,1), new EntDef(0,4, 0,0), new EntDef(5,0, 0,5), new EntDef(4,3, 2,2) },
+                holes: new[]{ W2(4,0),W2(2,5) }),
+            new Lv(6,6,5,"The whole warren, all at once.",
+                new[]{ W2(1,2),W2(3,5),W2(4,0),W2(5,5) },
+                new[]{ new EntDef(4,1, 4,2), new EntDef(3,3, 5,3), new EntDef(3,0, 4,3), new EntDef(5,1, 0,2) },
+                holes: new[]{ W2(1,0),W2(4,4),W2(1,4),W2(5,2) }),
+
+            // ===================== CHAPTER 7 =====================
+            new Lv(5,5,4,"The big one is fast asleep. It only moves if somebody bumps it.",
+                new Vector2Int[0],
+                new[]{ new EntDef(4,0, 3,2), new EntDef(4,1, 4,4), new EntDef(3,0, 2,0) },
                 heavy: 1),
-            new Lv(4,4,4,"Push the big one - it slides until something stops it.",
-                new[]{ W2(1,1) },
-                new[]{ new EntDef(3,2, 2,2), new EntDef(1,2, 0,1), new EntDef(3,1, 3,0) },
-                heavy: 2),
+            new Lv(5,5,4,"Push the big one - it slides until something stops it.",
+                new[]{ W2(0,1) },
+                new[]{ new EntDef(0,3, 3,4), new EntDef(3,0, 2,0), new EntDef(0,4, 4,1) },
+                heavy: 1),
             new Lv(5,5,4,"The big one makes an excellent wall.",
                 new[]{ W2(0,3) },
-                new[]{ new EntDef(2,2, 3,2), new EntDef(1,0, 2,1), new EntDef(0,4, 3,4) },
-                heavy: 0),
-            new Lv(5,5,5,"Bump it once and it's somewhere new for good.",
-                new[]{ W2(0,1),W2(0,4) },
-                new[]{ new EntDef(1,3, 4,3), new EntDef(1,0, 0,0), new EntDef(2,2, 2,4), new EntDef(4,1, 3,3) },
+                new[]{ new EntDef(0,4, 0,2), new EntDef(3,0, 0,0), new EntDef(1,4, 1,3) },
                 heavy: 1),
-            new Lv(5,5,5,"Push it out of the way before you need the space.",
-                new[]{ W2(0,2),W2(2,4) },
-                new[]{ new EntDef(1,1, 3,2), new EntDef(0,3, 3,3), new EntDef(2,3, 4,3), new EntDef(3,1, 2,1) },
+            new Lv(5,5,4,"Bump it once and it's somewhere new for good.",
+                new[]{ W2(1,4) },
+                new[]{ new EntDef(0,4, 3,2), new EntDef(4,2, 4,4), new EntDef(1,1, 2,3) },
+                heavy: 1),
+            new Lv(5,5,4,"Push it out of the way before you need the space.",
+                new[]{ W2(1,0),W2(1,1) },
+                new[]{ new EntDef(4,0, 0,1), new EntDef(4,1, 3,3), new EntDef(2,1, 2,4) },
                 heavy: 2),
-            new Lv(5,5,6,"You always stop right behind whatever you push.",
-                new[]{ W2(0,0),W2(3,3),W2(4,1) },
-                new[]{ new EntDef(3,0, 4,0), new EntDef(1,4, 1,1), new EntDef(2,4, 2,2), new EntDef(4,2, 4,4) },
+            new Lv(5,5,4,"You always stop right behind whatever you push.",
+                new[]{ W2(1,1),W2(3,4) },
+                new[]{ new EntDef(3,1, 1,3), new EntDef(0,3, 0,1), new EntDef(4,3, 4,4) },
+                heavy: 2),
+            new Lv(6,6,5,"Line up behind the big one to move it a long way.",
+                new[]{ W2(0,4),W2(3,2) },
+                new[]{ new EntDef(4,4, 4,0), new EntDef(1,5, 0,5), new EntDef(2,2, 0,0) },
+                heavy: 1),
+            new Lv(6,6,5,"It can be pushed into its own bed, too.",
+                new[]{ W2(1,2),W2(1,4) },
+                new[]{ new EntDef(2,4, 0,5), new EntDef(2,5, 0,1), new EntDef(1,0, 0,0) },
+                heavy: 2),
+            new Lv(6,6,5,"Push it once too often and it's in the way.",
+                new[]{ W2(2,4),W2(3,4),W2(5,3) },
+                new[]{ new EntDef(2,2, 0,2), new EntDef(0,1, 3,5), new EntDef(5,0, 2,5) },
                 heavy: 0),
-            new Lv(6,6,7,"Line up behind the big one to move it a long way.",
-                new[]{ W2(0,3),W2(2,0),W2(5,4) },
-                new[]{ new EntDef(3,2, 1,3), new EntDef(2,5, 1,5), new EntDef(2,2, 4,1), new EntDef(0,4, 5,2) },
-                heavy: 1),
-            new Lv(6,6,7,"It can be pushed into its own bed, too.",
-                new[]{ W2(0,2),W2(3,2),W2(4,4) },
-                new[]{ new EntDef(3,0, 1,3), new EntDef(3,1, 5,0), new EntDef(2,0, 4,0), new EntDef(1,1, 0,0), new EntDef(0,1, 2,1) },
-                heavy: 1),
-            new Lv(6,6,8,"Push it once too often and it's in the way.",
-                new[]{ W2(0,0),W2(2,1),W2(5,2) },
-                new[]{ new EntDef(2,5, 0,5), new EntDef(3,1, 4,1), new EntDef(2,2, 2,4), new EntDef(0,1, 1,2), new EntDef(3,5, 5,0) },
+            new Lv(6,6,5,"The big one is blocking the beds behind it.",
+                new[]{ W2(4,0),W2(4,1) },
+                new[]{ new EntDef(3,1, 3,4), new EntDef(0,2, 0,5), new EntDef(0,0, 5,5) },
                 heavy: 0),
-            new Lv(6,6,8,"The big one is blocking the beds behind it.",
-                new[]{ W2(2,1),W2(3,4),W2(4,1),W2(4,2) },
-                new[]{ new EntDef(2,3, 0,4), new EntDef(5,4, 5,5), new EntDef(4,4, 1,4), new EntDef(4,0, 3,5), new EntDef(0,0, 2,0) },
-                heavy: 1),
-            new Lv(6,6,9,"Decide where it has to end up first.",
-                new[]{ W2(0,4),W2(1,0),W2(1,2),W2(2,3) },
-                new[]{ new EntDef(4,0, 2,4), new EntDef(3,5, 5,5), new EntDef(4,4, 5,3), new EntDef(0,5, 2,1), new EntDef(1,1, 5,0) },
-                heavy: 1),
-            new Lv(7,7,9,"Two pushes, if you have room for two.",
-                new[]{ W2(3,3),W2(4,3),W2(5,5),W2(6,2),W2(6,3) },
-                new[]{ new EntDef(1,0, 5,0), new EntDef(4,5, 2,0), new EntDef(0,3, 2,6), new EntDef(6,0, 2,3), new EntDef(0,0, 1,2) },
+            new Lv(6,6,5,"Decide where it has to end up first.",
+                new[]{ W2(0,1),W2(1,4),W2(2,3) },
+                new[]{ new EntDef(2,2, 3,2), new EntDef(2,1, 5,0), new EntDef(0,2, 5,5) },
                 heavy: 0),
-            new Lv(7,7,10,"The big one never moves on its own. Ever.",
-                new[]{ W2(1,4),W2(1,6),W2(2,2),W2(3,4),W2(5,0) },
-                new[]{ new EntDef(5,6, 4,0), new EntDef(6,5, 1,1), new EntDef(1,3, 1,5), new EntDef(0,5, 0,6), new EntDef(6,2, 5,3) },
-                heavy: 3),
-            new Lv(7,7,11,"One push, then everybody home.",
-                new[]{ W2(1,0),W2(2,6),W2(3,2),W2(6,4),W2(6,6) },
-                new[]{ new EntDef(5,4, 0,3), new EntDef(6,5, 1,3), new EntDef(2,5, 1,1), new EntDef(0,2, 0,1), new EntDef(4,5, 3,4) },
-                heavy: 3),
-            new Lv(7,7,12,"The heaviest sleeper in the zoo, and four friends around it.",
-                new[]{ W2(5,0),W2(5,5),W2(6,5),W2(6,6) },
-                new[]{ new EntDef(2,1, 0,5), new EntDef(3,6, 2,6), new EntDef(2,2, 3,0), new EntDef(3,5, 5,4), new EntDef(6,2, 0,2) },
+            new Lv(6,6,5,"Two pushes, if you have room for two.",
+                new[]{ W2(0,0),W2(2,4),W2(5,5) },
+                new[]{ new EntDef(2,0, 2,2), new EntDef(5,2, 5,3), new EntDef(1,1, 0,1), new EntDef(3,3, 3,1) },
                 heavy: 1),
+            new Lv(6,6,5,"The big one never moves on its own. Ever.",
+                new[]{ W2(0,3),W2(0,4),W2(4,2) },
+                new[]{ new EntDef(5,4, 0,2), new EntDef(5,3, 0,0), new EntDef(1,5, 0,5), new EntDef(2,4, 1,1) },
+                heavy: 2),
+            new Lv(6,6,5,"One push, then everybody home.",
+                new[]{ W2(2,5),W2(3,3),W2(3,4),W2(5,5) },
+                new[]{ new EntDef(4,1, 2,0), new EntDef(5,3, 5,4), new EntDef(1,4, 2,1), new EntDef(1,5, 0,4) },
+                heavy: 1),
+            new Lv(7,7,5,"The heaviest sleeper in the zoo, and four friends around it.",
+                new[]{ W2(2,5),W2(3,5),W2(4,0),W2(5,2),W2(6,3) },
+                new[]{ new EntDef(5,5, 4,5), new EntDef(2,2, 0,4), new EntDef(4,1, 5,1), new EntDef(5,6, 3,1) },
+                heavy: 2),
 
-            // ===================== CHAPTER 8 =====================  (mixed)
-            new Lv(4,4,3,"No new rules tonight. Everything you already know.",
+            // ===================== CHAPTER 8 =====================
+            new Lv(5,5,3,"No new rules tonight. Everything you already know.",
                 new Vector2Int[0],
-                new[]{ new EntDef(1,0, 3,3), new EntDef(2,1, 1,2) },
-                rugs: new[]{ W2(2,3) },
+                new[]{ new EntDef(3,3, 1,0), new EntDef(4,0, 0,1) },
+                rugs: new[]{ W2(3,0) },
                 honey: new[]{ W2(1,3) }),
-            new Lv(4,4,4,"Rug and honey in one room. Read the floor.",
-                new[]{ W2(0,2) },
-                new[]{ new EntDef(1,2, 3,0), new EntDef(1,3, 1,0) },
-                rugs: new[]{ W2(0,1) },
-                honey: new[]{ W2(2,2) }),
-            new Lv(5,5,4,"The silk carries, the honey stops.",
-                new[]{ W2(2,4) },
-                new[]{ new EntDef(3,4, 1,4), new EntDef(2,3, 1,0) },
-                rugs: new[]{ W2(1,2) },
-                honey: new[]{ W2(3,2) }),
-            new Lv(5,5,5,"Same rules, less room.",
-                new[]{ W2(0,0),W2(2,1) },
-                new[]{ new EntDef(2,2, 3,4), new EntDef(3,3, 2,4), new EntDef(1,4, 4,4) },
-                rugs: new[]{ W2(4,0) },
-                honey: new[]{ W2(0,2) }),
-            new Lv(5,5,5,"Take one animal at a time in your head.",
-                new[]{ W2(0,0),W2(3,3) },
-                new[]{ new EntDef(2,2, 3,1), new EntDef(4,3, 2,4), new EntDef(2,3, 3,0) },
+            new Lv(5,5,3,"Rug and honey in one room. Read the floor.",
+                new[]{ W2(3,4) },
+                new[]{ new EntDef(4,3, 2,2), new EntDef(1,2, 4,2) },
+                rugs: new[]{ W2(3,0) },
+                honey: new[]{ W2(2,3) }),
+            new Lv(5,5,3,"The silk carries, the honey stops.",
+                new[]{ W2(4,3) },
+                new[]{ new EntDef(1,2, 0,1), new EntDef(0,4, 3,0) },
+                rugs: new[]{ W2(1,0) },
+                honey: new[]{ W2(1,3) }),
+            new Lv(5,5,3,"Same rules, less room.",
+                new[]{ W2(0,3) },
+                new[]{ new EntDef(1,2, 4,2), new EntDef(1,4, 3,2), new EntDef(1,0, 2,2) },
                 rugs: new[]{ W2(2,0) },
-                honey: new[]{ W2(4,0) }),
-            new Lv(5,5,6,"The floor is telling you the answer.",
-                new[]{ W2(2,0),W2(3,4),W2(4,3) },
-                new[]{ new EntDef(3,3, 3,1), new EntDef(1,3, 1,1), new EntDef(2,3, 4,0) },
+                honey: new[]{ W2(3,4) }),
+            new Lv(5,5,6,"Take one animal at a time in your head.",
+                new[]{ W2(2,4),W2(4,2) },
+                new[]{ new EntDef(4,4, 0,1), new EntDef(1,4, 2,2), new EntDef(3,4, 1,0) },
                 rugs: new[]{ W2(0,4) },
-                honey: new[]{ W2(0,3) }),
-            new Lv(6,6,7,"You've solved harder than this - twice.",
-                new[]{ W2(3,2),W2(3,4),W2(5,4) },
-                new[]{ new EntDef(4,0, 0,5), new EntDef(2,0, 3,0), new EntDef(0,0, 1,2) },
-                rugs: new[]{ W2(4,1) },
-                honey: new[]{ W2(1,3) }),
-            new Lv(6,6,7,"Slow down. Everything here is familiar.",
-                new[]{ W2(0,3),W2(2,3),W2(4,5) },
-                new[]{ new EntDef(5,0, 2,4), new EntDef(4,0, 4,4), new EntDef(1,3, 1,1), new EntDef(0,5, 3,5) },
-                rugs: new[]{ W2(1,0),W2(2,0) },
-                honey: new[]{ W2(4,2) }),
-            new Lv(6,6,8,"One awkward friend, as always.",
-                new[]{ W2(0,0),W2(1,4),W2(3,3),W2(3,4) },
-                new[]{ new EntDef(2,2, 4,5), new EntDef(2,5, 1,2), new EntDef(5,4, 1,0), new EntDef(1,3, 0,1) },
-                rugs: new[]{ W2(3,0),W2(5,1) },
+                honey: new[]{ W2(2,1) }),
+            new Lv(5,5,4,"The floor is telling you the answer.",
+                new[]{ W2(0,2),W2(1,0) },
+                new[]{ new EntDef(2,4, 1,3), new EntDef(1,4, 4,4), new EntDef(3,2, 4,0) },
+                rugs: new[]{ W2(2,1) },
+                honey: new[]{ W2(3,3) }),
+            new Lv(6,6,4,"You've solved harder than this - twice.",
+                new[]{ W2(0,3),W2(2,3) },
+                new[]{ new EntDef(1,0, 5,2), new EntDef(1,2, 0,4), new EntDef(4,3, 5,4) },
+                rugs: new[]{ W2(4,0) },
+                honey: new[]{ W2(4,4) }),
+            new Lv(6,6,4,"Slow down. Everything here is familiar.",
+                new[]{ W2(1,5),W2(3,0) },
+                new[]{ new EntDef(4,5, 0,3), new EntDef(1,4, 0,2), new EntDef(5,4, 4,4) },
+                rugs: new[]{ W2(3,5) },
+                honey: new[]{ W2(4,3) }),
+            new Lv(6,6,4,"One awkward friend, as always.",
+                new[]{ W2(0,1),W2(3,0),W2(3,5) },
+                new[]{ new EntDef(5,1, 4,2), new EntDef(4,0, 2,3), new EntDef(2,4, 4,4) },
+                rugs: new[]{ W2(0,4),W2(1,1) },
                 honey: new[]{ W2(5,2) }),
-            new Lv(6,6,8,"Set the room up, then send everyone home.",
-                new[]{ W2(2,0),W2(2,2),W2(3,4),W2(5,0) },
-                new[]{ new EntDef(4,2, 4,3), new EntDef(3,0, 4,1), new EntDef(3,2, 3,3), new EntDef(1,0, 2,3) },
-                rugs: new[]{ W2(5,1),W2(5,4) },
-                honey: new[]{ W2(1,1) }),
-            new Lv(6,6,9,"The last few nights are the quiet ones.",
-                new[]{ W2(1,4),W2(2,2),W2(3,2),W2(5,2) },
-                new[]{ new EntDef(1,2, 0,0), new EntDef(0,3, 4,5), new EntDef(5,3, 1,0), new EntDef(4,3, 2,5) },
-                rugs: new[]{ W2(1,5),W2(4,1) },
-                honey: new[]{ W2(3,0) }),
-            new Lv(7,7,9,"Nearly the end of the zoo.",
-                new[]{ W2(0,1),W2(0,5),W2(4,1),W2(4,2),W2(5,4) },
-                new[]{ new EntDef(0,4, 3,4), new EntDef(1,1, 2,5), new EntDef(0,2, 6,6), new EntDef(5,0, 1,4), new EntDef(6,0, 6,5) },
-                rugs: new[]{ W2(3,0),W2(5,3) },
-                honey: new[]{ W2(2,0),W2(5,2) }),
-            new Lv(7,7,10,"Second to last. Enjoy it.",
-                new[]{ W2(0,6),W2(3,0),W2(4,6),W2(5,2),W2(5,5) },
-                new[]{ new EntDef(2,5, 3,3), new EntDef(2,6, 2,4), new EntDef(0,1, 4,4), new EntDef(6,4, 5,3), new EntDef(1,6, 6,6) },
-                rugs: new[]{ W2(4,5),W2(5,1) },
-                honey: new[]{ W2(0,4),W2(5,0) }),
-            new Lv(7,7,11,"One more after this one.",
-                new[]{ W2(0,4),W2(0,5),W2(2,6),W2(4,5),W2(5,2) },
-                new[]{ new EntDef(3,3, 5,0), new EntDef(5,1, 1,1), new EntDef(2,4, 1,6), new EntDef(5,4, 4,0), new EntDef(2,5, 1,5) },
-                rugs: new[]{ W2(3,2),W2(6,1) },
-                honey: new[]{ W2(0,6),W2(3,5) }),
-            new Lv(7,7,12,"Goodnight, everybody. Sleep well.",
-                new[]{ W2(1,0),W2(1,1),W2(2,1),W2(2,6),W2(4,4),W2(6,4) },
-                new[]{ new EntDef(2,0, 3,3), new EntDef(0,6, 5,4), new EntDef(6,5, 0,2), new EntDef(6,0, 5,2), new EntDef(4,0, 3,6) },
-                rugs: new[]{ W2(0,0),W2(6,2) },
-                honey: new[]{ W2(0,5),W2(1,2) }),
+            new Lv(6,6,7,"Set the room up, then send everyone home.",
+                new[]{ W2(3,2),W2(4,3),W2(5,3) },
+                new[]{ new EntDef(5,4, 4,2), new EntDef(0,4, 1,3), new EntDef(3,3, 1,4), new EntDef(2,2, 2,1) },
+                rugs: new[]{ W2(0,0),W2(4,4) },
+                honey: new[]{ W2(2,3) }),
+            new Lv(6,6,5,"The last few nights are the quiet ones.",
+                new[]{ W2(0,1),W2(0,3),W2(5,4) },
+                new[]{ new EntDef(3,0, 0,0), new EntDef(2,1, 4,3), new EntDef(3,3, 5,3), new EntDef(0,5, 3,2) },
+                rugs: new[]{ W2(2,3),W2(4,4) },
+                honey: new[]{ W2(1,2) }),
+            new Lv(6,6,5,"Nearly the end of the zoo.",
+                new[]{ W2(1,2),W2(1,4),W2(4,2) },
+                new[]{ new EntDef(2,2, 2,0), new EntDef(0,0, 1,5), new EntDef(3,5, 5,1), new EntDef(4,4, 4,0) },
+                rugs: new[]{ W2(2,1),W2(4,5) },
+                honey: new[]{ W2(3,3) }),
+            new Lv(6,6,5,"Second to last. Enjoy it.",
+                new[]{ W2(0,2),W2(0,3),W2(5,3) },
+                new[]{ new EntDef(1,4, 4,4), new EntDef(1,0, 5,5), new EntDef(4,0, 1,2), new EntDef(5,1, 1,3) },
+                rugs: new[]{ W2(0,1),W2(5,4) },
+                honey: new[]{ W2(5,2) }),
+            new Lv(6,6,5,"One more after this one.",
+                new[]{ W2(0,5),W2(2,1),W2(4,4),W2(5,0) },
+                new[]{ new EntDef(3,3, 5,4), new EntDef(2,0, 5,1), new EntDef(2,4, 3,5), new EntDef(2,3, 2,5) },
+                rugs: new[]{ W2(3,4),W2(4,2) },
+                honey: new[]{ W2(3,1) }),
+            new Lv(6,6,5,"Goodnight, everybody. Sleep well.",
+                new[]{ W2(0,0),W2(3,0),W2(3,1),W2(4,0) },
+                new[]{ new EntDef(5,4, 4,2), new EntDef(0,2, 0,3), new EntDef(1,0, 1,4), new EntDef(1,1, 3,4) },
+                rugs: new[]{ W2(4,1),W2(5,3) },
+                honey: new[]{ W2(2,0),W2(4,4) }),
         };
 
         // ---- warm, flat cozy palette (everything sits in the same family) ----
@@ -722,6 +722,8 @@ namespace SleepyZoo
         private Lv _lv;
         private Camera _cam;
         private readonly HashSet<Vector2Int> _walls = new();
+        // every wall's sprites, by cell, so one can be tidied away at runtime
+        private readonly Dictionary<Vector2Int,List<Transform>> _wallTiles = new();
         private Vector2Int[] _pos, _bed;
         private string[] _pet;
         private Transform[] _view;
@@ -739,6 +741,18 @@ namespace SleepyZoo
         private bool _sticky;                       // chapter 2 on: beds catch and hold
         private bool _anyBed;                       // chapter 3: any animal, any bed
         private readonly List<SpriteRenderer> _bedGlow = new();  // pulsed while sticky
+
+        // ---- power-ups ----
+        // Armed by the rail at the bottom, then spent on the next thing the player
+        // taps. `_anchored` lives for exactly one swipe.
+        //
+        // Using one costs NO stars, deliberately. An earlier version capped a helped
+        // level at two, which sounds fair and plays badly: it turns every power-up
+        // into a "should I?" decision, and hesitancy is exactly the feeling this game
+        // is supposed to remove. Supply is the balance instead — you get one play per
+        // friend per day and that is it, so nothing here can be spammed.
+        private int _armed = -1;        // ChonkyMerge.PowerUps.Kind, or -1 for none
+        private int _anchored = -1;     // entity held still for the next swipe only
 
         private int _moves, _stars;
         private float _levelTime;
@@ -1070,6 +1084,7 @@ namespace SleepyZoo
             foreach (Transform c in transform) Destroy(c.gameObject);
             _walls.Clear(); _undo.Clear();
             _moves=0; _solved=false; _stars=0; _levelTime=0f; _showHint=false; _swiping=false;
+            _armed=-1; _anchored=-1;
             _arrowTf=null; _arrowSr=null; _arrowOn=false; _hintPath=null;
 
             _daily=daily;
@@ -1094,6 +1109,7 @@ namespace SleepyZoo
             }
             _tipTime=0f;
             _lv=lv;
+            _wallTiles.Clear();
             foreach (var w in _lv.walls) _walls.Add(w);
 
             int n=_lv.ents.Length;
@@ -1162,8 +1178,12 @@ namespace SleepyZoo
                 var cell=new Vector2Int(x,y);
                 if (_walls.Contains(cell))
                 {
-                    Tile(CellToWorld(cell),0,TileShadow,RoundedTile(),0.92f);
-                    Tile(CellToWorld(cell)+new Vector3(0,0.04f,-0.1f),1,WallWood,RoundedTile(),0.80f);
+                    // Registered by cell, because the Tidy up power-up has to be able
+                    // to delete exactly one block's sprites later. Hunting for them by
+                    // world position afterwards is guesswork.
+                    var shadowT=Tile(CellToWorld(cell),0,TileShadow,RoundedTile(),0.92f);
+                    var woodT=Tile(CellToWorld(cell)+new Vector3(0,0.04f,-0.1f),1,WallWood,RoundedTile(),0.80f);
+                    _wallTiles[cell]=new List<Transform>{shadowT,woodT};
                 }
                 else
                 {
@@ -1416,6 +1436,12 @@ namespace SleepyZoo
 
             if (Input.GetMouseButtonDown(0))
             {
+                // While a power-up is armed the board is a target picker, not a
+                // swipe surface — otherwise choosing who to tuck in would also
+                // count as a swipe in whatever direction the thumb drifted.
+                if (_armed >= 0 && !PointerOverUI(Input.mousePosition))
+                { TryUsePowerUp(Input.mousePosition); _swiping=false; return; }
+
                 _swiping = !PointerOverUI(Input.mousePosition);
                 _swipeStart=Input.mousePosition;
             }
@@ -1445,6 +1471,103 @@ namespace SleepyZoo
                 float a = Asleep(_pos,i) ? 1f : 0.62f+0.30f*pulse;
                 sr.color=new Color(c.r,c.g,c.b,a);
             }
+        }
+
+        // ---- spending a power-up ----
+        /// Resolve a tap on the board into the thing the armed power-up acts on.
+        /// A tap that lands on nothing valid simply disarms, which is the least
+        /// annoying possible outcome: nothing is spent and nothing is lost.
+        private void TryUsePowerUp(Vector2 screenPos)
+        {
+            var kind = (ChonkyMerge.PowerUps.Kind)_armed;
+            var world = _cam.ScreenToWorldPoint(screenPos);
+            if (!WorldToCell(world, out var cell)) { Disarm(); return; }
+
+            switch (kind)
+            {
+                case ChonkyMerge.PowerUps.Kind.Pillow:
+                {
+                    int who = EntityAt(cell);
+                    // an animal already asleep cannot move anyway, so holding it
+                    // still would be spending a power-up on nothing
+                    if (who < 0 || Asleep(_pos, who)) { Sfx.Locked(); return; }
+                    if (!ChonkyMerge.PowerUps.Spend(kind)) { Disarm(); return; }
+                    PushUndo();
+                    _anchored = who;
+                    Spent();
+                    break;
+                }
+                case ChonkyMerge.PowerUps.Kind.Lullaby:
+                {
+                    int who = EntityAt(cell);
+                    if (who < 0 || Asleep(_pos, who)) { Sfx.Locked(); return; }
+                    // Their own bed has to be free — under Musical Beds any empty
+                    // bed will do, which is exactly how that chapter already works.
+                    var bed = FreeBedFor(who);
+                    if (bed.x < 0) { Sfx.Locked(); return; }
+                    if (!ChonkyMerge.PowerUps.Spend(kind)) { Disarm(); return; }
+                    PushUndo();
+                    _pos[who] = bed;
+                    _target[who] = CellToWorld(bed);
+                    _moving[who] = true; _travel[who] = 2;
+                    Spent();
+                    Sfx.Sleep();
+                    CheckWin();
+                    break;
+                }
+                default:
+                {
+                    if (!_walls.Contains(cell)) { Sfx.Locked(); return; }
+                    if (!ChonkyMerge.PowerUps.Spend(kind)) { Disarm(); return; }
+                    PushUndo();
+                    _walls.Remove(cell);
+                    RemoveWallSprite(cell);
+                    Spent();
+                    break;
+                }
+            }
+        }
+
+        private void Spent()
+        {
+            _armed = -1;
+            CancelHint();
+            _hintPath = null; _showHint = false; _arrowOn = false;
+            _tipTime = 999f;
+            ChonkyMerge.Haptics.Soft();
+        }
+
+        private void Disarm() { _armed = -1; Sfx.Click(); }
+
+        private int EntityAt(Vector2Int cell)
+        {
+            for (int i = 0; i < _pos.Length; i++) if (_pos[i] == cell) return i;
+            return -1;
+        }
+
+        /// Where a Lullaby can put this animal: its own bed normally, or any empty
+        /// bed under Musical Beds. Returns (-1,-1) when there is nowhere to go.
+        private Vector2Int FreeBedFor(int who)
+        {
+            if (!_anyBed)
+                return EntityAt(_bed[who]) < 0 ? _bed[who] : new Vector2Int(-1, -1);
+            for (int b = 0; b < _bed.Length; b++)
+                if (EntityAt(_bed[b]) < 0) return _bed[b];
+            return new Vector2Int(-1, -1);
+        }
+
+        /// The board is built from GameObjects, so tidying a block away has to take
+        /// its sprite with it or the wall stays on screen after it stops existing.
+        private void RemoveWallSprite(Vector2Int cell)
+        {
+            if (_wallTiles.TryGetValue(cell, out var tiles))
+            {
+                foreach (var t in tiles) if (t != null) Destroy(t.gameObject);
+                _wallTiles.Remove(cell);
+            }
+            // the cell is a plain floor tile now, not a hole in the board
+            Tile(CellToWorld(cell), 0, TileCream, RoundedTile(), 0.92f);
+            StartCoroutine(SleepPuff(CellToWorld(cell), new Color(0.95f, 0.85f, 0.70f)));
         }
 
         private bool PointerOverUI(Vector2 mouse)
@@ -1505,6 +1628,7 @@ namespace SleepyZoo
             foreach(int i in order)
             {
                 if(Asleep(np,i)) continue;                // tucked in — a soft wall now
+                if(i==_anchored) continue;                // a Pillow is holding this one
                 if(i==_lv.heavy) continue;                // too heavy to move on its own
                 occ.Remove(np[i]);
                 var p=Walk(np, i, np[i], dir, occ);
@@ -1597,6 +1721,10 @@ namespace SleepyZoo
             if (_solved) return;
             var np=SlideSim(_pos,dir);
             bool changed=false; for(int i=0;i<np.Length;i++) if(np[i]!=_pos[i]) changed=true;
+            // A Pillow is spent on the swipe it was placed for, even if that swipe
+            // turns out to change nothing - otherwise it silently carries over into a
+            // move the player never bought it for.
+            _anchored=-1;
             if(!changed) return;
 
             PushUndo();
@@ -1829,7 +1957,9 @@ namespace SleepyZoo
         // second layout to keep in sync.
         public static Rect BoardRect()
         {
-            float railTop = TuckIn.Ui.H - 34f - 62f;
+            // The bottom of the play area is now the POWER-UP rail, not the thumb
+            // rail — it sits 74 units above it, and the board must not slide under it.
+            float railTop = TuckIn.Ui.H - 34f - 62f - 74f;
             float bandTop = 236f;
             float avail = railTop - 16f - bandTop;
             float size = Mathf.Min(322f, TuckIn.Ui.W - 68f, avail);
@@ -1895,8 +2025,11 @@ namespace SleepyZoo
                 GUI.Label(TuckIn.Ui.R(42, 170, W - 84, th), teach, st);
             }
 
-            // ---- the thumb rail: undo, the one primary, reset ----
+            // ---- the power-up rail ----
             float ry = H - 34f - 62f;
+            DrawPowerUpRail(ry - 74f);
+
+            // ---- the thumb rail: undo, the one primary, reset ----
             var rUndo = TuckIn.Ui.R(22, ry, 62, 62); _uiRects.Add(rUndo);
             if (TuckIn.Ui.GhostDisc(22, ry, 62, TuckIn.Icons.Undo, 0.36f)) Undo();
 
@@ -1942,11 +2075,94 @@ namespace SleepyZoo
 
                 var st = TuckIn.Ui.Bold(13, TuckIn.Ui.Hex(0xfff4e4));
                 float cw = Mathf.Min(W - 40f, st.CalcSize(new GUIContent(cap)).x / TuckIn.Ui.S + 36f);
-                TuckIn.Ui.Round(TuckIn.Ui.R((W - cw) * 0.5f, ry - 52, cw, 40), 20,
+                TuckIn.Ui.Round(TuckIn.Ui.R((W - cw) * 0.5f, ry - 126, cw, 40), 20,
                                 TuckIn.Ui.Hex(0x1a1226, 0.86f));
-                GUI.Label(TuckIn.Ui.R((W - cw) * 0.5f, ry - 52, cw, 40), cap, st);
+                GUI.Label(TuckIn.Ui.R((W - cw) * 0.5f, ry - 126, cw, 40), cap, st);
             }
         }
+
+
+        /// The three power-ups, always visible, always honest about their cost.
+        ///
+        /// They sit ABOVE the thumb rail rather than inside it, because Undo, Hint
+        /// and Reset are free and reversible and these are neither — mixing them
+        /// into the same row would make spending one feel like an accident.
+        private void DrawPowerUpRail(float y)
+        {
+            float W = TuckIn.Ui.W;
+
+            // While one is armed the rail becomes a single instruction: what to tap,
+            // and how to back out. Nothing has been spent yet at this point.
+            if (_armed >= 0)
+            {
+                var kind = (ChonkyMerge.PowerUps.Kind)_armed;
+                var r = TuckIn.Ui.R(22, y, W - 44, 62);
+                TuckIn.Ui.RoundOutline(r, 22, 2, TuckIn.Ui.Hex(0xffd166, 0.7f),
+                                       TuckIn.Ui.Hex(0xffd166, 0.14f));
+                GUI.Label(TuckIn.Ui.R(34, y + 10, W - 68 - 60, 20),
+                          ChonkyMerge.PowerUps.Prompt(kind),
+                          TuckIn.Ui.Bold(13, TuckIn.Ui.Hex(0xfff4e4), TextAnchor.MiddleLeft));
+                GUI.Label(TuckIn.Ui.R(34, y + 32, W - 68 - 60, 18),
+                          "Your stars are safe — this costs nothing",
+                          TuckIn.Ui.Bold(10.5f, new Color(1f, 0.925f, 0.816f, 0.55f),
+                                         TextAnchor.MiddleLeft));
+                var cancel = TuckIn.Ui.R(W - 84, y + 11, 40, 40);
+                _uiRects.Add(cancel);
+                if (TuckIn.Ui.GhostDisc(W - 84, y + 11, 40, TuckIn.Icons.Close, 0.42f)) Disarm();
+                _uiRects.Add(r);
+                return;
+            }
+
+            float bw = (W - 44 - 20) / 3f;
+            for (int i = 0; i < ChonkyMerge.PowerUps.Count; i++)
+            {
+                var kind = (ChonkyMerge.PowerUps.Kind)i;
+                int have = ChonkyMerge.PowerUps.Have(kind);
+                float x = 22 + i * (bw + 10);
+                var r = TuckIn.Ui.R(x, y, bw, 62);
+                _uiRects.Add(r);
+
+                float a = have > 0 ? 1f : 0.4f;
+                TuckIn.Ui.RoundOutline(r, 20, 1.5f,
+                                       TuckIn.Ui.Hex(0xffe1be, 0.26f * a),
+                                       TuckIn.Ui.Ghost(0.08f * a));
+
+                var icon = ChonkyMerge.MainMenu.PowerUpIcon(kind);
+                var pc = GUI.color;
+                GUI.color = new Color(1f, 0.933f, 0.839f, a);
+                GUI.DrawTexture(TuckIn.Ui.R(x + bw * 0.5f - 11, y + 9, 22, 22), icon);
+                GUI.color = pc;
+                GUI.Label(TuckIn.Ui.R(x, y + 34, bw, 16), ChonkyMerge.PowerUps.Name(kind),
+                          TuckIn.Ui.Bold(11, new Color(1f, 0.933f, 0.839f, a)));
+
+                // the count rides on the corner, gold when there is something to spend
+                var badge = TuckIn.Ui.R(x + bw - 26, y - 8, 24, 20);
+                TuckIn.Ui.Round(badge, 999, have > 0 ? TuckIn.Ui.StarLit
+                                                     : new Color(1f, 0.93f, 0.84f, 0.16f));
+                GUI.Label(badge, have.ToString(),
+                          TuckIn.Ui.Bold(11, have > 0 ? TuckIn.Ui.Umber
+                                                      : new Color(1f, 0.93f, 0.84f, 0.5f)));
+
+                if (GUI.Button(r, GUIContent.none, GUIStyle.none))
+                {
+                    if (have <= 0)
+                    {
+                        Sfx.Locked();
+                        _noStockAt = Time.unscaledTime;
+                    }
+                    else { Sfx.Tap(); _armed = i; CancelHint(); _showHint = false; _arrowOn = false; }
+                }
+            }
+
+            // one quiet line when they tap an empty shelf, pointing at where more
+            // come from rather than at a shop
+            if (Time.unscaledTime - _noStockAt < 2.6f)
+                GUI.Label(TuckIn.Ui.R(22, y - 24, W - 44, 18),
+                          "Play with your friends in the dorm to find more",
+                          TuckIn.Ui.Bold(11.5f, TuckIn.Ui.Hex(0xffd166)));
+        }
+
+        private float _noStockAt = -99f;
 
         /// Moves as pips: gold for the ones you have spent, hollow for the ones that
         /// still buy a third star. A number tells you how many; this tells you how

@@ -34,9 +34,10 @@ and the room goes quiet.
 That's the entire rule. There is nothing else to learn on level one.
 
 A PUZZLE YOU CAN FINISH BEFORE YOU FALL ASLEEP
-No level in Tuck In takes more than twelve moves to solve perfectly. Puzzles
-get harder by getting cleverer, never by getting longer. You will not lose
-twenty minutes to one board.
+Most levels are solved perfectly in three to five moves, and no level in the
+game needs more than seven. Puzzles get cleverer, never longer. You will not
+lose twenty minutes to one board, and you can put it down mid-level without
+losing your place.
 
 130 LEVELS, AND THE RULES KEEP MOVING
 Eight chapters, and each one changes something you thought you knew:

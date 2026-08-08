@@ -35,6 +35,9 @@ namespace ChonkyMerge
         private Vector2 _heartPos;
         private Color _heartCol;
         private Texture2D _heartIcon;
+        private float _shopScroll;          // the Decorate list
+        private float _prizeAt;             // "you found a Pillow" toast
+        private PowerUps.Kind _prizeKind;
 
         private void Start()
         {
@@ -133,6 +136,7 @@ namespace ChonkyMerge
                 return;
             }
             if (_screen == Screen2.Map) UpdateFlickScroll(ref _mapScroll);
+            else if (_screen == Screen2.Decorate) UpdateFlickScroll(ref _shopScroll);
             else { _dragging = false; _dragVel = 0f; _dragDist = 0f; }
         }
 
@@ -181,7 +185,7 @@ namespace ChonkyMerge
             switch (_screen)
             {
                 case Screen2.Map: DrawMap(); break;
-                case Screen2.Dorm: DrawDorm(); break;
+                case Screen2.Dorm: DrawDorm(); DrawPrizeToast(); break;
                 case Screen2.Settings: DrawSettings(); break;
                 case Screen2.Decorate: DrawDecorate(); break;
                 default: DrawHome(); break;
@@ -344,6 +348,17 @@ namespace ChonkyMerge
             if (NavItem(22 + w + 10, y, w, 62, Icons.Bed, "Dorm",
                         $"{Zoo.UnlockedCount()}/{Zoo.Count}", Ui.Hex(0xc67139), Color.white))
             { Sfx.Tap(); _screen = Screen2.Dorm; _sel = -1; }
+
+            // A soft gold dot when somebody still has a game in them today. This is
+            // the ONLY nudge the game makes about the dorm: no number, no red badge,
+            // and nothing at all once the plays are used up.
+            if (PowerUps.PlaysAvailable() > 0)
+            {
+                float p = 0.5f + 0.5f * Mathf.Sin(Time.time * 2.2f);
+                var d = Ui.R(22 + w + 10 + 10, y + 10, 9, 9);
+                Ui.Glow(d, 6f, new Color(1f, 0.82f, 0.4f, 0.25f + 0.3f * p));
+                Ui.Circle(d, Ui.StarLit);
+            }
 
             bool night = Nightly.Available;
             if (NavItem(22 + (w + 10) * 2, y, w, 62, Icons.Moon, "Tonight",
@@ -651,54 +666,85 @@ namespace ChonkyMerge
 
         // =====================================================================
         // 1c — THE DORM
-        // Tap an animal. Feed, pet, tuck in.
+        // A room that knows what time it is. Feed, pet, play, tuck in.
         // =====================================================================
-        // Where each friend sleeps. Fixed anchors (they drift a little around them)
-        // so the room has a shape you learn, rather than animals sliding around
-        // under your thumb while you try to tap one.
-        private static readonly float[,] Spots =
+        // How the room is laid out.
+        //
+        // Hand-placed anchors do not survive the zoo filling up: with ten friends
+        // home the beds printed straight through each other's names. The room is a
+        // GRID that reflows instead — two columns while the dorm is quiet, three
+        // once it is busy — and everything scales to whatever space is left between
+        // the window and the buttons. A friend keeps their slot as long as the ones
+        // before them are still home, so the room stays somewhere you learn.
+        private const float CardW = 118f, CardH = 124f;
+
+        /// The floor: everything between the window sill and the hint line.
+        private static Rect RoomRect()
         {
-            { 14, 6 }, { 140, 96 }, { 258, 14 }, { 22, 212 }, { 210, 220 },
-            { 128, 306 }, { 262, 130 }, { 16, 116 }, { 250, 300 }, { 128, 196 },
-        };
+            float top = 252f;
+            float bottom = Ui.H - 116f;
+            return new Rect(10f, top, Ui.W - 20f, Mathf.Max(150f, bottom - top));
+        }
+
+        /// Where friend `slot` (their index among those actually home) sits, and how
+        /// big to draw them.
+        private static void SlotOf(int slot, int homeCount, out Vector2 at, out float scale)
+        {
+            var room = RoomRect();
+            int cols = homeCount <= 4 ? 2 : 3;
+            int rows = Mathf.Max(1, Mathf.CeilToInt(homeCount / (float)cols));
+            float cellW = room.width / cols;
+            float cellH = room.height / rows;
+
+            scale = Mathf.Clamp(Mathf.Min(cellW / CardW, cellH / CardH), 0.5f, 1f);
+            float cw = CardW * scale, ch = CardH * scale;
+
+            int col = slot % cols, row = slot / cols;
+            at = new Vector2(room.x + col * cellW + (cellW - cw) * 0.5f,
+                             room.y + row * cellH + (cellH - ch) * 0.5f);
+        }
 
         private void DrawDorm()
         {
             float H = Ui.H;
-            Ui.Backdrop(13, (0f, Ui.DormTop), (0.46f, Ui.DormMid), (1f, Ui.DormBot));
+            float light = DayNight.Light;
 
-            // lamplight: the one thing Decorate changes
-            var lamp = Dorm.ThemeColor;
-            Ui.Glow(Ui.R(60, 150, Ui.W - 120, 150), 60f, new Color(lamp.r, lamp.g, lamp.b, 0.20f));
+            // The room itself gets darker at night. Everything below is painted over
+            // this, so one value moves the whole mood of the screen.
+            Ui.Backdrop(13,
+                (0f, Color.Lerp(Ui.DormTop, Ui.Hex(0x4a3324), light)),
+                (0.46f, Color.Lerp(Ui.DormMid, Ui.Hex(0x6b4a2c), light)),
+                (1f, Color.Lerp(Ui.DormBot, Ui.Hex(0x8a6238), light)));
+
+            DrawWindow(232f);
+            DrawRoomDecor(H);
+
+            // Lamplight only really matters once it's dark — which is the point of
+            // buying the lamp at all.
+            var lamp = Dorm.LampColor;
+            float lampStrength = Mathf.Lerp(Decor.Lamp ? 0.30f : 0.14f, 0.05f, light);
+            Ui.Glow(Ui.R(40, 300, Ui.W - 80, 180), 70f,
+                    new Color(lamp.r, lamp.g, lamp.b, lampStrength));
 
             // ---- header ----
             if (Ui.GhostDisc(18, 58, 40, Icons.Chevron, 0.45f))
             { Sfx.Click(); _screen = Screen2.Home; _sel = -1; }
-            GUI.Label(Ui.R(70, 58, 220, 22), "The dorm", Ui.Head(20, Ui.Hex(0xfff4e4), TextAnchor.MiddleLeft));
-            GUI.Label(Ui.R(70, 78, 240, 16),
-                      $"{Zoo.UnlockedCount()} friends home · {Nightly.Lanterns} lanterns lit",
+            GUI.Label(Ui.R(70, 56, 220, 22), "The dorm",
+                      Ui.Head(20, Ui.Hex(0xfff4e4), TextAnchor.MiddleLeft));
+            GUI.Label(Ui.R(70, 76, 250, 16),
+                      $"{DayNight.Clock} · {DayNight.Mood}",
                       Ui.Bold(11, new Color(1f, 0.925f, 0.816f, 0.6f), TextAnchor.MiddleLeft));
-            Ui.Chip(Ui.W - 92, 58, 32, Dorm.Snacks.ToString(), Icons.Snack, Ui.Snack,
+            Ui.Chip(Ui.W - 92, 56, 32, Dorm.Snacks.ToString(), Icons.Snack, Ui.Snack,
                     Ui.Hex(0xffe9bd), Ui.Hex(0xffd166, 0.16f), 14f);
 
-            // two lanterns on the wall, breathing
-            for (int i = 0; i < 2; i++)
-            {
-                float x = i == 0 ? 26 : Ui.W - 48;
-                float b = 0.28f + 0.12f * Mathf.Sin(Time.time * 1.4f + i * 2f);
-                Ui.Glow(Ui.R(x, 126, 22, 30), 22f, new Color(lamp.r, lamp.g, lamp.b, b));
-                Ui.Round(Ui.R(x, 126, 22, 30), 8, Ui.Hex(0xffcf8d));
-            }
-
             // ---- the friends ----
-            float roomTop = 172f, roomBot = H - 150f;
+            int home = Zoo.UnlockedCount();
+            int slot = 0;
             for (int i = 0; i < Zoo.Count; i++)
             {
                 if (!Zoo.Unlocked(i)) continue;
-                float ax = Spots[i, 0], ay = Spots[i, 1];
-                // keep everyone inside the room however tall the phone is
-                ay = Mathf.Min(ay, Mathf.Max(0f, roomBot - roomTop - 110f));
-                DrawPal(i, ax, roomTop + ay);
+                SlotOf(slot++, home, out var at, out float sc);
+                DrawPal(i, at.x, at.y, sc);
             }
 
             DrawHeartFlourish();
@@ -721,47 +767,197 @@ namespace ChonkyMerge
             }
         }
 
-        private void DrawPal(int i, float x, float y)
+        /// The window: the real sky, at the real time, with the sun or the moon
+        /// tracking across it. This is the single thing that stopped the dorm
+        /// feeling like a menu — open it at breakfast and at midnight and it is
+        /// visibly not the same room.
+        private void DrawWindow(float bottom)
+        {
+            float w = 150f, h = 118f, x = (Ui.W - w) * 0.5f, y = bottom - h;
+
+            // frame
+            Ui.Round(Ui.R(x - 8, y - 8, w + 16, h + 16), 20, Ui.Hex(0x7a4a25));
+            var sky = Ui.R(x, y, w, h);
+            GUI.DrawTexture(sky, Ui.VGrad(60 + (int)DayNight.Now,
+                (0f, DayNight.SkyTop), (1f, DayNight.SkyBottom)), ScaleMode.StretchToFill);
+
+            // sun or moon, tracking across the pane
+            var p = DayNight.OrbPos;
+            float d = DayNight.ShowMoon ? 20f : 24f;
+            float ox = x + p.x * w - d * 0.5f, oy = y + p.y * h - d * 0.5f;
+            oy = Mathf.Clamp(oy, y + 6, y + h - d - 6);
+            Ui.Glow(Ui.R(ox, oy, d, d), 16f,
+                    DayNight.ShowMoon ? new Color(1f, 0.95f, 0.85f, 0.35f)
+                                      : new Color(1f, 0.92f, 0.6f, 0.5f));
+            Ui.Circle(Ui.R(ox, oy, d, d),
+                      DayNight.ShowMoon ? Ui.Hex(0xfff4dc) : Ui.Hex(0xfff0a8));
+
+            // a few stars, only after dark
+            if (DayNight.IsDark)
+                for (int i = 0; i < 6; i++)
+                {
+                    float sx = x + 12 + (i * 37) % (w - 24);
+                    float sy = y + 12 + (i * 23) % (h - 30);
+                    float a = 0.4f + 0.4f * Mathf.Sin(Time.time * 1.6f + i);
+                    Ui.Circle(Ui.R(sx, sy, 3, 3), new Color(1f, 0.97f, 0.88f, a));
+                }
+
+            // glazing bars, so it reads as a window and not a picture
+            Ui.Fill(Ui.R(x + w * 0.5f - 2, y, 4, h), Ui.Hex(0x7a4a25));
+            Ui.Fill(Ui.R(x, y + h * 0.5f - 2, w, 4), Ui.Hex(0x7a4a25));
+
+            // sill
+            Ui.Round(Ui.R(x - 18, bottom + 8, w + 36, 12), 6, Ui.Hex(0x8a5228));
+        }
+
+        /// Everything the player has actually bought, drawn where it lives. An empty
+        /// room looks empty on purpose — that is what makes the first rug land.
+        private void DrawRoomDecor(float H)
+        {
+            float floor = H - 150f;
+
+            if (Decor.Owned("rug"))
+            {
+                // an oval rug on the floor, under everybody
+                var r = Ui.R(Ui.W * 0.5f - 130, floor - 96, 260, 96);
+                Ui.Round(r, 48, Ui.Hex(0xb5654a, 0.55f));
+                Ui.Round(new Rect(r.x + Ui.P(22), r.y + Ui.P(14), r.width - Ui.P(44), r.height - Ui.P(28)),
+                         36, Ui.Hex(0xd98b62, 0.5f));
+            }
+
+            if (Decor.Owned("lamp"))
+            {
+                float x = Ui.W - 56, y = 300f;
+                Ui.Fill(Ui.R(x + 13, y + 26, 4, 92), Ui.Hex(0x6b4326));       // stand
+                Ui.Round(Ui.R(x + 2, y + 116, 26, 6), 3, Ui.Hex(0x6b4326));   // foot
+                var shade = Ui.R(x, y, 30, 26);
+                Ui.Round(shade, 8, Ui.Hex(0xffd9a0));
+                Ui.Glow(shade, 26f, new Color(1f, 0.82f, 0.5f, Mathf.Lerp(0.5f, 0.1f, DayNight.Light)));
+            }
+
+            if (Decor.Owned("plant"))
+            {
+                float x = 22, y = 316f;
+                Ui.Round(Ui.R(x, y + 62, 34, 34), 8, Ui.Hex(0xc4703f));       // pot
+                for (int i = 0; i < 5; i++)
+                {
+                    float a = -60f + i * 30f + Mathf.Sin(Time.time * 0.7f + i) * 3f;
+                    float rad = a * Mathf.Deg2Rad;
+                    float lx = x + 17 + Mathf.Sin(rad) * 20f - 9;
+                    float ly = y + 58 - Mathf.Cos(rad) * 46f;
+                    Ui.Round(Ui.R(lx, ly, 18, 30), 9, Ui.Hex(0x5e9b52));
+                }
+            }
+
+            if (Decor.Owned("picture"))
+            {
+                var f = Ui.R(40, 150, 62, 48);
+                Ui.Round(f, 8, Ui.Hex(0x8a5228));
+                Ui.Round(new Rect(f.x + Ui.P(5), f.y + Ui.P(5), f.width - Ui.P(10), f.height - Ui.P(10)),
+                         5, Ui.Hex(0xa8c8d8));
+                Ui.Round(new Rect(f.x + Ui.P(5), f.y + f.height * 0.55f, f.width - Ui.P(10), f.height * 0.35f),
+                         4, Ui.Hex(0x6f9a5c));
+            }
+
+            if (Decor.Owned("toybox"))
+            {
+                float x = 26, y = H - 232f;
+                Ui.Round(Ui.R(x, y, 62, 44), 8, Ui.Hex(0xc07a3e));
+                Ui.Fill(Ui.R(x, y + 14, 62, 5), Ui.Hex(0x8a5228));
+                Ui.Circle(Ui.R(x + 27, y + 24, 9, 9), Ui.Hex(0xffd166));
+            }
+
+            if (Decor.Owned("bunting"))
+            {
+                for (int i = 0; i < 9; i++)
+                {
+                    float bx = 14 + i * 44;
+                    float by = 118 + Mathf.Abs(Mathf.Sin(i * 0.9f)) * 8f;
+                    var c = i % 3 == 0 ? Ui.Hex(0xee7c9b) : i % 3 == 1 ? Ui.Hex(0xffd166) : Ui.Hex(0x9ed666);
+                    Ui.Round(Ui.R(bx, by, 20, 22), 4, c);
+                }
+            }
+
+            if (Decor.Owned("shelf"))
+            {
+                float x = Ui.W - 96, y = 156f;
+                Ui.Round(Ui.R(x, y + 34, 74, 7), 3, Ui.Hex(0x8a5228));
+                for (int i = 0; i < 5; i++)
+                    Ui.Round(Ui.R(x + 6 + i * 13, y + 34 - 8 - (i % 3) * 5, 9, 8 + (i % 3) * 5), 2,
+                             i % 2 == 0 ? Ui.Hex(0xd96a5a) : Ui.Hex(0x6a94c4));
+            }
+
+            if (Decor.Stars)
+            {
+                // the one item that changes the whole room: a ceiling full of stars
+                for (int i = 0; i < 22; i++)
+                {
+                    float sx = (i * 71 % 370) + 8;
+                    float sy = 100 + (i * 53 % 190);
+                    float a = (0.25f + 0.35f * Mathf.Sin(Time.time * 1.3f + i * 0.7f))
+                              * Mathf.Lerp(1f, 0.25f, DayNight.Light);
+                    Ui.Circle(Ui.R(sx, sy, 3.5f, 3.5f), new Color(1f, 0.95f, 0.82f, a));
+                }
+            }
+        }
+
+        private void DrawPal(int i, float x, float y, float k)
         {
             var pal = Zoo.Pals[i];
             bool asleep = Dorm.Asleep(i);
             // asleep animals breathe; awake ones bob. Both are slow — this is a
             // bedroom, not an idle-animation showreel.
             float t = Time.time * (asleep ? 0.6f : 0.9f) + i * 1.4f;
-            float bob = asleep ? 0f : Mathf.Sin(t) * 3f;
+            float bob = asleep ? 0f : Mathf.Sin(t) * 3f * k;
             float breathe = asleep ? 1f + Mathf.Sin(t) * 0.03f : 1f;
 
             // the bed: a coloured back and a cream turned-down sheet
-            Ui.Round(Ui.R(x + 6, y + 30, 100, 44), 16, pal.col);
-            Ui.Round(Ui.R(x + 6, y + 52, 100, 22), 12, new Color(1f, 0.973f, 0.925f, 0.9f));
+            Ui.Round(Ui.R(x + 6 * k, y + 30 * k, 100 * k, 44 * k), 16 * k, pal.col);
+            Ui.Round(Ui.R(x + 6 * k, y + 52 * k, 100 * k, 22 * k), 12 * k,
+                     new Color(1f, 0.973f, 0.925f, 0.9f));
 
             var art = Zoo.Art(i);
             if (art != null)
             {
-                float aw = 60f * breathe, ah = aw * art.height / (float)art.width;
-                GUI.DrawTexture(Ui.R(x + 56 - aw * 0.5f, y + 58 - ah + bob, aw, ah), art);
+                float aw = 60f * k * breathe, ah = aw * art.height / (float)art.width;
+                GUI.DrawTexture(Ui.R(x + 56 * k - aw * 0.5f, y + 58 * k - ah + bob, aw, ah), art);
             }
 
             if (asleep)
-                GUI.Label(Ui.R(x + 70, y + 8, 40, 24), "z",
-                          Ui.Bold(22, new Color(1f, 0.925f, 0.816f, 0.5f + 0.2f * Mathf.Sin(t))));
+                GUI.Label(Ui.R(x + 70 * k, y + 8 * k, 40 * k, 24 * k), "z",
+                          Ui.Bold(22 * k, new Color(1f, 0.925f, 0.816f, 0.5f + 0.2f * Mathf.Sin(t))));
+            else if (DayNight.IsDark)
+                GUI.Label(Ui.R(x + 70 * k, y + 10 * k, 40 * k, 20 * k), "~",
+                          Ui.Bold(16 * k, new Color(1f, 0.925f, 0.816f, 0.35f)));
 
-            GUI.Label(Ui.R(x - 2, y + 78, 118, 20), pal.name, Ui.Head(15, Ui.Hex(0xfff4e4)));
-            GUI.Label(Ui.R(x - 2, y + 96, 118, 16), Dorm.MoodWord(i), Ui.Bold(10.5f, Dorm.MoodColor(i)));
+            // The one nudge in the whole room: a friend who still has a game in them
+            // today wears a soft dot. No badge, no number, no red.
+            if (PowerUps.CanPlayWith(i))
+            {
+                float p = 0.5f + 0.5f * Mathf.Sin(Time.time * 2.2f + i);
+                var d = Ui.R(x + 92 * k, y + 26 * k, 14 * k, 14 * k);
+                Ui.Glow(d, 7f * k, new Color(1f, 0.82f, 0.4f, 0.25f + 0.25f * p));
+                Ui.Circle(d, Ui.StarLit);
+            }
 
-            if (GUI.Button(Ui.R(x, y, 118, 112), GUIContent.none, GUIStyle.none))
+            GUI.Label(Ui.R(x - 2, y + 78 * k, 118 * k, 20 * k), pal.name,
+                      Ui.Head(15 * k, Ui.Hex(0xfff4e4)));
+            GUI.Label(Ui.R(x - 2, y + 96 * k, 118 * k, 16 * k), Dorm.MoodWord(i),
+                      Ui.Bold(10.5f * k, Dorm.MoodColor(i)));
+
+            if (GUI.Button(Ui.R(x, y, 118 * k, 112 * k), GUIContent.none, GUIStyle.none))
             { Sfx.Tap(); _sel = i; }
         }
 
         /// The bottom sheet for one friend: who they are, what they are dreaming
-        /// about, and the three things you can do. Feed costs a snack, Pet is always
-        /// free — so an empty jar never means there is nothing to do here.
+        /// about, and the four things you can do. Feed costs a snack, Pet is always
+        /// free, Play is once a day and pays a power-up, Tuck in says goodnight.
         private void DrawFriendSheet()
         {
             float H = Ui.H;
             int i = _sel;
             var pal = Zoo.Pals[i];
-            float sh = 250f;
+            float sh = 268f;
             float y = H - sh;
 
             Ui.Round(Ui.R(0, y, Ui.W, sh + 40), 30, Ui.Cream);
@@ -785,23 +981,38 @@ namespace ChonkyMerge
             Tag(110 + TagW(Zoo.StageWord(Zoo.Stage(i))) + 6, y + 82, Dorm.MoodWord(i),
                 Ui.Hex(0xdfeaf2), Ui.Hex(0x3a5a72));
 
-            // the three actions
-            float bw = (Ui.W - 44 - 20) / 3f;
+            // the four actions
+            float bw = (Ui.W - 44 - 30) / 4f;
             bool canFeed = Dorm.Snacks > 0;
-            if (ActionTile(22, y + 118, bw, 76, Icons.Snack, "Feed", "1 snack",
+            bool canPlay = PowerUps.CanPlayWith(i);
+
+            if (ActionTile(22, y + 118, bw, 84, Icons.Snack, "Feed", "1 snack",
                            Ui.Hex(0xf6dcc4), Ui.Hex(0xe9c39b), Ui.Hex(0x8a5730), canFeed))
             {
                 if (Dorm.Feed(i)) { Sfx.Tap(); Flourish(i, Icons.Snack, Ui.Hex(0xd67f48)); }
                 else Sfx.Locked();
             }
-            if (ActionTile(22 + bw + 10, y + 118, bw, 76, Icons.Heart, "Pet", "free",
+            if (ActionTile(22 + bw + 10, y + 118, bw, 84, Icons.Heart, "Pet", "free",
                            Ui.Hex(0xffdfe7), Ui.Hex(0xf7c2ce), Ui.Hex(0xa8425c), true))
             { Sfx.Tap(); Dorm.Pet(i); Flourish(i, Icons.Heart, Ui.Hex(0xee7c9b)); }
-            if (ActionTile(22 + (bw + 10) * 2, y + 118, bw, 76, Icons.Bed, "Tuck in", "goodnight",
+            if (ActionTile(22 + (bw + 10) * 2, y + 118, bw, 84, Icons.Ball, "Play",
+                           canPlay ? "a prize" : "tomorrow",
+                           Ui.Hex(0xdcefd6), Ui.Hex(0xb9dcae), Ui.Hex(0x3f6b3a), canPlay))
+            {
+                if (canPlay)
+                {
+                    Sfx.Win();
+                    _prizeKind = Dorm.Play(i);
+                    _prizeAt = Time.time;
+                    Flourish(i, Icons.Ball, Ui.Hex(0x6aa85c));
+                }
+                else Sfx.Locked();
+            }
+            if (ActionTile(22 + (bw + 10) * 3, y + 118, bw, 84, Icons.Bed, "Tuck in", "goodnight",
                            Ui.Hex(0xe9e2d4), Ui.Line, Ui.Ink800, true))
             { Sfx.Sleep(); Dorm.Tuck(i); _sel = -1; }
 
-            if (GUI.Button(Ui.R(0, y + 202, Ui.W, 30), "Close", Ui.Bold(13, Ui.Ink600)))
+            if (GUI.Button(Ui.R(0, y + 216, Ui.W, 30), "Close", Ui.Bold(13, Ui.Ink600)))
             { Sfx.Click(); _sel = -1; }
         }
 
@@ -817,23 +1028,26 @@ namespace ChonkyMerge
                                 string sub, Color bg, Color border, Color ink, bool enabled)
         {
             var r = Ui.R(x, y, w, h);
-            float a = enabled ? 1f : 0.45f;
+            float a = enabled ? 1f : 0.4f;
             Ui.RoundOutline(r, 22, 2, new Color(border.r, border.g, border.b, a),
                             new Color(bg.r, bg.g, bg.b, a));
             var pc = GUI.color; GUI.color = new Color(ink.r, ink.g, ink.b, a);
-            GUI.DrawTexture(Ui.R(x + w * 0.5f - 12.5f, y + 14, 25, 25), icon);
+            GUI.DrawTexture(Ui.R(x + w * 0.5f - 12, y + 14, 24, 24), icon);
             GUI.color = pc;
-            GUI.Label(Ui.R(x, y + 42, w, 16), label, Ui.Bold(12, new Color(ink.r, ink.g, ink.b, a)));
-            GUI.Label(Ui.R(x, y + 56, w, 14), sub, Ui.Bold(10, new Color(ink.r, ink.g, ink.b, a * 0.7f)));
+            GUI.Label(Ui.R(x, y + 44, w, 16), label, Ui.Bold(12, new Color(ink.r, ink.g, ink.b, a)));
+            GUI.Label(Ui.R(x, y + 60, w, 14), sub, Ui.Bold(9.5f, new Color(ink.r, ink.g, ink.b, a * 0.7f)));
             return GUI.Button(r, GUIContent.none, GUIStyle.none);
         }
 
-        /// A snack or a heart floating up off whoever you just touched. One second,
-        /// then gone — the smallest possible "that did something".
+        /// A snack, a heart or a ball floating up off whoever you just touched. One
+        /// second, then gone — the smallest possible "that did something".
         private void Flourish(int i, Texture2D icon, Color col)
         {
             _heartAt = Time.time;
-            _heartPos = new Vector2(Spots[i, 0] + 76, 172f + Spots[i, 1] + 10);
+            int home = Zoo.UnlockedCount(), slot = 0;
+            for (int j = 0; j < i; j++) if (Zoo.Unlocked(j)) slot++;
+            SlotOf(slot, home, out var at, out float sc);
+            _heartPos = new Vector2(at.x + 76 * sc, at.y + 10);
             _heartCol = col;
             _heartIcon = icon;
         }
@@ -849,53 +1063,138 @@ namespace ChonkyMerge
             GUI.color = pc;
         }
 
+        /// What you won, said once, in the middle of the screen. It sits over the
+        /// sheet for two seconds and then gets out of the way.
+        private void DrawPrizeToast()
+        {
+            if (_prizeAt <= 0f) return;
+            float t = (Time.time - _prizeAt) / 2.2f;
+            if (t >= 1f) { _prizeAt = 0f; return; }
+            float a = t < 0.12f ? t / 0.12f : t > 0.8f ? (1f - t) / 0.2f : 1f;
+
+            float w = 250f, h = 96f;
+            float y = Ui.H * 0.38f - t * 14f;
+            var pc = GUI.color; GUI.color = new Color(1, 1, 1, a);
+            Ui.Round(Ui.R((Ui.W - w) * 0.5f, y, w, h), 26, Ui.Hex(0x2b1c15, 0.96f));
+            Ui.RoundOutline(Ui.R((Ui.W - w) * 0.5f, y, w, h), 26, 1.5f,
+                            Ui.Hex(0xffd166, 0.5f), new Color(0, 0, 0, 0f));
+            GUI.Label(Ui.R(0, y + 16, Ui.W, 16), Ui.Track("you found"),
+                      Ui.Bold(10.5f, Ui.Hex(0xffd166)));
+            var icon = PowerUpIcon(_prizeKind);
+            var ic = GUI.color; GUI.color = new Color(1, 1, 1, a);
+            GUI.DrawTexture(Ui.R(Ui.W * 0.5f - 60, y + 40, 26, 26), icon);
+            GUI.color = ic;
+            GUI.Label(Ui.R(Ui.W * 0.5f - 28, y + 38, 140, 30), PowerUps.Name(_prizeKind),
+                      Ui.Head(20, Ui.Hex(0xfff4e4), TextAnchor.MiddleLeft));
+            GUI.Label(Ui.R(0, y + 68, Ui.W, 16), "Use it on any level",
+                      Ui.Bold(11, Ui.Ghost(0.6f)));
+            GUI.color = pc;
+        }
+
+        public static Texture2D PowerUpIcon(PowerUps.Kind k) =>
+            k == PowerUps.Kind.Pillow ? Icons.Pillow
+          : k == PowerUps.Kind.Lullaby ? Icons.Note
+          : Icons.Broom;
+
         // =====================================================================
         // DECORATE
         // =====================================================================
-        // The one screen the redesign names but never draws. Kept deliberately
-        // small and made of colours the game already owns, so it cannot introduce
-        // art that fights the rest of the room.
+        // The shop. Everything is bought with snacks, which come from levels — so
+        // the room fills up because the game got played, not because anything was
+        // paid for. Items are permanent and can be bought in any order.
         private void DrawDecorate()
         {
             float H = Ui.H;
-            Ui.Backdrop(13, (0f, Ui.DormTop), (0.46f, Ui.DormMid), (1f, Ui.DormBot));
-            var lamp = Dorm.ThemeColor;
-            Ui.Glow(Ui.R(60, 150, Ui.W - 120, 200), 70f, new Color(lamp.r, lamp.g, lamp.b, 0.22f));
+            float light = DayNight.Light;
+            Ui.Backdrop(13,
+                (0f, Color.Lerp(Ui.DormTop, Ui.Hex(0x4a3324), light)),
+                (0.46f, Color.Lerp(Ui.DormMid, Ui.Hex(0x6b4a2c), light)),
+                (1f, Color.Lerp(Ui.DormBot, Ui.Hex(0x8a6238), light)));
 
             if (Ui.GhostDisc(18, 58, 40, Icons.Chevron, 0.45f))
             { Sfx.Click(); _screen = Screen2.Dorm; }
-            GUI.Label(Ui.R(70, 58, 240, 22), "Decorate", Ui.Head(20, Ui.Hex(0xfff4e4), TextAnchor.MiddleLeft));
-            GUI.Label(Ui.R(70, 78, 260, 16), "Choose the lamplight.",
+            GUI.Label(Ui.R(70, 56, 240, 22), "Decorate",
+                      Ui.Head(20, Ui.Hex(0xfff4e4), TextAnchor.MiddleLeft));
+            GUI.Label(Ui.R(70, 76, 260, 16),
+                      $"{Decor.OwnedCount()} of {Decor.Count} things in the room",
                       Ui.Bold(11, new Color(1f, 0.925f, 0.816f, 0.6f), TextAnchor.MiddleLeft));
+            Ui.Chip(Ui.W - 92, 56, 32, Dorm.Snacks.ToString(), Icons.Snack, Ui.Snack,
+                    Ui.Hex(0xffe9bd), Ui.Hex(0xffd166, 0.16f), 14f);
 
-            for (int i = 0; i < Dorm.ThemeNames.Length; i++)
+            float rowH = 74f, gap = 10f;
+            float listTop = 118f;
+            float listH = H - listTop - 26f;
+            int rows = Mathf.FloorToInt((listH + gap) / (rowH + gap));
+
+            // a plain vertical list, scrolled with the same flick handler as the map
+            float contentH = Decor.Count * (rowH + gap);
+            _scrollView = Ui.R(0, listTop, Ui.W, listH);
+            _scrollMax = Mathf.Max(0f, contentH - listH);
+
+            GUI.BeginGroup(Ui.R(0, listTop, Ui.W, listH));
+            for (int i = 0; i < Decor.Count; i++)
             {
-                float y = 150 + i * 78;
-                bool on = Dorm.Theme == i;
-                var r = Ui.R(24, y, Ui.W - 48, 64);
-                Ui.RoundOutline(r, 22, 2, on ? Ui.Hex(0xffd166, 0.8f) : Ui.Ghost(0.2f),
-                                Ui.Ghost(on ? 0.12f : 0.06f));
-                var c = i == Dorm.Theme ? lamp : ThemeSwatch(i);
-                Ui.Glow(Ui.R(46, y + 18, 28, 28), 18f, new Color(c.r, c.g, c.b, 0.4f));
-                Ui.Circle(Ui.R(46, y + 18, 28, 28), c);
-                GUI.Label(Ui.R(94, y, 200, 64), Dorm.ThemeNames[i],
-                          Ui.Head(18, Ui.Hex(0xfff4e4), TextAnchor.MiddleLeft));
-                if (on) GUI.Label(Ui.R(Ui.W - 130, y, 90, 64), "lit now",
-                                  Ui.Bold(11, Ui.Hex(0xffd166), TextAnchor.MiddleRight));
-                if (GUI.Button(r, GUIContent.none, GUIStyle.none)) { Sfx.Tap(); Dorm.Theme = i; }
+                float y = i * (rowH + gap) - _shopScroll;
+                if (y + rowH < -20 || y > listH + 20) continue;
+                DrawShopRow(y, rowH, i);
             }
-
-            if (Ui.Primary(24, H - 92, Ui.W - 48, 56, "Back to the dorm", 18f))
-            { Sfx.Click(); _screen = Screen2.Dorm; }
+            GUI.EndGroup();
         }
 
-        private static Color ThemeSwatch(int i)
+        private void DrawShopRow(float y, float h, int i)
         {
-            int saved = Dorm.Theme;
-            Dorm.Theme = i;             // read the palette without a second table
-            var c = Dorm.ThemeColor;
-            Dorm.Theme = saved;
-            return c;
+            var it = Decor.Items[i];
+            bool owned = Decor.Owned(i);
+            bool afford = Dorm.Snacks >= it.price;
+
+            var r = Ui.R(24, y, Ui.W - 48, h);
+            Ui.RoundOutline(r, 22, 2,
+                            owned ? Ui.Hex(0xffd166, 0.55f) : Ui.Ghost(0.22f),
+                            Ui.Ghost(owned ? 0.13f : 0.07f));
+
+            // a little swatch so the item is a thing, not a word
+            var sw = Ui.R(40, y + 16, 42, 42);
+            Ui.Round(sw, 12, Ui.Hex(0x7a4a25));
+            Ui.Round(new Rect(sw.x + Ui.P(7), sw.y + Ui.P(7), sw.width - Ui.P(14), sw.height - Ui.P(14)),
+                     8, ShopSwatch(i));
+
+            GUI.Label(Ui.R(96, y + 14, Ui.W - 200, 22), it.name,
+                      Ui.Head(17, Ui.Hex(0xfff4e4), TextAnchor.MiddleLeft));
+            GUI.Label(Ui.R(96, y + 36, Ui.W - 200, 20), it.blurb,
+                      Ui.Bold(11, new Color(1f, 0.925f, 0.816f, 0.55f), TextAnchor.MiddleLeft));
+
+            if (owned)
+                GUI.Label(Ui.R(Ui.W - 118, y, 94, h), "in the room",
+                          Ui.Bold(11, Ui.Hex(0xffd166), TextAnchor.MiddleRight));
+            else
+            {
+                var ink = afford ? Ui.Hex(0xffe9bd) : new Color(1f, 0.85f, 0.75f, 0.55f);
+                Ui.Chip(Ui.W - 116, y + h * 0.5f - 15, 30, it.price.ToString(), Icons.Snack,
+                        afford ? Ui.Snack : new Color(1f, 0.85f, 0.75f, 0.5f), ink,
+                        Ui.Ghost(afford ? 0.16f : 0.07f), 13f);
+            }
+
+            if (GUI.Button(r, GUIContent.none, GUIStyle.none) && !Dragged)
+            {
+                if (owned) Sfx.Tap();
+                else if (Decor.Buy(i)) { Sfx.Win(); }
+                else Sfx.Locked();
+            }
+        }
+
+        private static Color ShopSwatch(int i)
+        {
+            switch (Decor.Items[i].key)
+            {
+                case "rug": return Ui.Hex(0xd98b62);
+                case "lamp": return Ui.Hex(0xffd9a0);
+                case "plant": return Ui.Hex(0x5e9b52);
+                case "picture": return Ui.Hex(0xa8c8d8);
+                case "toybox": return Ui.Hex(0xc07a3e);
+                case "bunting": return Ui.Hex(0xee7c9b);
+                case "shelf": return Ui.Hex(0x6a94c4);
+                default: return Ui.Hex(0xfff0a8);
+            }
         }
 
         // =====================================================================

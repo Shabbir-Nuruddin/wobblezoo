@@ -234,28 +234,62 @@ def dead_fraction(ctx, dist, rev, goals):
 # chapter one used to *start* getting hard, and par is capped at 9 across the whole
 # game instead of 12. Difficulty comes from board shape and the chapter's toy —
 # never from making you hold a longer plan in your head.
-CH1_ENTS  = [1, 1, 2, 2, 2, 2, 2, 2, 2, 2,  3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
-CH1_PAR   = [2, 3, 3, 3, 4, 4, 4, 5, 5, 5,  4, 5, 5, 5, 6, 6, 6, 6, 7, 7]
-CH1_SIZE  = [4, 4, 4, 4, 4, 5, 5, 5, 5, 5,  5, 5, 5, 5, 6, 6, 6, 6, 6, 6]
+CH1_ENTS  = [1, 1, 1, 2, 2, 2, 2, 2, 2, 2,  2, 2, 3, 3, 3, 3, 3, 3, 3, 3]
+CH1_PAR   = [2, 2, 3, 3, 3, 3, 4, 4, 4, 4,  4, 4, 4, 4, 5, 4, 5, 4, 5, 5]
+CH1_SIZE  = [4, 4, 4, 4, 4, 4, 5, 5, 5, 5,  5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
 # At least one block from level 2 onward. A bare 4x4 with one animal has almost no
-# reachable states — every swipe just pins it to an edge — so an EXACT par of 3 is
-# very often impossible and the generator grinds forever on it. One block is what
-# makes a tiny board a puzzle at all.
-CH1_WALLS = [0, 1, 1, 1, 1, 1, 2, 2, 2, 2,  1, 2, 2, 2, 2, 3, 3, 3, 3, 4]
+# reachable states — every swipe just pins it to an edge — so an EXACT par is very
+# often impossible and the generator grinds forever. One block is what makes a tiny
+# board a puzzle at all.
+CH1_WALLS = [0, 1, 1, 1, 1, 2, 1, 2, 2, 2,  2, 2, 1, 2, 2, 2, 3, 3, 3, 3]
 
-CH2_ENTS  = [2, 2, 2, 2, 2, 2,  3, 3, 3, 3, 3, 3, 3,  4, 4, 4, 4, 4, 4, 4]
-CH2_PAR   = [3, 3, 4, 4, 4, 5,  5, 5, 6, 6, 6, 7, 7,  6, 7, 7, 8, 8, 8, 9]
-CH2_SIZE  = [4, 4, 5, 5, 5, 5,  5, 5, 5, 6, 6, 6, 6,  6, 6, 6, 6, 7, 7, 7]
-CH2_WALLS = [0, 1, 1, 1, 2, 2,  2, 2, 3, 3, 3, 3, 4,  3, 3, 4, 4, 4, 4, 5]
+CH2_ENTS  = [2, 2, 2, 2, 2, 3, 3, 3, 3, 3,  3, 3, 4, 4, 4, 4, 4, 4, 4, 4]
+CH2_PAR   = [2, 3, 3, 3, 4, 3, 4, 4, 4, 4,  4, 5, 4, 4, 5, 5, 5, 5, 5, 5]
+CH2_SIZE  = [4, 5, 5, 5, 5, 5, 5, 5, 5, 5,  6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
+CH2_WALLS = [0, 1, 1, 1, 2, 1, 2, 2, 2, 3,  2, 3, 2, 3, 3, 3, 3, 4, 4, 4]
 
 # Chapters 3-8, fifteen slots each. Every chapter restarts at two animals, because
 # every chapter hands the player a new toy to learn.
-RAMP_ENTS  = [2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4]
-RAMP_PAR   = [3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 9]
-RAMP_SIZE  = [4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 7, 7]
-RAMP_WALLS = [0, 1, 1, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5]
-RAMP_TOYS  = [1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4]
-RAMP_DEAD  = [.02, .03, .05, .07, .09, .11, .13, .15, .17, .19, .21, .23, .25, .27, .29]
+RAMP_ENTS  = [2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4]
+RAMP_PAR   = [3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5]
+RAMP_SIZE  = [5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6]
+RAMP_WALLS = [0, 1, 1, 1, 2, 2, 2, 2, 3, 2, 3, 3, 3, 4, 4]
+RAMP_TOYS  = [1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4]
+RAMP_DEAD  = [.02, .02, .03, .03, .04, .04, .05, .05, .06, .06, .07, .07, .08, .08, .09]
+
+# ---------------------------------------------------------------- the spikes
+# The curve above is deliberately FLAT and short: par 2-5, forever. That is the
+# whole point. This is a game people play in a car and in bed, and a puzzle that
+# needs nine correct swipes in a row is not relaxing, it is admin.
+#
+# But a game with no resistance at all is wallpaper. So difficulty arrives as a
+# small number of NAMED, PLACED spikes rather than as a rising tide:
+#
+#   MEDIUM, every ~30 levels — par 6. Still short, but the right first move is
+#   genuinely not obvious. You will sit with it for a minute.
+#
+#   HARD, every ~40-45 levels — par 7 on a busier board, and the only levels in
+#   the game where reaching for the hint is the expected outcome rather than a
+#   failure.
+#
+# Seven spikes in 130 levels. Everything else is a gentle downhill on purpose:
+# the reward loop lives in the dorm, not in beating the puzzle.
+MEDIUM_LEVELS = {30, 60, 90, 120}      # 1-based level numbers
+HARD_LEVELS   = {45, 85, 125}
+
+
+def level_number(chapter, k):
+    """1-based level number for slot k of a 1-based chapter."""
+    return sum(CHAPTER_LEN[: chapter - 1]) + k + 1
+
+
+# Chapter 7, Heavy Sleepers, gets its own table. Its big animal cannot move on its
+# own, so one swipe per level is always spent pushing rather than placing — which
+# means the shared ramp's pars all came out one higher than designed and produced
+# five par-6 levels in a row at 111-115. The premium is baked in here instead, so
+# the chapter reads like every other one from the player's side.
+HEAVY_ENTS = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4]
+HEAVY_PAR  = [4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5]
 
 # chapter (1-based) -> which toy the generator scatters on the board.
 # Chapter 0 isn't a chapter: it's the nightly-puzzle pool, which uses chapter one's
@@ -281,13 +315,38 @@ def spec_for(chapter, k):
     else:
         n, ents, par = RAMP_SIZE[k], RAMP_ENTS[k], RAMP_PAR[k]
         walls, toys, dead = RAMP_WALLS[k], RAMP_TOYS[k], RAMP_DEAD[k]
+        if TOY[chapter] == "heavy":
+            ents, par = HEAVY_ENTS[k], HEAVY_PAR[k]
     # Heavy Sleepers spends one of its animals on the big one, which can't move by
     # itself - so it needs an extra body on the board or there's nothing to push with.
-    if TOY[chapter] == "heavy":
-        ents = min(5, ents + 1)
+    #
+    # It also needs one more swipe than the rest of the ramp. Getting a heavy sleeper
+    # home costs a move that is spent pushing rather than placing, so an exact par-3
+    # board with four animals and one of them immobile essentially does not exist -
+    # the generator hunted for one until it ran out of budget.
+    # (Heavy Sleepers' shape comes from HEAVY_ENTS / HEAVY_PAR above, which already
+    # account for the pushing move — nothing extra is added here.)
+
+    # The spikes. A longer par, one more block to reason around, and a looser dead
+    # fraction so the board can actually be knotty — plus a much bigger generation
+    # budget, because an exact par-7 board is far rarer than an exact par-3 one.
+    budget = 25 + k * 6
+    lvno = level_number(chapter, k)
+    if lvno in HARD_LEVELS:
+        par = 7
+        walls += 1
+        dead = max(dead, 0.20)
+        ents = max(ents, 3)
+        budget = 240
+    elif lvno in MEDIUM_LEVELS:
+        par = 6
+        dead = max(dead, 0.12)
+        ents = max(ents, 3)
+        budget = 180
+
     return dict(w=n, h=n, walls=walls, ents=ents, par=par,
                 toys=toys, dead=dead, toy=TOY[chapter],
-                budget=25 + k * 6)
+                budget=budget)
 
 
 def rules_for(chapter, toy_cells, heavy, beds, w, h, walls):
@@ -881,8 +940,9 @@ def fill_chapter(ch, seed=20260801, rounds=8, workers=7):
 # TOY table), because a daily puzzle is the one level a brand-new player might tap
 # first, and it must never rely on — or give away — a twist they haven't reached.
 #
-# Pars stop at 9, below the campaign's 12. A nightly puzzle is a nightcap, not a
-# project: it has to fit in the last few minutes before somebody puts the phone down.
+# Pars stop at 5. A nightly puzzle is a nightcap, not a project: it has to fit in
+# the last few minutes before somebody puts the phone down, on a day they might
+# already be too tired to think.
 DAILY_PATH = "Assets/Scripts/SleepyZoo/DailyLevels.cs"
 # board, animals, par, walls.
 #
@@ -892,9 +952,9 @@ DAILY_PATH = "Assets/Scripts/SleepyZoo/DailyLevels.cs"
 # exact par, which is why the first pass produced nothing above three. Difficulty
 # here comes from the board and the par, the same rule the campaign follows.
 DAILY_ROWS = [
-    (5, 2, 4, 1), (5, 2, 5, 1), (5, 2, 6, 2), (5, 3, 5, 2),
-    (5, 3, 6, 2), (5, 3, 7, 2), (6, 2, 5, 2), (6, 3, 6, 3),
-    (6, 3, 7, 3), (6, 3, 8, 3), (7, 3, 7, 4), (6, 2, 6, 2),
+    (5, 2, 3, 1), (5, 2, 4, 1), (5, 2, 4, 2), (5, 3, 4, 2),
+    (5, 3, 4, 2), (5, 3, 5, 2), (6, 2, 4, 2), (6, 3, 5, 3),
+    (6, 3, 5, 3), (6, 3, 4, 3), (6, 2, 4, 2), (6, 3, 5, 3),
 ]
 
 DAILY_HINTS = [

@@ -83,6 +83,53 @@ Before that, Phases 3 and 4. Phase 3 took the game from 40 levels to **130** —
 
 ---
 
+## The difficulty curve — read this before touching a level
+
+The game is deliberately **easy**, and that is a product decision, not an oversight.
+It is played in cars and in bed by someone who wants to wind down. The curve is:
+
+- **Baseline par 2-5, forever.** No rising tide. Average par is **4.3** across all
+  130 levels, and the animal count now stops at four (it used to reach five).
+- **Seven spikes, placed by hand** (`MEDIUM_LEVELS` / `HARD_LEVELS` in
+  `tools/gen_levels.py`): par 6 at levels 30, 60, 90, 120, and par 7 at 45, 85, 125.
+  The par-7s are the only levels where reaching for the hint is the *expected*
+  outcome rather than a failure.
+- **Dead fraction is near zero** everywhere outside the spikes, so a player
+  essentially cannot wedge a board into an unsolvable state.
+
+**A previous retune wrote gentler tables into `gen_levels.py` and never regenerated
+the C#**, so the game shipped a par-up-to-12 curve while the tool claimed a cap of 9.
+If you change a table, you have not changed the game until you have run the
+generator AND `LevelAudit`. Check `avg par` before believing anything.
+
+Chapter 7 (Heavy Sleepers) has its **own** tables (`HEAVY_ENTS` / `HEAVY_PAR`)
+because its immobile animal costs one swipe per level; folding that into the shared
+ramp produced five par-6 levels in a row at 111-115.
+
+## Power-ups and the dorm loop
+
+The reward loop deliberately lives OUTSIDE the puzzle now:
+
+    clear levels -> snacks + stars
+    stars        -> new friends move in
+    friends      -> one free play each per day
+    play         -> power-ups (Pillow, Lullaby, Tidy up)
+    power-ups    -> levels get easier
+
+which is what gives unlocking an animal a reason beyond a nicer picture: ten friends
+home is ten power-ups a day, one friend is one. Rules that must hold:
+
+- **Using a power-up costs no stars.** An earlier version capped a helped level at
+  two stars; it reads as fair and plays badly, because it makes every power-up a
+  "should I?" decision and hesitancy is the exact feeling this game removes. The
+  balance is *supply* — one play per friend per day — not a penalty.
+- **Nothing expires and nothing decays.** Missing a day costs nothing; you simply
+  did not collect. There is no streak here.
+- **No second currency and nothing bought with money.** Snacks come from levels and
+  buy dorm furniture (`Decor.cs`); power-ups come from playing with animals.
+- `DayNight.cs` reads `DateTime.Now` and never sets a timer, so the whole dorm works
+  offline, on a plane, in a tunnel.
+
 ## Two traps this codebase has already sprung
 
 1. **IMGUI always draws on top of the camera.** The puzzle screen's sky, moon and hills are WORLD-space sprites behind the board (`SpawnBackground`/`BgGradient`). Painting a full-screen gradient in `OnGUI` hides the board completely. Only the win panel is allowed to cover the screen.
@@ -227,7 +274,10 @@ Check the log for `"APK build result: Succeeded"`. Exits with code 1 on failure 
 | `Assets/Scripts/ChonkyMerge/MainMenu.cs` | Home, the chapter-band map, the interactive dorm, Decorate, Settings and the arrival card. All drawn through `Ui`. |
 | `Assets/Scripts/UI/Ui.cs` | The design system: virtual 390x844 canvas, palette, Caprasimo/Figtree, rounded-rect/gradient/star primitives, and the Primary/Outline/GhostDisc/Chip/Bar widgets. |
 | `Assets/Scripts/UI/Icons.cs` | Every UI icon, rasterised at startup from 24-unit SVG coordinates. All white — tint at draw time. |
-| `Assets/Scripts/ChonkyMerge/Dorm.cs` | Snacks, moods and who is asleep; the feed/pet/tuck actions and the lamplight theme. |
+| `Assets/Scripts/ChonkyMerge/Dorm.cs` | Snacks, moods, who is asleep; the Feed / Pet / Play / Tuck in actions. |
+| `Assets/Scripts/ChonkyMerge/DayNight.cs` | What time it is: the window's sky, the room's light level, the greeting. Reads the clock, never sets a timer. |
+| `Assets/Scripts/ChonkyMerge/Decor.cs` | The furniture catalogue: eight items bought with snacks, each drawn in the dorm. |
+| `Assets/Scripts/ChonkyMerge/PowerUps.cs` | Pillow / Lullaby / Tidy up: stock, and the one-free-play-per-friend-per-day that earns them. |
 | `Assets/Scripts/ChonkyMerge/Sfx.cs` | The game's sound bank: seven CC0 clips from `Resources/Audio` + a code-generated swipe whoosh; reads/writes `sound_on`. |
 | `Assets/Scripts/ChonkyMerge/Haptics.cs` | Short Android vibrations (8-26ms) for landing/sleeping/winning; own `haptics_on` flag; no-op in editor and off-device. |
 | `Assets/Resources/Audio/` | The seven shipped sound effects (Kenney, CC0 — see `docs/CREDITS.md`). |
